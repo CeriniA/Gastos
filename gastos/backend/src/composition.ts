@@ -1,0 +1,78 @@
+import { todayIso } from '@gastos/shared';
+import type { Env } from './config/env';
+import type { CollectionPort } from './core/db/collectionPort';
+import { migrationsPort, runMigrations } from './core/db/migrations';
+import { withTransaction } from './core/db/transaction';
+import { migrations } from './migrations';
+import { accountsPort, accountsRepository } from './modules/accounts';
+import { createAuthService, type AuthService } from './modules/auth';
+import { createBackupService, type BackupService } from './modules/backup';
+import { cardPeriodsPort } from './modules/card-periods';
+import { categoriesPort, categoriesRepository } from './modules/categories';
+import { categoryRulesPort } from './modules/category-rules';
+import { documentsPort } from './modules/documents';
+import { exchangeRatesPort } from './modules/exchange-rates';
+import { installmentPlansPort } from './modules/installment-plans';
+import { recurringsPort } from './modules/recurrings';
+import { tagsPort, tagsRepository } from './modules/tags';
+import { transactionsPort, transactionsRepository } from './modules/transactions';
+import { wireServices, type Services } from './wiring';
+
+export interface Container extends Services {
+  auth: AuthService;
+  backup: BackupService;
+}
+
+/**
+ * Every collection of the app. Registering a port here is what puts a
+ * collection into the backup, the restore and the integrity check.
+ */
+const collectionPorts: readonly CollectionPort[] = [
+  accountsPort,
+  categoriesPort,
+  tagsPort,
+  documentsPort,
+  installmentPlansPort,
+  cardPeriodsPort,
+  recurringsPort,
+  categoryRulesPort,
+  exchangeRatesPort,
+  transactionsPort,
+  migrationsPort,
+];
+
+/**
+ * The composition root for production: the real repositories, the real
+ * database transactions and the configuration, handed to the wiring.
+ */
+export function createContainer(env: Env): Container {
+  const services = wireServices(
+    {
+      accounts: accountsRepository,
+      categories: categoriesRepository,
+      tags: tagsRepository,
+      transactions: transactionsRepository,
+    },
+    withTransaction,
+    () => todayIso(env.APP_TIMEZONE),
+  );
+
+  const auth = createAuthService({
+    username: env.AUTH_USERNAME,
+    passwordHash: env.AUTH_PASSWORD_HASH,
+    jwtSecret: env.JWT_SECRET,
+    expiresDays: env.JWT_EXPIRES_DAYS,
+  });
+
+  const backup = createBackupService(
+    collectionPorts,
+    {
+      afterRestore: async () => {
+        await runMigrations(migrations);
+      },
+    },
+    withTransaction,
+  );
+
+  return { ...services, auth, backup };
+}

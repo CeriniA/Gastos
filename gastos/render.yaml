@@ -1,0 +1,54 @@
+# Render Blueprint: describes both services so they can be created in one step
+# (Render dashboard > New > Blueprint). Values marked "sync: false" are asked
+# for at creation and never stored in the repository.
+#
+# If Render rejects a field, compare with its Blueprint reference: the format
+# changes from time to time.
+
+services:
+  - type: web
+    name: gastos-api
+    runtime: node
+    plan: free
+    region: virginia
+    buildCommand: npm ci --include=dev && npm run build -w backend
+    startCommand: node backend/dist/server.js
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: AUTH_USERNAME
+        sync: false
+      - key: AUTH_PASSWORD_HASH
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: APP_TIMEZONE
+        value: America/Argentina/Buenos_Aires
+
+  - type: web
+    name: gastos-web
+    runtime: static
+    buildCommand: npm ci --include=dev && npm run build -w frontend
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: VITE_API_URL
+        sync: false
+    routes:
+      # Every path is served by the single-page app.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      # The service worker must always be fetched fresh so updates reach the phone.
+      - path: /sw.js
+        name: Cache-Control
+        value: no-cache

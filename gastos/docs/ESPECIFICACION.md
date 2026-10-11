@@ -1,0 +1,236 @@
+# Especificación
+
+Qué hace la app y bajo qué reglas. Es la referencia del proyecto: si el código y este documento no
+coinciden, uno de los dos está mal y hay que resolverlo.
+
+Cada sección indica en qué etapa se construye (`ROADMAP.md`). Lo marcado **etapa 1** ya está en esta base.
+
+## 1. Propósito y alcance
+
+App web personal, de un solo usuario, para registrar ingresos, egresos y transferencias, y ver el
+resultado de cada mes. Se usa sobre todo desde el celular (Android), instalada como app.
+
+Formas de cargar un movimiento:
+
+| Vía                                   | Etapa |
+| ------------------------------------- | ----- |
+| Carga manual                          | 1     |
+| Importación de planilla (Excel o CSV) | 1     |
+| Foto de ticket                        | 2     |
+| Captura de MercadoLibre o MercadoPago | 2     |
+| Resumen de tarjeta en PDF             | 3     |
+
+**Regla general: la app propone y el usuario decide.** Ninguna sugerencia (categoría, duplicado,
+movimiento fijo, unión de dos movimientos) se aplica sin confirmación.
+
+## 2. Movimientos
+
+Un movimiento es un **ingreso**, un **egreso** o una **transferencia**.
+
+- El monto es siempre positivo; el tipo dice hacia dónde va la plata.
+- La moneda del movimiento es la de su cuenta.
+- Una transferencia va de una cuenta a otra distinta y no lleva categoría. Pagar la tarjeta, cargar
+  saldo en MercadoPago o comprar dólares son transferencias: no son ingreso ni egreso, y contarlas como
+  egreso duplicaría los consumos.
+- Una transferencia entre monedas distintas guarda los dos montos (el que sale y el que llega).
+- Un movimiento puede **dividirse** entre varias categorías (un ticket con comida y limpieza). Las
+  partes tienen que sumar el total.
+- No se aceptan fechas futuras, salvo en movimientos proyectados (cuotas futuras, etapa 3).
+
+Estados: `borrador` (extraído por la IA, sin revisar), `confirmado` (cuenta en los informes),
+`proyectado` (cuota o fijo futuro).
+
+Origen: `manual`, `documento`, `importación`, `cuota`. Un movimiento que vino de un documento o de una
+importación y se corrige a mano queda marcado como editado.
+
+### Dos fechas
+
+- **Fecha**: el día del consumo o del ingreso.
+- **Fecha de pago**: el día en que la plata sale o entra de verdad.
+
+El balance mensual usa la **fecha de pago**. Para efectivo, banco y billetera es la misma fecha. Para
+tarjeta de crédito es el vencimiento del resumen donde cae la compra o la cuota; mientras no exista el
+módulo de tarjetas (etapa 3) se puede escribir a mano, y si queda vacía vale la fecha del consumo.
+
+## 3. Monedas
+
+Pesos (ARS) y dólares (USD). Cada movimiento se guarda en su moneda y nunca se convierte al guardar.
+
+- Los totales se muestran separados por moneda.
+- Vista consolidada (etapa 4): todo en pesos o todo en dólares, usando una **tasa de cambio cargada a
+  mano** con fecha de inicio. Cada movimiento se convierte con la tasa vigente en su fecha; cambiar la
+  tasa hoy no altera los meses anteriores. Si un período no tiene tasa, la vista avisa y no inventa.
+
+## 4. Cuentas
+
+Efectivo, cuenta bancaria, billetera virtual o tarjeta de crédito, cada una con su moneda. El tipo y la
+moneda no se cambian después de crearla. Una cuenta con movimientos no se borra: se archiva.
+
+## 5. Categorías y etiquetas
+
+**Categorías**: árbol de hasta **tres niveles**, con listas separadas para ingresos y egresos. Se arman
+sobre la marcha.
+
+- Un movimiento se puede asignar a cualquier nivel.
+- Los totales suben: lo cargado en "Luz" suma en "Servicios" y en "Vivienda".
+- Dos categorías hermanas no pueden llamarse igual.
+- Mover una categoría mueve su rama; no puede quedar dentro de sí misma ni pasar de tres niveles.
+- Renombrar, mover o unir no obliga a recargar nada: los movimientos siguen a la categoría.
+- Una categoría archivada deja de ofrecerse, pero los movimientos viejos la conservan.
+
+**Etiquetas**: marcas libres que cruzan categorías ("Vacaciones enero"). Un movimiento puede tener
+varias o ninguna.
+
+**Asignación de categoría** (etapa 2), por prioridad: regla del usuario para ese comercio; sugerencia
+de la IA, que solo puede elegir entre las categorías existentes; sin categoría. Al corregir una, la app
+pregunta si ese comercio va siempre ahí y, si se acepta, crea la regla.
+
+## 6. Documentos y lectura con IA (etapa 2)
+
+1. El usuario saca la foto o elige el archivo. El backend lo guarda como `procesando` y responde al
+   instante.
+2. Se procesa en segundo plano. Al terminar pasa a `listo` o a `error`.
+3. Aparece en **Pendientes**. La revisión muestra la imagen y, debajo, los datos extraídos con los
+   campos dudosos marcados.
+4. El usuario corrige, confirma o descarta.
+
+- La huella (SHA-256) del archivo impide procesarlo dos veces.
+- La **imagen se guarda solo mientras el documento está pendiente** y se borra al confirmar o
+  descartar. La app avisa que hay que conservar la foto aparte si se necesita.
+- Si el proveedor de IA falla o llega al límite, el documento queda pendiente para reintentar.
+- A la IA se le pide que no devuelva números de tarjeta ni datos personales.
+- Formatos: JPG, PNG y PDF. Un PDF con contraseña se rechaza con aviso.
+- El contrato de lo que devuelve la IA está en `shared/src/schemas/extraction.ts` (borrador, a ajustar
+  con documentos reales).
+
+## 7. Duplicados (etapa 3; detección simple en la importación desde la etapa 1)
+
+| Caso                                             | Tratamiento                                                              |
+| ------------------------------------------------ | ------------------------------------------------------------------------ |
+| El mismo archivo subido dos veces                | Se rechaza por la huella                                                 |
+| La misma compra por dos vías (ticket y resumen)  | Coincidencia por monto, fecha cercana y cuenta: la app propone unirlos   |
+| Pago de la tarjeta                               | Transferencia, no egreso                                                 |
+| Fila de planilla igual a un movimiento existente | Se marca en la vista previa y se excluye salvo que el usuario la incluya |
+
+## 8. Tarjetas y cuotas (etapa 3)
+
+- Cada resumen crea un **período**: cierre, vencimiento, total y pago mínimo, leídos del resumen y
+  editables a mano. Si trae el próximo cierre, se guarda para el período siguiente.
+- El cierre decide en qué resumen cae una compra y, por lo tanto, su fecha de pago.
+- Una compra en cuotas genera **un movimiento por mes**, vinculados a un plan. Las futuras quedan como
+  proyectadas y pasan a confirmadas cuando llega el resumen que las incluye.
+- Un resumen que dice "cuota 3 de 6" de una compra no cargada ofrece crear el plan completo.
+- Con interés, vale el monto real de cada resumen, no el total dividido.
+- Del resumen se ignoran saldo y pago anteriores; intereses, impuestos y comisiones van a "Cargos
+  financieros"; la suma de lo extraído se controla contra el total del resumen.
+- Devoluciones: restan en su categoría de egreso, no son ingresos. _Pendiente de diseño:_ hoy el monto
+  es siempre positivo; la forma de guardar una devolución se define al empezar la etapa 3.
+
+## 9. Movimientos fijos (etapa 4)
+
+Cuando un comercio aparece con monto parecido en meses seguidos, la app lo señala como posible fijo
+(regla del backend, no IA). El usuario lo marca o lo deja; también puede marcar cualquier movimiento a
+mano. Un fijo se espera cada mes, entra en la proyección y avisa si no apareció o cambió mucho.
+
+## 10. Informes (balance mensual en etapa 1; el resto en etapa 4)
+
+Balance del mes por moneda; gasto por categoría con apertura del árbol; por cuenta; evolución mensual;
+principales comercios; cuotas y fijos pendientes; buscador con filtros; exportación a Excel.
+
+## 11. Pantallas
+
+Diseño para celular primero. Barra inferior: **Inicio, Movimientos, +, Informes, Más**.
+
+| Pantalla    | Qué muestra                                                 | Etapa |
+| ----------- | ----------------------------------------------------------- | ----- |
+| Login       | Usuario y contraseña; aviso si el servidor está despertando | 1     |
+| Inicio      | Balance del mes por moneda, últimos movimientos             | 1     |
+| Movimientos | Lista por mes; tocar uno abre la edición                    | 1     |
+| Agregar     | Carga manual (etapa 1); foto o archivo (etapa 2)            | 1 y 2 |
+| Más         | Cuentas, categorías, respaldo e importación                 | 1     |
+| Pendientes  | Bandeja única de todo lo que espera una decisión            | 2     |
+| Revisión    | Imagen y datos extraídos                                    | 2     |
+| Tarjetas    | Período en curso, cierre, vencimiento, cuotas pendientes    | 3     |
+| Informes    | Ver sección 10                                              | 4     |
+
+Toda pantalla contempla: cargando, lista vacía con indicación de qué hacer, error con reintento y
+servidor despertando.
+
+## 12. Modelo de datos
+
+MongoDB. Los nombres están en inglés; ver `GLOSARIO.md`.
+
+| Colección          | Guarda                                      | Apunta a                                                                                       | Etapa |
+| ------------------ | ------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----- |
+| `accounts`         | Cuentas                                     |                                                                                                | 1     |
+| `categories`       | Árbol de categorías                         | `categories` (padre)                                                                           | 1     |
+| `tags`             | Etiquetas                                   |                                                                                                | 1     |
+| `transactions`     | Movimientos, con ítems y divisiones adentro | `accounts`, `categories`, `tags`, `documents`, `installmentPlans`, `cardPeriods`, `recurrings` | 1     |
+| `documents`        | Archivos subidos y su extracción            | `accounts`                                                                                     | 2     |
+| `categoryRules`    | Comercio → categoría                        | `categories`                                                                                   | 2     |
+| `installmentPlans` | Compras en cuotas                           | `accounts`                                                                                     | 3     |
+| `cardPeriods`      | Períodos de tarjeta                         | `accounts`, `documents`                                                                        | 3     |
+| `recurrings`       | Movimientos fijos                           | `accounts`, `categories`                                                                       | 4     |
+| `exchangeRates`    | Tasas de cambio por fecha                   |                                                                                                | 4     |
+| `migrations`       | Migraciones ya aplicadas                    |                                                                                                | 1     |
+
+Los modelos de las etapas 2 a 4 ya existen para que el respaldo tenga un formato estable; sus servicios
+y pantallas se escriben en su etapa.
+
+Los ítems y las divisiones van **dentro** del movimiento: no existen sin él y no pueden quedar sueltos.
+
+## 13. Borrado
+
+| Se borra                          | Resultado                                                                     |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| Categoría con movimientos o hijas | Bloqueado: se archiva, o se une con otra                                      |
+| Cuenta con movimientos            | Bloqueado: se archiva                                                         |
+| Etiqueta                          | Se quita de todos sus movimientos en la misma operación                       |
+| Movimiento                        | Va a la papelera 30 días; se puede recuperar                                  |
+| Documento (etapa 2)               | Pregunta: borrar sus movimientos o conservarlos como manuales                 |
+| Cuota o plan (etapa 3)            | Pregunta: solo esa cuota o el plan; las confirmadas piden confirmación aparte |
+| Período de tarjeta (etapa 3)      | Sus movimientos quedan sin período y se recalcula la fecha de pago            |
+| Fijo (etapa 4)                    | Los movimientos quedan, solo pierden la marca                                 |
+
+## 14. Edición
+
+- Un movimiento confirmado se puede editar siempre.
+- Cambiar la fecha o la cuenta recalcula la fecha de pago, salvo que se indique una.
+- Una categoría archivada que el movimiento ya tenía puede quedarse; no se puede asignar una archivada nueva.
+- La tasa de cambio no afecta nada guardado.
+
+## 15. Validaciones
+
+Todas se aplican en el backend; el frontend las repite para avisar antes.
+
+- Monto: entero en centavos, mayor que cero.
+- Fecha: día válido, no futura.
+- Moneda igual a la de la cuenta.
+- Categoría del mismo tipo que el movimiento; las transferencias no llevan.
+- Transferencia: origen y destino distintos; entre monedas, los dos montos.
+- División: las partes suman el total.
+- Cuota: el número no supera el total.
+- Nombres únicos: cuenta, etiqueta y categoría entre hermanas (sin distinguir mayúsculas ni acentos).
+- Archivo: tipo y tamaño permitidos (5 MB), huella no repetida.
+
+## 16. Integridad
+
+MongoDB no impide una referencia rota; lo hace el backend:
+
+1. El frontend nunca toca la base: todo pasa por los servicios.
+2. Cada referencia se verifica antes de escribir.
+3. Las operaciones que tocan varias colecciones son transacciones: todo o nada.
+4. Lo que tiene historia se archiva.
+5. Los índices únicos rechazan duplicados aunque falle lo anterior.
+6. **Más → Respaldo y datos → Chequeo de integridad** lista cualquier referencia rota.
+
+## 17. Seguridad
+
+Un usuario y contraseña en variables de entorno, contraseña guardada como hash, sesión con vencimiento
+(30 días), límite de intentos de login, backend accesible solo desde el frontend configurado. La clave
+de la IA vive solo en el backend.
+
+## 18. Segunda versión
+
+Presupuestos por categoría, notificaciones de vencimiento, compartir hacia la app desde Android, uso
+sin conexión, saldos por cuenta, conservar comprobantes de forma permanente.
