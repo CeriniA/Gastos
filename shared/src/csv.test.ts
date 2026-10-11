@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { detectDelimiter, parseCsv, toCsv } from './csv';
 
 test('parseCsv handles quotes, embedded delimiters, line breaks and BOM', () => {
-  const text = '﻿Fecha;Nota\r\n2026-10-05;"dice ""hola""; y sigue"\r\n2026-10-06;"dos\nlineas"\r\n\r\n';
+  const text = '\uFEFFFecha;Nota\r\n2026-10-05;"dice ""hola""; y sigue"\r\n2026-10-06;"dos\nlineas"\r\n\r\n';
   assert.deepEqual(parseCsv(text), [
     ['Fecha', 'Nota'],
     ['2026-10-05', 'dice "hola"; y sigue'],

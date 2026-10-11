@@ -17,7 +17,7 @@ export function detectDelimiter(text: string): string {
 }
 
 export function parseCsv(input: string, delimiter?: string): string[][] {
-  const text = input.replace(/^﻿/, '');
+  const text = input.replace(/^\uFEFF/, '');
   const separator = delimiter ?? detectDelimiter(text);
   const rows: string[][] = [];
   let row: string[] = [];
@@ -69,5 +69,5 @@ function escapeCell(value: string, delimiter: string): string {
 /** Semicolon-separated with a BOM, which is what Excel in Spanish opens cleanly. */
 export function toCsv(rows: readonly (readonly string[])[], delimiter = ';'): string {
   const body = rows.map((row) => row.map((cell) => escapeCell(cell, delimiter)).join(delimiter)).join('\r\n');
-  return `﻿${body}\r\n`;
+  return `\uFEFF${body}\r\n`;
 }

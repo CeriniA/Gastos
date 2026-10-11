@@ -14,5 +14,5 @@ export function orderedTree(categories: readonly Category[], kind: CategoryKind)
 
 /** Indented label for a <select> option. */
 export function optionLabel(category: Category): string {
-  return `${'   '.repeat(category.depth - 1)}${category.name}`;
+  return `${'\u00A0\u00A0\u00A0'.repeat(category.depth - 1)}${category.name}`;
 }
