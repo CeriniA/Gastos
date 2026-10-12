@@ -1,0 +1,178 @@
+import { z } from 'zod';
+import {
+  PRODUCT_GROUPS,
+  TRANSACTION_TYPES,
+  UNCERTAIN_FIELDS,
+  parseAmountToCents,
+  parseFlexibleDate,
+  type DocumentKind,
+  type ExtractedTransaction,
+  type ExtractionResult,
+  type UncertainField,
+} from '@gastos/shared';
+import { extractionFailure, type ExtractionCategory } from './aiExtractor';
+
+/**
+ * Turns whatever text a model answered into a valid ExtractionResult, or
+ * fails. Shared by every provider: models differ, the cleaning does not.
+ *
+ * It is deliberately forgiving about form (code fences, numbers as text,
+ * missing fields) and strict about meaning: anything that cannot be trusted
+ * becomes null plus a flag, never a guess.
+ */
+
+const looseAmount = z.union([z.string(), z.number()]).nullish();
+
+const rawSchema = z.object({
+  transactions: z
+    .array(
+      z
+        .object({
+          type: z.string().nullish(),
+          date: z.string().nullish(),
+          amount: looseAmount,
+          currency: z.string().nullish(),
+          merchant: z.string().nullish(),
+          description: z.string().nullish(),
+          categoryId: z.string().nullish(),
+          installmentNumber: z.number().nullish(),
+          installmentTotal: z.number().nullish(),
+          items: z
+            .array(
+              z
+                .object({
+                  name: z.string().nullish(),
+                  amount: looseAmount,
+                  product: z.string().nullish(),
+                  group: z.string().nullish(),
+                  quantity: z.union([z.string(), z.number()]).nullish(),
+                })
+                .passthrough(),
+            )
+            .nullish(),
+          uncertain: z.array(z.string()).nullish(),
+        })
+        .passthrough(),
+    )
+    .nullish(),
+  warnings: z.array(z.string()).nullish(),
+});
+
+/** Models sometimes wrap the JSON in a code fence or add a sentence around it. */
+export function extractJson(text: string): unknown {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start < 0 || end <= start) throw extractionFailure('unreadable', 'The model did not answer with JSON');
+  try {
+    return JSON.parse(text.slice(start, end + 1));
+  } catch {
+    throw extractionFailure('unreadable', 'The model answered with malformed JSON');
+  }
+}
+
+function toCents(value: string | number | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const cents = parseAmountToCents(value);
+  return cents !== null && cents !== 0 ? Math.abs(cents) : null;
+}
+
+/** "2", "1,5" or 0.75: units, kilos or litres. Anything else is unknown. */
+function toQuantity(value: string | number | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const quantity = typeof value === 'number' ? value : Number(value.trim().replace(',', '.'));
+  return Number.isFinite(quantity) && quantity > 0 && quantity <= 100_000 ? quantity : null;
+}
+
+function oneOf<T extends string>(values: readonly T[], candidate: string | null | undefined): T | null {
+  const normalised = (candidate ?? '').trim();
+  return values.find((value) => value.toLowerCase() === normalised.toLowerCase()) ?? null;
+}
+
+export function normalizeExtraction(
+  answer: string,
+  context: { kind: DocumentKind; categories: readonly ExtractionCategory[]; today: string },
+): ExtractionResult {
+  const parsed = rawSchema.safeParse(extractJson(answer));
+  if (!parsed.success)
+    throw extractionFailure('unreadable', 'The model answered with an unexpected structure');
+
+  const categoryKinds = new Map(context.categories.map((category) => [category.id, category.kind]));
+  const warnings = (parsed.data.warnings ?? []).map((warning) => warning.slice(0, 300));
+  const transactions: ExtractedTransaction[] = [];
+
+  for (const raw of parsed.data.transactions ?? []) {
+    const type = oneOf(TRANSACTION_TYPES, raw.type);
+    if (!type) {
+      warnings.push('Se descartó un movimiento porque no se pudo determinar si era ingreso o egreso.');
+      continue;
+    }
+    const uncertain = new Set<UncertainField>();
+    for (const field of raw.uncertain ?? []) {
+      const known = oneOf(UNCERTAIN_FIELDS, field);
+      if (known) uncertain.add(known);
+    }
+
+    let date = raw.date ? parseFlexibleDate(raw.date) : null;
+    if (date && date > context.today) date = null; // A future date on a receipt is a misread.
+    if (!date) uncertain.add('date');
+
+    const amountCents = toCents(raw.amount);
+    if (amountCents === null) uncertain.add('amount');
+
+    // Any ISO code is kept: a receipt in reais is still a readable receipt.
+    const code = (raw.currency ?? '').trim().toUpperCase();
+    const currency = /^[A-Z]{3}$/.test(code) ? code : null;
+    if (!currency) uncertain.add('currency');
+
+    // The model may only pick an existing category of the right kind.
+    const suggestedCategoryId =
+      type !== 'transfer' && raw.categoryId && categoryKinds.get(raw.categoryId) === type
+        ? raw.categoryId
+        : null;
+
+    const number = raw.installmentNumber;
+    const total = raw.installmentTotal;
+    const validInstallment =
+      Number.isInteger(number) &&
+      Number.isInteger(total) &&
+      number! >= 1 &&
+      total! >= number! &&
+      total! <= 120;
+    if (!validInstallment && (number || total)) uncertain.add('installment');
+
+    transactions.push({
+      type,
+      date,
+      amountCents,
+      currency,
+      merchant: (raw.merchant ?? '').trim().slice(0, 200),
+      description: (raw.description ?? '').trim().slice(0, 200),
+      suggestedCategoryId,
+      installment: validInstallment ? { number: number!, total: total! } : null,
+      items: (raw.items ?? [])
+        .flatMap((item) => {
+          const name = (item.name ?? '').trim().slice(0, 200);
+          const itemCents = toCents(item.amount);
+          if (name === '' || itemCents === null) return [];
+          return [
+            {
+              name,
+              amountCents: itemCents,
+              product: (item.product ?? '').trim().slice(0, 80),
+              group: oneOf(PRODUCT_GROUPS, item.group),
+              quantity: toQuantity(item.quantity),
+            },
+          ];
+        })
+        .slice(0, 200),
+      uncertainFields: [...uncertain],
+    });
+  }
+
+  return {
+    documentKind: context.kind,
+    transactions: transactions.slice(0, 500),
+    statement: null,
+    warnings: warnings.slice(0, 50),
+  };
+}

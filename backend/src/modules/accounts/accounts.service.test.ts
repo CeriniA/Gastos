@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { AppError } from '../../core/errors/errors';
+import { AppError, NotFoundError } from '../../core/errors/errors';
 import { createMemoryBackend } from '../../testing/memory';
 
 async function codeOf(work: Promise<unknown>): Promise<string> {
@@ -27,6 +27,7 @@ const expense = (accountId: string, tagIds: string[] = []) => ({
   toAccountId: null,
   toAmountCents: null,
   paymentDate: null,
+  original: null,
 });
 
 test('account names are unique whatever the case or accents', async () => {
@@ -111,4 +112,32 @@ test('the trash is emptied after the retention period', async () => {
   const inFortyDays = new Date(Date.now() + 40 * 24 * 60 * 60 * 1000);
   assert.equal(await app.transactions.purgeTrash(inFortyDays), 1);
   assert.equal(app.store.transactions.length, 0);
+});
+
+test('only what is in the trash can be deleted for good, one by one or all at once', async () => {
+  const app = createMemoryBackend();
+  const bank = await app.accounts.create({ name: 'Banco', type: 'bank', currency: 'ARS' });
+  const kept = await app.transactions.create(expense(bank.id));
+  const first = await app.transactions.create(expense(bank.id));
+  const second = await app.transactions.create(expense(bank.id));
+
+  await assert.rejects(app.transactions.removeForever(kept.id), NotFoundError);
+  await app.transactions.remove(first.id);
+  await app.transactions.remove(second.id);
+  await app.transactions.removeForever(first.id);
+  await assert.rejects(app.transactions.removeForever(first.id), NotFoundError);
+  await assert.rejects(app.transactions.restore(first.id), NotFoundError);
+
+  assert.equal(await app.transactions.emptyTrash(), 1);
+  assert.deepEqual(
+    app.store.transactions.map((transaction) => transaction.id),
+    [kept.id],
+  );
+});
+
+test('the reference exchange rate is only offered between two different, known currencies', async () => {
+  const app = createMemoryBackend();
+  assert.equal((await app.exchangeRates.reference('BRL', 'ARS'))?.rate, 300);
+  assert.equal(await app.exchangeRates.reference('ARS', 'ARS'), null);
+  assert.equal(await app.exchangeRates.reference('XXX', 'ARS'), null);
 });

@@ -120,6 +120,12 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   return body.data;
 }
 
+/** Fetches binary content (an image) with the session token. */
+export async function fetchBlob(path: string): Promise<Blob> {
+  const response = await send(path, {});
+  return response.blob();
+}
+
 /** Fetches a file with the session token and hands it to the browser to save. */
 export async function download(path: string, query?: Query): Promise<void> {
   const response = await send(path, { query });

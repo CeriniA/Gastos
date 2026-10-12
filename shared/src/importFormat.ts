@@ -4,6 +4,7 @@ import {
   MAX_CATEGORY_DEPTH,
   MAX_IMPORT_ROWS,
   TRANSACTION_TYPES,
+  type CategoryKind,
   type Currency,
   type TransactionType,
 } from './constants';
@@ -303,6 +304,20 @@ export function toExportRecord(row: ImportRow): Record<ImportColumnKey, string> 
   };
 }
 
+/**
+ * Identifies a category by its kind and path whatever the spelling, so
+ * "Súper > Verdulería" in a file matches "super > verduleria" in the app.
+ */
+export function categoryPathKey(kind: CategoryKind, path: readonly string[]): string {
+  return `${kind}|${path.map(nameKey).join('>')}`;
+}
+
+/** A category as a file names it: its kind and the names from the root down. */
+export interface ImportCategoryRef {
+  kind: CategoryKind;
+  path: string[];
+}
+
 export interface ImportPreviewRow {
   /** Row number as the user sees it in the spreadsheet (the header is row 1). */
   line: number;
@@ -320,11 +335,25 @@ export interface ImportPreview {
   duplicateRows: number;
   missingHeaders: string[];
   unknownHeaders: string[];
-  /** Category paths and tags that do not exist yet and would be created. */
-  newCategories: string[];
+  /** Account names the file mentions and the app does not have. Accounts are never created by an import. */
+  unknownAccounts: string[];
+  /** Categories and tags that do not exist yet and would be created. */
+  newCategories: ImportCategoryRef[];
   newTags: string[];
   rows: ImportPreviewRow[];
 }
+
+/**
+ * Rows the user adjusted after the preview (an unknown account or category
+ * pointed at an existing one), sent back to be checked again.
+ */
+export const importReviewSchema = z.object({
+  rows: z
+    .array(z.object({ line: z.number().int().positive(), row: importRowSchema }))
+    .min(1)
+    .max(MAX_IMPORT_ROWS),
+});
+export type ImportReview = z.infer<typeof importReviewSchema>;
 
 export const importCommitSchema = z.object({
   rows: z.array(importRowSchema).min(1).max(MAX_IMPORT_ROWS),

@@ -15,3 +15,19 @@ export function useCreateTag() {
     onSuccess: () => client.invalidateQueries({ queryKey: KEY }),
   });
 }
+
+export function useTagMutations() {
+  const client = useQueryClient();
+  return {
+    rename: useMutation({
+      mutationFn: ({ id, name }: { id: string; name: string }) =>
+        api<Tag>(`/tags/${id}`, { method: 'PATCH', body: { name } }),
+      onSuccess: () => client.invalidateQueries({ queryKey: KEY }),
+    }),
+    /** Deleting a tag takes it off its transactions, so those are refreshed too. */
+    remove: useMutation({
+      mutationFn: (id: string) => api<void>(`/tags/${id}`, { method: 'DELETE' }),
+      onSuccess: () => client.invalidateQueries(),
+    }),
+  };
+}

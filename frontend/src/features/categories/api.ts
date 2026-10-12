@@ -21,6 +21,13 @@ export function useCategoryMutations() {
         api<Category>(`/categories/${id}`, { method: 'PATCH', body: changes }),
       onSuccess: refresh,
     }),
+    /** Moves the transactions of one category into another and deletes the first. */
+    merge: useMutation({
+      mutationFn: ({ id, targetId }: { id: string; targetId: string }) =>
+        api<Category>(`/categories/${id}/merge`, { method: 'POST', body: { targetId } }),
+      // Transactions change category, so everything that shows them is refreshed.
+      onSuccess: () => client.invalidateQueries(),
+    }),
     remove: useMutation({
       mutationFn: (id: string) => api<void>(`/categories/${id}`, { method: 'DELETE' }),
       onSuccess: refresh,

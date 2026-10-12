@@ -1,14 +1,35 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ChangeEvent, type ReactNode } from 'react';
-import { IMPORT_COLUMNS, type ImportPreview, type ImportRow } from '@gastos/shared';
+import {
+  CATEGORY_PATH_SEPARATOR,
+  IMPORT_COLUMNS,
+  categoryPathKey,
+  nameKey,
+  pathOf,
+  type ImportPreview,
+  type ImportRow,
+} from '@gastos/shared';
 import { errorMessage } from '../../shared/api/errors';
 import { es } from '../../shared/i18n/es';
-import { Button, Card, Notice, PageTitle } from '../../shared/ui/ui';
+import { Button, Card, Field, Notice, PageTitle, Select } from '../../shared/ui/ui';
+import { useAccounts } from '../accounts/api';
+import { useCategories } from '../categories/api';
+import { optionLabel, orderedTree } from '../categories/tree';
 import { dataApi } from './api';
 
 type Message = { tone: 'success' | 'error' | 'attention'; text: string };
 
 const HEADER_OF = Object.fromEntries(IMPORT_COLUMNS.map((column) => [column.key, column.header]));
+
+/** What the user said about names the file uses and the app does not know. */
+interface Mapping {
+  /** Unknown account name (normalised) → name of the existing account it stands for. */
+  accounts: Record<string, string>;
+  /** Unknown category (see categoryPathKey) → id of the existing category to use instead. */
+  categories: Record<string, string>;
+}
+
+const NO_MAPPING: Mapping = { accounts: {}, categories: {} };
 
 function Section({ title, text, children }: { title: string; text: string; children: ReactNode }) {
   return (
@@ -47,7 +68,13 @@ export function DataPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
   const [restoreConfirmed, setRestoreConfirmed] = useState(false);
+  const accounts = useAccounts();
+  const categories = useCategories();
+  /** The file as it was read, kept so the user's choices can be applied again from scratch. */
+  const [original, setOriginal] = useState<ImportPreview | null>(null);
+  /** What is shown: the file after applying the user's choices. */
   const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [mapping, setMapping] = useState<Mapping>(NO_MAPPING);
   const [createMissing, setCreateMissing] = useState(true);
   const [includeDuplicates, setIncludeDuplicates] = useState(false);
 
@@ -90,7 +117,56 @@ export function DataPage() {
 
   const loadPreview = (file: File) =>
     run(async () => {
-      setPreview(await dataApi.previewImport(file));
+      const read = await dataApi.previewImport(file);
+      setOriginal(read);
+      setPreview(read);
+      setMapping(NO_MAPPING);
+    });
+
+  const closePreview = () => {
+    setOriginal(null);
+    setPreview(null);
+    setMapping(NO_MAPPING);
+  };
+
+  /**
+   * Rewrites the rows with the user's choices and asks the server to check
+   * them again, so what is shown is always what would be imported.
+   */
+  const applyMapping = (next: Mapping) =>
+    run(async () => {
+      if (!original) return;
+      setMapping(next);
+      const accountFor = (name: string) => next.accounts[nameKey(name)] ?? name;
+      const rows = original.rows.flatMap((entry) => {
+        if (!entry.row) return [];
+        const row = entry.row;
+        const categoryId =
+          row.type === 'transfer' ? undefined : next.categories[categoryPathKey(row.type, row.categoryPath)];
+        return [
+          {
+            line: entry.line,
+            row: {
+              ...row,
+              account: accountFor(row.account),
+              toAccount: row.toAccount ? accountFor(row.toAccount) : null,
+              categoryPath: categoryId ? pathOf(categoryId, categories.data ?? []) : row.categoryPath,
+            },
+          },
+        ];
+      });
+      if (rows.length === 0) return;
+      const reviewed = await dataApi.reviewImport({ rows });
+      const unreadable = original.rows.filter((entry) => !entry.row);
+      setPreview({
+        ...reviewed,
+        fileName: original.fileName,
+        missingHeaders: original.missingHeaders,
+        unknownHeaders: original.unknownHeaders,
+        totalRows: original.totalRows,
+        invalidRows: original.totalRows - reviewed.validRows,
+        rows: [...reviewed.rows, ...unreadable].sort((a, b) => a.line - b.line),
+      });
     });
 
   const importable: ImportRow[] = (preview?.rows ?? []).flatMap((entry) =>
@@ -101,7 +177,7 @@ export function DataPage() {
   const commit = () =>
     run(async () => {
       const result = await dataApi.commitImport({ rows: importable, createMissing });
-      setPreview(null);
+      closePreview();
       await client.invalidateQueries();
       return { tone: 'success', text: es.data.importDone(result.imported) };
     });
@@ -189,7 +265,9 @@ export function DataPage() {
               ) : null}
               {preview.newCategories.length > 0 ? (
                 <Notice tone="attention">
-                  {es.data.preview.newCategories(preview.newCategories.join(', '))}
+                  {es.data.preview.newCategories(
+                    preview.newCategories.map((ref) => ref.path.join(CATEGORY_PATH_SEPARATOR)).join(', '),
+                  )}
                 </Notice>
               ) : null}
               {preview.newTags.length > 0 ? (
@@ -199,6 +277,79 @@ export function DataPage() {
                 <Notice tone="attention">{es.data.preview.duplicates(preview.duplicateRows)}</Notice>
               ) : null}
             </div>
+
+            {original && original.unknownAccounts.length > 0 ? (
+              <fieldset className="mt-4 space-y-3 rounded-lg border border-line p-3">
+                <legend className="px-1 text-sm font-semibold">{es.data.preview.accountsTitle}</legend>
+                <p className="text-sm text-muted">{es.data.preview.accountsText}</p>
+                {original.unknownAccounts.map((name) => (
+                  <Field key={name} label={es.data.preview.accountIs(name)}>
+                    <Select
+                      value={mapping.accounts[nameKey(name)] ?? ''}
+                      disabled={busy}
+                      onChange={(event) => {
+                        const { [nameKey(name)]: _previous, ...others } = mapping.accounts;
+                        const chosen = event.target.value;
+                        void applyMapping({
+                          ...mapping,
+                          accounts: chosen ? { ...others, [nameKey(name)]: chosen } : others,
+                        });
+                      }}
+                    >
+                      <option value="">{es.data.preview.accountSkip}</option>
+                      {(accounts.data ?? [])
+                        .filter((account) => !account.archived)
+                        .map((account) => (
+                          <option key={account.id} value={account.name}>
+                            {account.name} ({account.currency})
+                          </option>
+                        ))}
+                    </Select>
+                  </Field>
+                ))}
+              </fieldset>
+            ) : null}
+
+            {original && original.newCategories.length > 0 ? (
+              <fieldset className="mt-4 space-y-3 rounded-lg border border-line p-3">
+                <legend className="px-1 text-sm font-semibold">{es.data.preview.categoriesTitle}</legend>
+                <p className="text-sm text-muted">{es.data.preview.categoriesText}</p>
+                {original.newCategories.map((ref) => {
+                  const key = categoryPathKey(ref.kind, ref.path);
+                  return (
+                    <Field
+                      key={key}
+                      label={es.data.preview.categoryIs(
+                        ref.path.join(CATEGORY_PATH_SEPARATOR),
+                        es.kinds[ref.kind],
+                      )}
+                    >
+                      <Select
+                        value={mapping.categories[key] ?? ''}
+                        disabled={busy}
+                        onChange={(event) => {
+                          const { [key]: _previous, ...others } = mapping.categories;
+                          const chosen = event.target.value;
+                          void applyMapping({
+                            ...mapping,
+                            categories: chosen ? { ...others, [key]: chosen } : others,
+                          });
+                        }}
+                      >
+                        <option value="">{es.data.preview.categoryCreate}</option>
+                        {orderedTree(categories.data ?? [], ref.kind)
+                          .filter((category) => !category.archived)
+                          .map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {optionLabel(category)}
+                            </option>
+                          ))}
+                      </Select>
+                    </Field>
+                  );
+                })}
+              </fieldset>
+            ) : null}
 
             {preview.rows.some((entry) => entry.issues.length > 0) ? (
               <ul className="mt-3 max-h-64 space-y-1 overflow-y-auto text-sm">
@@ -251,7 +402,7 @@ export function DataPage() {
               ) : (
                 <p className="text-muted">{es.data.preview.nothing}</p>
               )}
-              <Button variant="secondary" disabled={busy} onClick={() => setPreview(null)}>
+              <Button variant="secondary" disabled={busy} onClick={closePreview}>
                 {es.common.cancel}
               </Button>
             </div>

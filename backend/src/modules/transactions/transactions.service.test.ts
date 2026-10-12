@@ -123,6 +123,7 @@ const expense: TransactionCreate = {
   toAccountId: null,
   toAmountCents: null,
   paymentDate: null,
+  original: null,
 };
 
 async function issuePaths(work: Promise<unknown>): Promise<string[]> {

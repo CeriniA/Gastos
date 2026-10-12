@@ -1,5 +1,6 @@
 import {
   MAX_IMPORT_ROWS,
+  categoryPathKey,
   mapHeaders,
   nameKey,
   parseImportRecord,
@@ -9,12 +10,14 @@ import {
   type Category,
   type CategoryKind,
   type ExportQuery,
+  type ImportCategoryRef,
   type ImportCommit,
   type ImportIssue,
   type ImportPreview,
   type ImportPreviewRow,
   type ImportRecord,
   type ImportResult,
+  type ImportReview,
   type ImportRow,
   type Installment,
   type IsoDate,
@@ -49,14 +52,10 @@ export interface SpreadsheetDependencies {
   runInTransaction: TransactionRunner;
 }
 
-function pathKey(kind: CategoryKind, path: readonly string[]): string {
-  return `${kind}|${path.map(nameKey).join('>')}`;
-}
-
 /** Index of every existing category by its kind and full path of names. */
 function indexCategoryPaths(categories: readonly Category[]): Map<string, Category> {
   return new Map(
-    categories.map((category) => [pathKey(category.kind, pathOf(category.id, categories)), category]),
+    categories.map((category) => [categoryPathKey(category.kind, pathOf(category.id, categories)), category]),
   );
 }
 
@@ -107,6 +106,64 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
     return issues;
   }
 
+  /**
+   * Compares parsed rows with the stored data: references, duplicates, and
+   * what the import would have to create. Rows that did not parse are kept
+   * as they came.
+   */
+  async function checkRows(
+    parsed: readonly ImportPreviewRow[],
+  ): Promise<Omit<ImportPreview, 'fileName' | 'missingHeaders' | 'unknownHeaders'>> {
+    const lookups = await loadLookups();
+    const today = deps.today();
+    const unknownAccounts = new Map<string, string>();
+    const newCategories = new Map<string, ImportCategoryRef>();
+    const newTags = new Map<string, string>();
+
+    const rows: ImportPreviewRow[] = parsed.map((entry) => {
+      const row = entry.row;
+      if (!row) return entry;
+      for (const name of [row.account, row.toAccount]) {
+        if (name && !lookups.accountsByName.has(nameKey(name))) unknownAccounts.set(nameKey(name), name);
+      }
+      if (row.type !== 'transfer' && row.categoryPath.length > 0) {
+        const key = categoryPathKey(row.type, row.categoryPath);
+        if (!lookups.categoriesByPath.has(key)) {
+          newCategories.set(key, { kind: row.type, path: row.categoryPath });
+        }
+      }
+      for (const tag of row.tags) {
+        if (!lookups.tagsByName.has(nameKey(tag))) newTags.set(nameKey(tag), tag);
+      }
+      return { ...entry, issues: referenceIssues(row, lookups.accountsByName, today), duplicate: false };
+    });
+
+    const candidates = rows.flatMap((entry, index) => {
+      const account = entry.row ? lookups.accountsByName.get(nameKey(entry.row.account)) : undefined;
+      return entry.row && account
+        ? [{ index, date: entry.row.date, amountCents: entry.row.amountCents, accountId: account.id }]
+        : [];
+    });
+    const duplicates = await deps.findDuplicates(candidates);
+    candidates.forEach((candidate, position) => {
+      rows[candidate.index]!.duplicate = duplicates[position] ?? false;
+    });
+
+    const byText = (a: string, b: string) => a.localeCompare(b, 'es');
+    const label = (ref: ImportCategoryRef) => ref.path.join(CATEGORY_PATH_SEPARATOR);
+    const validRows = rows.filter((entry) => entry.row && entry.issues.length === 0).length;
+    return {
+      totalRows: rows.length,
+      validRows,
+      invalidRows: rows.length - validRows,
+      duplicateRows: rows.filter((entry) => entry.duplicate).length,
+      unknownAccounts: [...unknownAccounts.values()].sort(byText),
+      newCategories: [...newCategories.values()].sort((a, b) => byText(label(a), label(b))),
+      newTags: [...newTags.values()].sort(byText),
+      rows,
+    };
+  }
+
   return {
     /**
      * Reads the file and reports, row by row, what would be imported and what
@@ -129,55 +186,33 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
         duplicateRows: 0,
         missingHeaders: mapping.missing,
         unknownHeaders: mapping.unknown,
+        unknownAccounts: [],
         newCategories: [],
         newTags: [],
         rows: [],
       };
       if (mapping.missing.length > 0) return preview;
 
-      const lookups = await loadLookups();
-      const today = deps.today();
-      const newCategories = new Map<string, string>();
-      const newTags = new Map<string, string>();
-
-      const rows: ImportPreviewRow[] = dataRows.map(({ line, cells }) => {
+      const parsed: ImportPreviewRow[] = dataRows.map(({ line, cells }) => {
         const record: ImportRecord = {};
         mapping.columns.forEach((key, index) => {
           if (key) record[key] = cells[index];
         });
-        const parsed = parseImportRecord(record);
-        if (!parsed.row) return { line, row: null, issues: parsed.issues, duplicate: false };
-
-        const row = parsed.row;
-        if (row.type !== 'transfer' && row.categoryPath.length > 0) {
-          const key = pathKey(row.type, row.categoryPath);
-          if (!lookups.categoriesByPath.has(key))
-            newCategories.set(key, row.categoryPath.join(CATEGORY_PATH_SEPARATOR));
-        }
-        for (const tag of row.tags) {
-          if (!lookups.tagsByName.has(nameKey(tag))) newTags.set(nameKey(tag), tag);
-        }
-        return { line, row, issues: referenceIssues(row, lookups.accountsByName, today), duplicate: false };
+        const result = parseImportRecord(record);
+        return { line, row: result.row, issues: result.issues, duplicate: false };
       });
+      return { ...preview, ...(await checkRows(parsed)) };
+    },
 
-      const candidates = rows.flatMap((entry, index) => {
-        const account = entry.row ? lookups.accountsByName.get(nameKey(entry.row.account)) : undefined;
-        return entry.row && account
-          ? [{ index, date: entry.row.date, amountCents: entry.row.amountCents, accountId: account.id }]
-          : [];
-      });
-      const duplicates = await deps.findDuplicates(candidates);
-      candidates.forEach((candidate, position) => {
-        rows[candidate.index]!.duplicate = duplicates[position] ?? false;
-      });
-
-      preview.rows = rows;
-      preview.validRows = rows.filter((entry) => entry.row && entry.issues.length === 0).length;
-      preview.invalidRows = rows.length - preview.validRows;
-      preview.duplicateRows = rows.filter((entry) => entry.duplicate).length;
-      preview.newCategories = [...newCategories.values()].sort();
-      preview.newTags = [...newTags.values()].sort();
-      return preview;
+    /**
+     * Checks again rows the user adjusted after the preview, exactly as the
+     * preview would. Writes nothing.
+     */
+    async review(input: ImportReview): Promise<ImportPreview> {
+      const checked = await checkRows(
+        input.rows.map(({ line, row }) => ({ line, row, issues: [], duplicate: false })),
+      );
+      return { fileName: '', missingHeaders: [], unknownHeaders: [], ...checked };
     },
 
     /**
@@ -204,7 +239,7 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
         const missingPaths = new Map<string, { kind: CategoryKind; path: string[] }>();
         for (const row of input.rows) {
           if (row.type === 'transfer' || row.categoryPath.length === 0) continue;
-          const key = pathKey(row.type, row.categoryPath);
+          const key = categoryPathKey(row.type, row.categoryPath);
           if (!lookups.categoriesByPath.has(key))
             missingPaths.set(key, { kind: row.type, path: row.categoryPath });
         }
@@ -227,7 +262,7 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
         const entries = input.rows.map((row) => {
           const category =
             row.type !== 'transfer' && row.categoryPath.length > 0
-              ? lookups.categoriesByPath.get(pathKey(row.type, row.categoryPath))
+              ? lookups.categoriesByPath.get(categoryPathKey(row.type, row.categoryPath))
               : undefined;
           const transaction: TransactionCreate = {
             type: row.type,
@@ -243,6 +278,7 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
             toAccountId: row.toAccount ? lookups.accountsByName.get(nameKey(row.toAccount))!.id : null,
             toAmountCents: row.toAmountCents,
             paymentDate: row.paymentDate,
+            original: null,
           };
           const installment: Installment | null = row.installment
             ? { planId: null, ...row.installment }

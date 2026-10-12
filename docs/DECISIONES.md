@@ -70,6 +70,43 @@ Cada decisión tomada en el diseño, con su motivo. Una decisión nueva o que ca
 | Pruebas con el ejecutor de Node sobre un backend en memoria           | Sin dependencias extra; corren sin base de datos ni red                                        |
 | Modelos de etapas futuras ya creados                                  | El formato del respaldo queda estable desde el principio                                       |
 
+## Lectura con IA (etapa 2)
+
+| Decisión                                                                                 | Motivo                                                                                                    |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Lo leído vive en el documento hasta que se confirma; no se crean movimientos en borrador | Nada sin revisar puede colarse en un informe, y descartar no deja restos                                  |
+| Gemini por HTTPS, sin su librería                                                        | Una dependencia menos en 512 MB, y el proveedor se prueba con una red simulada                            |
+| El formato de la respuesta se pide en las instrucciones y se valida en el código         | Las opciones de formato de la API cambiaron de nombre entre versiones; esto funciona con cualquiera       |
+| Montos pedidos al modelo como texto decimal y convertidos a centavos en el código        | Evita errores de multiplicación del modelo; el único conversor sigue siendo `money.ts`                    |
+| Lo que no se puede leer queda vacío y marcado como dudoso                                | Un dato inventado es peor que un campo para completar                                                     |
+| Modelo configurable con `GEMINI_MODEL`                                                   | Los planes gratuitos y los modelos cambian seguido                                                        |
+| Un documento a la vez                                                                    | Cuida el cupo gratuito y la memoria del servidor                                                          |
+| Si la lectura falla, el documento queda con error y se reintenta a mano                  | El proveedor ya reintenta solo ante límite; un bucle automático gastaría el cupo                          |
+| Hasta 10 imágenes por documento                                                          | Un ticket largo no entra en una foto                                                                      |
+| Un documento descartado se borra entero                                                  | Así se puede volver a subir el mismo archivo                                                              |
+| Un documento confirmado se conserva sin imágenes                                         | Su huella impide cargar dos veces el mismo comprobante                                                    |
+| La regla del comercio gana sobre la sugerencia de la IA                                  | Es una decisión que el usuario ya tomó                                                                    |
+| Los repetidos los detecta la app, no la IA                                               | La IA solo ve las fotos que recibe; la app compara fecha, monto y moneda contra lo ya cargado y es exacta |
+| Un movimiento que parece repetido viene sin marcar, con aviso                            | La app propone y el usuario decide; dos compras iguales el mismo día existen                              |
+| Las reglas siguen a la categoría al unirla y se borran con ella                          | Son preferencias, no historia                                                                             |
+
+## Otras monedas y productos
+
+| Decisión                                                                                                                 | Motivo                                                                                                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Un comprobante en otra moneda (reales) se guarda en la moneda de la cuenta, con el monto original y el cambio anotados   | La plata sale de una cuenta en pesos: ese es el movimiento real. El ticket en reales queda como referencia                                             |
+| La app propone un cambio y el usuario lo confirma o corrige                                                              | Regla general del producto. Propone, en este orden: el que el usuario ya usó ese mismo día, la cotización pública de referencia, o el último que usó   |
+| Cotización de referencia de exchangerate-api.com, sin clave                                                              | Cubre cualquier par de monedas y es gratuita. Es de mercado: lo que cobra un medio de pago puede diferir, por eso no se aplica sola                    |
+| A Gemini no se le pide el cambio                                                                                         | No conoce cotizaciones actuales y daría un número inventado                                                                                            |
+| Se guarda el cambio que resulta de dividir el monto final por el original                                                | Si el usuario corrige el total a mano, el cambio anotado sigue siendo verdadero                                                                        |
+| Las cuentas siguen siendo solo en pesos o dólares                                                                        | Reales no es una moneda en la que el usuario tenga cuentas                                                                                             |
+| Los productos de un ticket se guardan en la moneda del movimiento                                                        | Un solo criterio para sumar consumo, venga de donde venga el ticket                                                                                    |
+| Cada producto guarda el texto del ticket, un nombre genérico y un grupo de una lista fija                                | El texto del ticket cambia de un comercio a otro; el nombre genérico permite sumar "leche" compre donde compre, y la lista fija evita grupos repetidos |
+| El consumo se calcula al consultarlo, a partir de los movimientos                                                        | Única fuente de la verdad: si se borra o corrige un movimiento, el informe cambia solo                                                                 |
+| El consumo nunca suma monedas distintas                                                                                  | Igual que el balance                                                                                                                                   |
+| Borrar del todo solo se puede desde la papelera                                                                          | Dos pasos para lo que no tiene vuelta atrás; un movimiento vivo nunca se borra de un toque                                                             |
+| En la importación, apuntar una cuenta o categoría a una existente reescribe las filas y las vuelve a revisar el servidor | El servidor sigue siendo el único que decide qué fila es válida; no hay una segunda copia de las reglas en la pantalla                                 |
+
 ## Abiertas
 
 | Tema                                                           | Cuándo se define               |

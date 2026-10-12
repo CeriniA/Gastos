@@ -97,15 +97,32 @@ lo avisa en pantalla.
 
 ## Comandos
 
-| Comando                            | Qué hace                             |
-| ---------------------------------- | ------------------------------------ |
-| `npm run check`                    | Tipos, lint y pruebas                |
-| `npm test`                         | Solo pruebas                         |
-| `npm run lint`                     | Estilo y reglas de arquitectura      |
-| `npm run format`                   | Formatea el código                   |
-| `npm run build`                    | Compila backend y frontend           |
-| `npm run seed -w backend`          | Carga categorías y cuentas iniciales |
-| `npm run hash-password -w backend` | Genera el hash de la contraseña      |
+| Comando                                            | Qué hace                                                               |
+| -------------------------------------------------- | ---------------------------------------------------------------------- |
+| `npm run check`                                    | Tipos, lint y pruebas                                                  |
+| `npm test`                                         | Solo pruebas                                                           |
+| `npm run lint`                                     | Estilo y reglas de arquitectura                                        |
+| `npm run format`                                   | Formatea el código                                                     |
+| `npm run build`                                    | Compila backend y frontend                                             |
+| `npm run seed -w backend`                          | Carga categorías y cuentas iniciales                                   |
+| `npm run hash-password -w backend`                 | Genera el hash de la contraseña                                        |
+| `npm run try-extraction -w backend -- "<carpeta>"` | Lee imágenes reales con la IA y muestra el resultado, sin guardar nada |
+
+## Lectura con IA
+
+Para leer tickets y capturas hace falta una clave de Gemini: se obtiene gratis en
+[Google AI Studio](https://aistudio.google.com) ("Get API key") y va en `GEMINI_API_KEY`, dentro de
+`backend/.env` (y en Render, en las variables del servicio). Sin clave, el resto de la app funciona igual.
+
+Antes de confiar en la lectura, probala con tus propios documentos:
+
+```bash
+npm run try-extraction -w backend -- "C:\ruta\a\una\carpeta" --kind receipt
+npm run try-extraction -w backend -- "C:\ruta\a\capturas" --kind screenshot
+```
+
+Cada imagen es un pedido contra el cupo diario gratuito. En el plan gratuito, Google puede usar lo que se
+envía para mejorar sus productos.
 
 ## Respaldo
 

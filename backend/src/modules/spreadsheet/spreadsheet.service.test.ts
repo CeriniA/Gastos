@@ -85,7 +85,12 @@ test('the preview reports what would be imported and writes nothing', async () =
   assert.equal(preview.invalidRows, 0);
   assert.equal(preview.duplicateRows, 0);
   assert.deepEqual(preview.missingHeaders, []);
-  assert.deepEqual(preview.newCategories, ['Compras', 'Sueldo', 'Vivienda > Servicios > Luz']);
+  assert.deepEqual(preview.newCategories, [
+    { kind: 'expense', path: ['Compras'] },
+    { kind: 'income', path: ['Sueldo'] },
+    { kind: 'expense', path: ['Vivienda', 'Servicios', 'Luz'] },
+  ]);
+  assert.deepEqual(preview.unknownAccounts, []);
   assert.deepEqual(preview.newTags, ['casa', 'fijo']);
   assert.deepEqual(
     preview.rows.map((entry) => entry.line),
@@ -181,6 +186,45 @@ test('every problem is tied to its row and column', async () => {
   assert.deepEqual(issuesOf(preview, 9), []);
   assert.equal(preview.validRows, 1);
   assert.equal(preview.invalidRows, 7);
+  assert.deepEqual(preview.unknownAccounts, ['Galicia', 'Nadie']);
+});
+
+test('rows pointed at an existing account or category are checked again, and nothing is written', async () => {
+  const { app, bank, home } = await setup();
+  const file = csv(
+    {
+      Fecha: '2026-10-05',
+      Tipo: 'egreso',
+      Monto: '100',
+      Moneda: 'ARS',
+      Cuenta: 'Galicia',
+      Categoría: 'Casa',
+    },
+    { Fecha: 'ayer', Tipo: 'egreso', Monto: '100', Moneda: 'ARS', Cuenta: 'Galicia' },
+  );
+  const preview = await app.spreadsheet.preview({ content: file, fileName: 'banco.csv' });
+  assert.deepEqual(preview.unknownAccounts, ['Galicia']);
+  assert.deepEqual(preview.newCategories, [{ kind: 'expense', path: ['Casa'] }]);
+  assert.equal(preview.validRows, 0);
+
+  // The user says "Galicia" is the account "Banco" and "Casa" is the category "Vivienda".
+  const adjusted = preview.rows.flatMap((entry) =>
+    entry.row
+      ? [{ line: entry.line, row: { ...entry.row, account: 'Banco', categoryPath: ['Vivienda'] } }]
+      : [],
+  );
+  const reviewed = await app.spreadsheet.review({ rows: adjusted });
+  assert.deepEqual(reviewed.unknownAccounts, []);
+  assert.deepEqual(reviewed.newCategories, []);
+  assert.equal(reviewed.validRows, 1);
+  assert.deepEqual(issuesOf(reviewed, 2), []);
+  assert.equal(app.store.transactions.length, 0);
+
+  const result = await app.spreadsheet.commit({ rows: importable(reviewed), createMissing: false });
+  assert.deepEqual(result, { imported: 1, createdCategories: 0, createdTags: 0 });
+  const [stored] = app.store.transactions;
+  assert.equal(stored?.accountId, bank.id);
+  assert.equal(stored?.categoryId, home.id);
 });
 
 test('a file without the required columns is reported before any row is read', async () => {
@@ -262,6 +306,7 @@ test('the export splits a divided transaction into one row per category and hono
     toAccountId: null,
     toAmountCents: null,
     paymentDate: null,
+    original: null,
   };
   await app.transactions.create({
     ...base,

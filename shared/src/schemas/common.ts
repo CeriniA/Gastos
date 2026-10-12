@@ -6,6 +6,8 @@ export const objectIdSchema = z.string().regex(/^[a-f0-9]{24}$/i, 'Invalid id');
 export const isoDateSchema = z.string().refine(isIsoDate, 'Expected a date as YYYY-MM-DD');
 export const monthKeySchema = z.string().refine(isMonthKey, 'Expected a month as YYYY-MM');
 export const currencySchema = z.enum(CURRENCIES);
+/** Any ISO 4217 code, for amounts printed in a currency the app has no accounts in. */
+export const currencyCodeSchema = z.string().regex(/^[A-Z]{3}$/, 'Expected a currency code such as BRL');
 
 /** Positive integer cents. The upper bound keeps sums inside safe integers. */
 export const amountCentsSchema = z.number().int().positive().max(1_000_000_000_000);

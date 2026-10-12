@@ -40,7 +40,7 @@ export function AppShell() {
           <Tab {...home} />
           <Tab {...transactions} />
           <NavLink
-            to="/movimientos/nuevo"
+            to="/agregar"
             aria-label={es.nav.add}
             className="mx-2 -mt-6 flex size-14 shrink-0 items-center justify-center rounded-full bg-income text-3xl leading-none text-surface shadow-lg"
           >

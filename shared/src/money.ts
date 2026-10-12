@@ -63,9 +63,30 @@ export function centsToNumber(cents: number): number {
   return cents / 100;
 }
 
-/** "$ 15.400,50" / "US$ 100,00" for display. */
-export function formatMoney(cents: number, currency: Currency, locale = 'es-AR'): string {
+/** "$ 15.400,50" / "US$ 100,00" / "R$ 50,00" for display. Accepts any ISO 4217 code. */
+export function formatMoney(cents: number, currency: Currency | string, locale = 'es-AR'): string {
   return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
+}
+
+/**
+ * Reads an exchange rate typed by a person ("272,50" or "272.5"). A rate is a
+ * plain positive number, not an amount of money, so it keeps its decimals.
+ */
+export function parseRate(input: string): number | null {
+  const text = input.trim().replace(/\s/g, '');
+  if (!/^\d+([.,]\d+)?$/.test(text)) return null;
+  const rate = Number(text.replace(',', '.'));
+  return Number.isFinite(rate) && rate > 0 ? rate : null;
+}
+
+/** A rate for display and for form fields: "302,6223". */
+export function formatRate(rate: number): string {
+  return String(Number(rate.toFixed(4))).replace('.', ',');
+}
+
+/** An amount in another currency turned into cents of the account's currency. */
+export function convertCents(cents: number, rate: number): number {
+  return Math.round(cents * rate);
 }
 
 export function sumCents(values: readonly number[]): number {

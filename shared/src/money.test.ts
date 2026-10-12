@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { centsToDecimalString, formatMoney, parseAmountToCents, sumCents } from './money';
+import {
+  centsToDecimalString,
+  convertCents,
+  formatRate,
+  formatMoney,
+  parseAmountToCents,
+  parseRate,
+  sumCents,
+} from './money';
 
 test('parseAmountToCents reads Argentine and international formats', () => {
   assert.equal(parseAmountToCents('15400,50'), 1540050);
@@ -33,6 +41,21 @@ test('centsToDecimalString round-trips through the parser', () => {
   }
   assert.equal(centsToDecimalString(1540050), '15400,50');
   assert.equal(centsToDecimalString(-5), '-0,05');
+});
+
+test('exchange rates keep their decimals and conversion rounds to whole cents', () => {
+  assert.equal(parseRate('272,50'), 272.5);
+  assert.equal(parseRate(' 272.5 '), 272.5);
+  assert.equal(parseRate('280'), 280);
+  assert.equal(parseRate('0'), null);
+  assert.equal(parseRate('1.272,50'), null);
+  assert.equal(parseRate('abc'), null);
+  assert.equal(formatRate(302.622281), '302,6223');
+  assert.equal(formatRate(272.5), '272,5');
+  assert.equal(parseRate(formatRate(302.622281)), 302.6223);
+  assert.equal(convertCents(5000, 272.5), 1362500); // R$ 50,00 at 272,50 = $ 13.625,00
+  assert.equal(convertCents(1999, 272.33), 544388);
+  assert.match(formatMoney(5000, 'BRL'), /50,00/);
 });
 
 test('formatMoney and sumCents', () => {

@@ -3,6 +3,7 @@ import {
   TRANSACTION_SOURCES,
   TRANSACTION_TYPES,
   type Currency,
+  type ProductGroup,
   type TransactionSource,
   type TransactionStatus,
   type TransactionType,
@@ -10,6 +11,7 @@ import {
 import { sumCents } from '../money';
 import {
   amountCentsSchema,
+  currencyCodeSchema,
   currencySchema,
   isoDateSchema,
   monthKeySchema,
@@ -17,6 +19,19 @@ import {
   paginationQuerySchema,
   queryBooleanSchema,
 } from './common';
+
+/**
+ * What a receipt said when it was in another currency: the printed amount, its
+ * currency, and the rate used to bring it to the account's currency. Kept for
+ * reference; reports only use the transaction's own amount.
+ */
+export const originalAmountSchema = z.object({
+  amountCents: amountCentsSchema,
+  currency: currencyCodeSchema,
+  /** Units of the account's currency per one unit of the original currency. */
+  rate: z.number().positive().max(1_000_000_000),
+});
+export type OriginalAmount = z.infer<typeof originalAmountSchema>;
 
 export const splitSchema = z.object({ categoryId: objectIdSchema, amountCents: amountCentsSchema });
 export type Split = z.infer<typeof splitSchema>;
@@ -43,6 +58,8 @@ const fields = {
    * else is paid the day it happens. See resolvePaymentDate in the backend.
    */
   paymentDate: isoDateSchema.nullable(),
+  /** Set when the receipt was in a currency other than the account's. */
+  original: originalAmountSchema.nullable(),
 };
 
 export interface TransactionShape {
@@ -103,6 +120,7 @@ export const transactionCreateSchema = z
     toAccountId: fields.toAccountId.default(null),
     toAmountCents: fields.toAmountCents.default(null),
     paymentDate: fields.paymentDate.default(null),
+    original: fields.original.default(null),
   })
   .superRefine((value, context) => {
     for (const issue of transactionShapeIssues(value)) {
@@ -136,6 +154,14 @@ export type TransactionListQuery = z.infer<typeof transactionListQuerySchema>;
 
 export const summaryQuerySchema = z.object({ month: monthKeySchema });
 
+export const lastRateQuerySchema = z.object({ currency: currencyCodeSchema });
+
+/** The most recent rate the user applied to a currency, to start the next conversion from. */
+export interface LastRate {
+  rate: number | null;
+  date: string | null;
+}
+
 export interface Installment {
   /** Null until the installment-plans module links it (stage 3). */
   planId: string | null;
@@ -144,8 +170,13 @@ export interface Installment {
 }
 
 export interface TransactionItem {
+  /** As printed on the receipt. */
   name: string;
   amountCents: number;
+  /** Generic product name ("Yerba"). Empty when unknown. */
+  product: string;
+  group: ProductGroup | null;
+  quantity: number | null;
 }
 
 export interface Transaction {
@@ -158,6 +189,7 @@ export interface Transaction {
   paymentDate: string;
   amountCents: number;
   currency: Currency;
+  original: OriginalAmount | null;
   accountId: string;
   toAccountId: string | null;
   toAmountCents: number | null;

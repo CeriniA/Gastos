@@ -6,11 +6,13 @@ import {
   type Category,
   type Installment,
   type IsoDate,
+  type LastRate,
   type MonthSummary,
   type Paginated,
   type Tag,
   type Transaction,
   type TransactionCreate,
+  type TransactionItem,
   type TransactionListQuery,
   type TransactionSource,
   type TransactionUpdate,
@@ -41,6 +43,18 @@ interface References {
 interface Origin {
   source: TransactionSource;
   installment?: Installment | null;
+  /** The uploaded document the transaction was read from. */
+  documentId?: string;
+  /** Lines of the receipt, kept for reference. */
+  items?: TransactionItem[];
+}
+
+/** One transaction to store in bulk, with what its origin knows about it. */
+export interface BulkEntry {
+  input: TransactionCreate;
+  installment: Installment | null;
+  documentId?: string;
+  items?: TransactionItem[];
 }
 
 type Issue = { path: string; message: string };
@@ -126,6 +140,13 @@ export function createTransactionsService(repository: TransactionsRepository, de
       input.splits.forEach((split, index) => checkCategory(split.categoryId, `splits.${index}.categoryId`));
     }
 
+    if (input.original && input.original.currency === input.currency) {
+      issues.push({
+        path: 'original',
+        message: 'The original currency must differ from the account currency',
+      });
+    }
+
     const tagIds = [...new Set(input.tagIds)];
     if (tagIds.some((tagId) => !refs.tagIds.has(tagId))) {
       issues.push({ path: 'tagIds', message: 'Tag does not exist' });
@@ -146,6 +167,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
       }),
       amountCents: input.amountCents,
       currency: input.currency,
+      original: input.original,
       accountId: input.accountId,
       toAccountId: input.toAccountId,
       toAmountCents: input.toAmountCents,
@@ -154,9 +176,9 @@ export function createTransactionsService(repository: TransactionsRepository, de
       note: input.note,
       tagIds,
       splits: input.splits,
-      items: previous?.items ?? [],
+      items: origin.items ?? previous?.items ?? [],
       installment: origin.installment === undefined ? (previous?.installment ?? null) : origin.installment,
-      documentId: previous?.documentId ?? null,
+      documentId: origin.documentId ?? previous?.documentId ?? null,
       cardPeriodId: previous?.cardPeriodId ?? null,
       recurringId: previous?.recurringId ?? null,
       edited: previous ? previous.edited || previous.source !== 'manual' : false,
@@ -189,16 +211,21 @@ export function createTransactionsService(repository: TransactionsRepository, de
       return created!;
     },
 
-    /** All-or-nothing bulk insert, validated row by row. Used by the import. */
+    /** All-or-nothing bulk insert, validated row by row. Used by the import and by documents. */
     async createMany(
-      entries: readonly { input: TransactionCreate; installment: Installment | null }[],
+      entries: readonly BulkEntry[],
       source: TransactionSource,
       options: WriteOptions,
     ): Promise<number> {
       const refs = await loadReferences(options);
       const records = entries.map((entry, index) => {
         try {
-          return prepare(entry.input, refs, { source, installment: entry.installment });
+          return prepare(entry.input, refs, {
+            source,
+            installment: entry.installment,
+            documentId: entry.documentId,
+            items: entry.items,
+          });
         } catch (error) {
           if (error instanceof ValidationError) {
             throw new ValidationError(`Invalid transaction at position ${index + 1}`, {
@@ -230,6 +257,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
         splits: patch.splits ?? previous.splits,
         toAccountId: patch.toAccountId === undefined ? previous.toAccountId : patch.toAccountId,
         toAmountCents: patch.toAmountCents === undefined ? previous.toAmountCents : patch.toAmountCents,
+        original: patch.original === undefined ? previous.original : patch.original,
         // A moved transaction gets its payment date worked out again unless one is given.
         paymentDate:
           patch.paymentDate !== undefined ? patch.paymentDate : movedInTime ? null : previous.paymentDate,
@@ -250,6 +278,16 @@ export function createTransactionsService(repository: TransactionsRepository, de
       return get(id);
     },
 
+    /** Deletes for good a transaction that is already in the trash. There is no way back. */
+    async removeForever(id: string): Promise<void> {
+      if (!(await repository.deleteTrashed(id))) throw new NotFoundError('Transaction', id);
+    },
+
+    /** Deletes for good everything in the trash, and says how many there were. */
+    emptyTrash(now: Date = new Date()): Promise<number> {
+      return repository.purgeDeletedBefore(new Date(now.getTime() + 1000));
+    },
+
     purgeTrash(now: Date = new Date()): Promise<number> {
       const cutoff = new Date(now.getTime() - TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000);
       return repository.purgeDeletedBefore(cutoff);
@@ -258,6 +296,12 @@ export function createTransactionsService(repository: TransactionsRepository, de
     async summary(month: string): Promise<MonthSummary> {
       return { month, totals: await repository.totalsByMonth(month) };
     },
+
+    /** Receipt lines of the confirmed expenses in a date range, for the consumption report. */
+    listItems: (range: { from?: string; to?: string }) => repository.findItems(range),
+
+    /** Where the next conversion from a foreign currency starts: the last rate the user applied. */
+    lastRate: (currency: string): Promise<LastRate> => repository.findLastRate(currency),
 
     listForExport: (range: { from?: string; to?: string }) => repository.findAllForExport(range),
 
@@ -283,6 +327,27 @@ export function createTransactionsService(repository: TransactionsRepository, de
     moveCategory: (fromId: string, toId: string, options: WriteOptions) =>
       repository.moveCategory(fromId, toId, options),
     removeTag: (tagId: string, options: WriteOptions) => repository.pullTag(tagId, options),
+    /**
+     * For each candidate, whether a stored transaction has the same day and
+     * amount in the same currency. The account is not compared: a receipt
+     * being reviewed may not have one yet.
+     */
+    async findSameDayAmounts(
+      candidates: readonly { date: string; amountCents: number; currency: string }[],
+    ): Promise<boolean[]> {
+      const keys = await repository.amountKeysOn([...new Set(candidates.map((candidate) => candidate.date))]);
+      return candidates.map((candidate) =>
+        keys.has(duplicateKey(candidate.date, candidate.amountCents, candidate.currency)),
+      );
+    },
+
+    countLiveByDocument: (documentId: string) => repository.countLiveByDocument(documentId),
+    /** The document is going away but its transactions stay, as if entered by hand. */
+    releaseDocument: (documentId: string, options: WriteOptions) =>
+      repository.releaseDocument(documentId, options),
+    /** The document is going away and takes its transactions to the trash. */
+    trashByDocument: (documentId: string, options: WriteOptions) =>
+      repository.trashByDocument(documentId, new Date(), options),
   };
 }
 

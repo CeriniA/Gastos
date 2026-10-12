@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 import {
   idParamsSchema,
+  lastRateQuerySchema,
   summaryQuerySchema,
   transactionCreateSchema,
   transactionListQuerySchema,
@@ -15,6 +16,9 @@ export function createTransactionsController(service: TransactionsService) {
   };
   const summary: RequestHandler = async (req, res) => {
     ok(res, await service.summary(parse(summaryQuerySchema, req.query).month));
+  };
+  const lastRate: RequestHandler = async (req, res) => {
+    ok(res, await service.lastRate(parse(lastRateQuerySchema, req.query).currency));
   };
   const get: RequestHandler = async (req, res) => {
     ok(res, await service.get(parse(idParamsSchema, req.params).id));
@@ -33,5 +37,12 @@ export function createTransactionsController(service: TransactionsService) {
   const restore: RequestHandler = async (req, res) => {
     ok(res, await service.restore(parse(idParamsSchema, req.params).id));
   };
-  return { list, summary, get, create, update, remove, restore };
+  const removeForever: RequestHandler = async (req, res) => {
+    await service.removeForever(parse(idParamsSchema, req.params).id);
+    noContent(res);
+  };
+  const emptyTrash: RequestHandler = async (_req, res) => {
+    ok(res, { deleted: await service.emptyTrash() });
+  };
+  return { list, summary, lastRate, get, create, update, remove, restore, removeForever, emptyTrash };
 }

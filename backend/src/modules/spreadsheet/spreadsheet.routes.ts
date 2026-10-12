@@ -16,6 +16,8 @@ export function createSpreadsheetRouter(service: SpreadsheetService): Router {
   router.get('/export', controller.exportTransactions);
   router.get('/template', controller.template);
   router.post('/import/preview', upload.single('file'), controller.preview);
-  router.post('/import/commit', express.json({ limit: '5mb' }), controller.commit);
+  const largeJson = express.json({ limit: '5mb' });
+  router.post('/import/review', largeJson, controller.review);
+  router.post('/import/commit', largeJson, controller.commit);
   return router;
 }

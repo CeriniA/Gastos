@@ -4,35 +4,16 @@ Cada etapa termina en algo que funciona. Si una se complica, lo anterior ya sirv
 
 ## Estado de la base
 
-Lo que hay en este repositorio y cuánto se pudo comprobar. La base se escribió en un entorno **sin
-acceso al registro de npm**, así que no se pudieron instalar las dependencias.
+| Qué                                                                 | Estado                                                                                                                     |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `npm run check` (tipos, lint y pruebas) contra las librerías reales | Pasa el 11/10/2026 con todo el código actual, incluidas las pantallas que cerraron la etapa 1: 106 pruebas                 |
+| Compilación de backend y frontend (`npm run build`)                 | Verificada el 10/10/2026 solo con el código de la etapa 1. **Falta repetirla**                                             |
+| Etapa 1 corriendo contra MongoDB Atlas                              | Dada por cerrada por el usuario                                                                                            |
+| Lectura real con Gemini                                             | Usada por el usuario con tickets y capturas de MercadoPago. Las instrucciones versión 4 y 5 **no están evaluadas** todavía |
+| Consumo por producto contra MongoDB y Gemini reales                 | **Sin probar**: solo pruebas sobre el backend en memoria                                                                   |
+| `render.yaml`                                                       | Sin probar contra Render                                                                                                   |
 
-| Qué                                                                        | Estado                                                                          |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Paquete `shared`                                                           | Tipos verificados con el compilador; 27 pruebas pasando                         |
-| Reglas de negocio del backend (services)                                   | 35 pruebas pasando, sobre repositorios en memoria                               |
-| Importación y exportación en CSV                                           | Probadas de punta a punta, incluido reimportar lo exportado                     |
-| Coherencia interna de tipos (backend y frontend)                           | Verificada con el compilador, tratando las librerías externas como desconocidas |
-| Sintaxis e imports de backend y frontend                                   | Verificados empaquetando con esbuild                                            |
-| Tipos contra Express, Mongoose, React, TanStack Query, Vite                | **Sin verificar**                                                               |
-| Consultas reales a MongoDB (repositories, respaldo, chequeo de integridad) | **Sin ejecutar**                                                                |
-| Rutas HTTP, login, subida de archivos                                      | **Sin ejecutar**                                                                |
-| Lectura y escritura de Excel (.xlsx)                                       | **Sin ejecutar**                                                                |
-| Interfaz en el navegador y como app instalada                              | **Sin ver**                                                                     |
-| Lint (reglas de arquitectura)                                              | **Sin ejecutar**                                                                |
-| Versiones de `package.json`                                                | Escritas de memoria; puede haber que ajustar alguna                             |
-| `render.yaml`                                                              | Sin probar contra Render                                                        |
-
-### Primer paso al retomar
-
-1. `npm install` y subir el `package-lock.json` que genera.
-2. `npm run check` y `npm run build`. Corregir lo que marque: se esperan ajustes de tipos en los
-   repositories (Mongoose) y quizá en algún componente, no cambios de diseño.
-3. Configurar `backend/.env` con una base `gastos-dev`, correr `npm run seed -w backend` y levantar
-   backend y frontend.
-4. Recorrer a mano: login, crear cuenta y categoría, cargar un movimiento, ver el balance, exportar a
-   Excel, importar ese mismo archivo, descargar un respaldo y restaurarlo, chequeo de integridad.
-5. Agregar pruebas de integración contra la base de pruebas para lo que hoy está sin ejecutar.
+Las versiones de `package.json` se escribieron sin acceso al registro de npm; la instalación funcionó.
 
 ## Etapa 1: base usable (este repositorio)
 
@@ -41,33 +22,72 @@ Hecho:
 - Estructura, capas, esquemas compartidos, errores, configuración, migraciones.
 - Login de un usuario.
 - Cuentas, categorías en árbol (crear, renombrar, mover, archivar, unir, borrar) y etiquetas.
-- Movimientos manuales: alta, edición, papelera y restauración; transferencias y divisiones en la API.
+- Movimientos manuales: alta, edición, transferencias y división entre categorías.
+- Lista de movimientos con buscador, filtros (tipo, cuenta, categoría, etiqueta, todos los meses) y
+  "Cargar más".
+- Papelera: ver, restaurar, borrar del todo y vaciar.
+- Pantalla de etiquetas: crear, renombrar y borrar.
 - Balance mensual por moneda según fecha de pago.
 - Respaldo completo, restauración y chequeo de integridad.
-- Exportación a Excel y CSV; importación con vista previa.
+- Exportación a Excel y CSV; importación con vista previa, eligiendo a qué cuenta o categoría existente
+  corresponde una que el archivo nombra y la app no tiene.
 - App instalable; aviso de servidor despertando.
 - Datos iniciales (categorías y cuentas de arranque).
 
-Falta para cerrar la etapa:
+Las pantallas que cerraron la etapa (papelera, categorías, etiquetas, división, filtros, importación) se
+escribieron el 11/10/2026. Sus reglas de backend tienen pruebas y los tipos de las pantallas pasan
+`npm run check`; **las pantallas no se probaron en un navegador** antes de entregarlas.
 
-- La verificación de la sección anterior.
-- Pantallas que la API ya soporta y la interfaz todavía no: renombrar, mover y unir categorías;
-  renombrar y borrar etiquetas; dividir un movimiento entre categorías; papelera; filtros y buscador en
-  Movimientos; paginado más allá de 200 por mes.
-- En la importación: elegir a qué cuenta o categoría existente corresponde una desconocida.
+Falta: nada pendiente de programar. Queda usarla y corregir lo que aparezca.
 
 ## Etapa 2: lectura con IA
 
-- Probar primero un script con cinco o seis documentos reales (ticket, captura de MercadoPago, captura
-  de MercadoLibre) y ajustar el contrato de `shared/src/schemas/extraction.ts`.
-- Proveedor Gemini detrás de `AiExtractor`: salida JSON validada, reintentos ante límite, versión de
-  instrucciones guardada en cada documento.
-- Módulo `documents`: subida (cámara y galería), huella contra duplicados, compresión en el navegador,
-  procesamiento en segundo plano, reanudación de los que quedaron a medias al arrancar.
-- Bandeja de Pendientes y pantalla de revisión con la imagen a la vista; borrado de la imagen al
-  confirmar o descartar.
-- Reglas comercio → categoría (`category-rules`).
+Hecho (backend):
+
+- Proveedor Gemini detrás de `AiExtractor`, por HTTPS y sin dependencias nuevas: instrucciones
+  versionadas, limpieza y validación de la respuesta, reintentos ante límite o saturación.
+- Módulo `documents`: subida de 1 a 10 imágenes, tipo real del archivo, huella contra duplicados,
+  lectura en segundo plano de a uno, reanudación al arrancar, reintento manual, confirmación todo o
+  nada con borrado de las imágenes, y borrado con elección sobre sus movimientos.
+- Reglas comercio → categoría (`category-rules`), que ganan sobre la sugerencia de la IA y siguen a la
+  categoría si se une o se borra.
+- Script `npm run try-extraction -w backend` para probar la lectura con documentos reales.
+
+Hecho (pantallas): Agregar (cámara o galería, con compresión en el navegador y varias fotos para un
+mismo ticket), Pendientes (se actualiza sola mientras la IA lee) y Revisión (imagen arriba, datos
+editables abajo, campos dudosos marcados, opción de recordar la categoría del comercio).
+
+Hecho después, a partir del uso real:
+
+- Tickets en otra moneda (reales): el movimiento se guarda en la moneda de la cuenta y conserva el
+  monto original y el cambio. La revisión propone un cambio (el del día, uno público de referencia o el
+  último usado) y permite "No convertir".
+- Aviso de movimientos que parecen repetidos, contra los ya cargados y dentro del mismo documento.
+- Volver a subir un archivo: se lee de nuevo salvo que sus movimientos sigan cargados. "Volver a leer"
+  en Pendientes.
+
+Comprobado con pruebas sobre el backend en memoria y una IA simulada. Las pantallas no tienen pruebas.
+
+Falta:
+
+- Seguir ajustando las instrucciones (`backend/src/providers/ai/prompt.ts`) con documentos reales: las
+  capturas de MercadoPago con listas superpuestas son el caso más difícil.
+- Esperar y reintentar sola cuando Gemini corta por límite de pedidos al subir muchos documentos.
+- Elegir el modelo: hoy el valor por defecto es `gemini-3.5-flash-lite`; se cambia con `GEMINI_MODEL`.
+- Lista de reglas y de documentos confirmados en Más (la API ya existe).
 - Medir memoria y tiempo en Render gratuito.
+
+### Consumo por producto (hecho)
+
+La IA devuelve por producto un nombre genérico ("Yerba"), un grupo de una lista fija y la cantidad
+(instrucciones versión 5). La pestaña Informes muestra el consumo del mes por grupo y producto, y un
+buscador de compras por producto. Los tickets confirmados antes de este cambio no tienen grupo: aparecen
+en "Sin clasificar".
+
+Falta:
+
+- Corregir producto o grupo en la revisión, y recordar la corrección.
+- Comparar el precio de un mismo producto a lo largo del tiempo.
 
 ## Etapa 3: tarjetas, cuotas y duplicados
 

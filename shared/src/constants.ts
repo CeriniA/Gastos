@@ -38,6 +38,53 @@ export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 export const DOCUMENT_STATUSES = ['processing', 'ready', 'confirmed', 'discarded', 'error'] as const;
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
 
+/** What can be uploaded today. Card statements arrive with stage 3. */
+export const UPLOADABLE_DOCUMENT_KINDS = ['receipt', 'screenshot'] as const;
+export type UploadableDocumentKind = (typeof UPLOADABLE_DOCUMENT_KINDS)[number];
+
+export const DOCUMENT_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export type DocumentImageType = (typeof DOCUMENT_IMAGE_TYPES)[number];
+
+/** Why a document could not be read. The frontend maps each one to a Spanish message. */
+export const DOCUMENT_ERROR_CODES = [
+  'rate_limited',
+  'unavailable',
+  'not_configured',
+  'blocked',
+  'unreadable',
+] as const;
+export type DocumentErrorCode = (typeof DOCUMENT_ERROR_CODES)[number];
+
+/** A long receipt can be photographed in several parts. */
+export const MAX_DOCUMENT_FILES = 10;
+/** All the parts of one document together; MongoDB stores at most 16 MB per document. */
+export const MAX_DOCUMENT_BYTES = 12 * 1024 * 1024;
+
+/**
+ * What kind of thing a purchased product is. A short, fixed list so that
+ * consumption can be compared month to month. Separate from categories: a
+ * category files a whole transaction, a group files one line of a receipt.
+ */
+export const PRODUCT_GROUPS = [
+  'pantry',
+  'meat',
+  'dairy',
+  'produce',
+  'bakery',
+  'beverages',
+  'alcohol',
+  'frozen',
+  'prepared_food',
+  'cleaning',
+  'personal_care',
+  'pharmacy',
+  'baby',
+  'pets',
+  'household',
+  'other',
+] as const;
+export type ProductGroup = (typeof PRODUCT_GROUPS)[number];
+
 export const MAX_CATEGORY_DEPTH = 3;
 export const TRASH_RETENTION_DAYS = 30;
 export const MAX_IMPORT_ROWS = 2000;

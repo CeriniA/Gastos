@@ -26,7 +26,11 @@ export function TransactionRow({
   const details = [
     formatDate(transaction.date),
     accountName(transaction.accountId),
-    transaction.type === 'transfer' ? null : (category?.name ?? es.transactions.noCategory),
+    transaction.type === 'transfer'
+      ? null
+      : transaction.splits.length > 0
+        ? es.transactions.split.summary(transaction.splits.length)
+        : (category?.name ?? es.transactions.noCategory),
     transaction.installment
       ? es.transactions.installment(transaction.installment.number, transaction.installment.total)
       : null,

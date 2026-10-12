@@ -1,4 +1,15 @@
-import type { AccountType, CategoryKind, ErrorCode, ImportIssueCode, TransactionType } from '@gastos/shared';
+import type {
+  AccountType,
+  CategoryKind,
+  DocumentErrorCode,
+  DocumentStatus,
+  ErrorCode,
+  ImportIssueCode,
+  ProductGroup,
+  TransactionType,
+  UncertainField,
+  UploadableDocumentKind,
+} from '@gastos/shared';
 
 /**
  * Every text the user reads lives in this file. Components never hard-code
@@ -21,6 +32,9 @@ export const es = {
     unarchive: 'Desarchivar',
     archived: 'Archivada',
     back: 'Volver',
+    edit: 'Editar',
+    rename: 'Renombrar',
+    close: 'Cerrar',
     optional: 'opcional',
     none: 'Ninguna',
   },
@@ -71,6 +85,32 @@ export const es = {
     noCategory: 'Sin categoría',
     transferTo: (account: string) => `Transferencia a ${account}`,
     installment: (number: number, total: number) => `Cuota ${number} de ${total}`,
+    count: (count: number) => (count === 1 ? '1 movimiento' : `${count} movimientos`),
+    loadMore: 'Cargar más',
+    filters: {
+      search: 'Buscar en descripción o nota',
+      toggle: (active: number) => (active === 0 ? 'Filtros' : `Filtros (${active})`),
+      all: 'Todos',
+      allFeminine: 'Todas',
+      categoryHint: 'Incluye sus subcategorías.',
+      allTime: 'Buscar en todos los meses',
+      clear: 'Quitar filtros',
+      noResults: 'Ningún movimiento coincide con lo que buscás.',
+    },
+    split: {
+      title: 'Dividido entre categorías',
+      start: 'Dividir entre varias categorías',
+      stop: 'No dividir',
+      addPart: 'Agregar parte',
+      removePart: 'Quitar esta parte',
+      balanced: 'Las partes suman el total.',
+      missing: (amount: string) => `Falta asignar ${amount}.`,
+      excess: (amount: string) => `Las partes superan el total por ${amount}.`,
+      incomplete: 'Cada parte necesita una categoría y un monto.',
+      needTwo: 'Para dividir hacen falta al menos dos partes. Si es una sola categoría, tocá "No dividir".',
+      mismatch: 'Las partes tienen que sumar exactamente el monto total.',
+      summary: (count: number) => `Dividido en ${count} categorías`,
+    },
     fields: {
       type: 'Tipo',
       amount: 'Monto',
@@ -90,6 +130,8 @@ export const es = {
     needAccount: 'Antes de cargar movimientos, creá una cuenta en Más → Cuentas.',
     deleteConfirm: 'El movimiento va a la papelera y se borra del todo en 30 días.',
     moveToTrash: 'Mover a la papelera',
+    original: (amount: string, rate: string) => `En el comprobante: ${amount}, a un cambio de ${rate}.`,
+    itemsTitle: (count: number) => (count === 1 ? '1 producto' : `${count} productos`),
   },
 
   accounts: {
@@ -110,18 +152,184 @@ export const es = {
     rootOption: 'Nivel principal',
     newTitle: 'Nueva categoría',
     depthHint: 'Hasta tres niveles.',
+    moveHint: 'Al cambiarlo, la categoría se mueve con todas sus subcategorías.',
+    mergeTitle: 'Unir con otra categoría',
+    mergeText: 'Todos sus movimientos y reglas pasan a la categoría que elijas, y esta se borra.',
+    mergeBlocked: 'Tiene subcategorías. Movelas o unilas primero para poder unir esta.',
+    mergeAction: 'Unir',
+    mergeConfirm: (source: string, target: string) =>
+      `Todos los movimientos de "${source}" van a pasar a "${target}" y "${source}" se borra. No se puede deshacer.`,
+    deleteConfirm: (name: string) => `¿Borrar la categoría "${name}"?`,
   },
 
-  reports: {
-    title: 'Informes',
-    pending:
-      'Los informes por categoría, cuenta y evolución mensual se construyen en la etapa 4. El balance del mes ya está en Inicio.',
+  tags: {
+    title: 'Etiquetas',
+    text: 'Una etiqueta marca movimientos de cualquier categoría: un viaje, una obra, un evento.',
+    empty: 'Todavía no hay etiquetas.',
+    name: 'Nombre',
+    newTitle: 'Nueva etiqueta',
+    deleteConfirm: (name: string) =>
+      `La etiqueta "${name}" se borra y se quita de todos sus movimientos. Los movimientos no se borran.`,
   },
+
+  trash: {
+    title: 'Papelera',
+    text: 'Lo que borraste queda acá 30 días y después se borra solo. Mientras tanto no cuenta en ningún total.',
+    empty: 'La papelera está vacía.',
+    restore: 'Restaurar',
+    deleteForever: 'Borrar del todo',
+    deleteConfirm: 'El movimiento se borra del todo. No se puede deshacer.',
+    emptyAction: (count: number) => `Vaciar la papelera (${count})`,
+    emptyConfirm: (count: number) =>
+      count === 1
+        ? 'Se borra del todo 1 movimiento. No se puede deshacer.'
+        : `Se borran del todo ${count} movimientos. No se puede deshacer.`,
+  },
+
+  add: {
+    title: 'Agregar',
+    photoTitle: 'Con una foto',
+    photoText: 'La app lee el ticket o la captura y te muestra lo que entendió para que lo confirmes.',
+    takePhoto: 'Sacar foto',
+    chooseFiles: 'Elegir de la galería',
+    kind: 'Qué es',
+    kinds: { receipt: 'Ticket o factura', screenshot: 'Captura de una app' } satisfies Record<
+      UploadableDocumentKind,
+      string
+    >,
+    account: 'Cuenta con la que pagaste',
+    accountLater: 'La elijo al revisar',
+    groupQuestion: 'Elegiste varias fotos',
+    separate: {
+      receipt: (count: number) => `Son ${count} tickets distintos`,
+      screenshot: (count: number) => `Son ${count} capturas de cosas distintas`,
+    } satisfies Record<UploadableDocumentKind, (count: number) => string>,
+    together: {
+      receipt: 'Son partes de un mismo ticket largo',
+      screenshot: 'Son partes de una misma lista de movimientos',
+    } satisfies Record<UploadableDocumentKind, string>,
+    selected: (count: number) => (count === 1 ? '1 imagen elegida' : `${count} imágenes elegidas`),
+    upload: 'Subir',
+    uploading: 'Subiendo…',
+    tooMany: (max: number) =>
+      `Juntas se pueden leer hasta ${max} fotos. Si son cosas distintas, elegí esa opción y se suben todas.`,
+    keepPhoto: 'La imagen no se conserva después de confirmar. Guardá la foto si la necesitás.',
+    duplicate:
+      'Ese archivo ya está cargado y tiene movimientos guardados. Para leerlo de nuevo, borrá primero esos movimientos.',
+    partial: (ok: number, total: number) =>
+      `Se subieron ${ok} de ${total}. Las demás ya estaban subidas o no se pudieron leer.`,
+    manualTitle: 'A mano',
+    manual: 'Cargar un movimiento',
+  },
+
+  documents: {
+    pendingTitle: 'Pendientes',
+    empty: 'No hay nada esperando tu revisión.',
+    banner: (count: number) =>
+      count === 1 ? '1 documento espera tu revisión' : `${count} documentos esperan tu revisión`,
+    statuses: {
+      processing: 'Leyendo…',
+      ready: 'Listo para revisar',
+      error: 'No se pudo leer',
+      confirmed: 'Confirmado',
+      discarded: 'Descartado',
+    } satisfies Record<DocumentStatus, string>,
+    found: (count: number) => (count === 1 ? '1 movimiento' : `${count} movimientos`),
+    review: 'Revisar',
+    retry: 'Reintentar',
+    reread: 'Volver a leer',
+    discard: 'Descartar',
+    discardConfirm: 'Se descarta el documento y su imagen. No se carga ningún movimiento.',
+    errors: {
+      rate_limited: 'Se llegó al límite gratuito de lecturas. Probá de nuevo más tarde.',
+      unavailable: 'El servicio de lectura no respondió.',
+      not_configured: 'La lectura con IA no está configurada: falta la clave o fue rechazada.',
+      blocked: 'El servicio de lectura rechazó la imagen.',
+      unreadable: 'No se pudo entender la imagen. Probá con una foto más nítida.',
+    } satisfies Record<DocumentErrorCode, string>,
+    reviewTitle: 'Revisar lo leído',
+    nothingFound: 'No se encontró ningún movimiento en la imagen.',
+    imageAlt: (index: number) => `Imagen ${index} del documento`,
+    accountForAll: 'Cuenta para todos',
+    movement: (index: number, total: number) => `Movimiento ${index} de ${total}`,
+    include: 'Cargar este movimiento',
+    merchant: 'Comercio',
+    doubtful: (fields: string) => `Revisá: ${fields}`,
+    uncertain: {
+      type: 'tipo',
+      date: 'fecha',
+      amount: 'monto',
+      currency: 'moneda',
+      merchant: 'comercio',
+      category: 'categoría',
+      installment: 'cuota',
+    } satisfies Record<UncertainField, string>,
+    currencyMismatch: (read: string, account: string) =>
+      `El comprobante se leyó en ${read} y se carga en ${account}, sin convertir.`,
+    foreign: (amount: string, account: string) =>
+      `El comprobante dice ${amount}. Se guarda en ${account} con el cambio que indiques; el monto original queda anotado.`,
+    rate: (from: string, to: string) => `Cambio: 1 ${from} en ${to}`,
+    notForeign: (currency: string) => `No convertir: el monto ya está en ${currency}`,
+    convertAgain: (from: string, to: string) => `Convertir de ${from} a ${to}`,
+    rateHint: 'Tu medio de pago puede haber aplicado otro: corregí el cambio o el monto final si hace falta.',
+    lastRate: (rate: string, date: string) => `Último cambio que usaste: ${rate} (${date}).`,
+    referenceRate: (rate: string, source: string) => `Cotización de referencia: ${rate} (${source}).`,
+    rateMissing: 'Cargá el cambio del día o el monto final.',
+    duplicate: {
+      existing:
+        'Parece repetido: ya hay un movimiento cargado con esa fecha y ese monto. Viene sin marcar; tildalo si es otro.',
+      repeated:
+        'Parece repetido: hay otro movimiento igual más arriba en este mismo documento. Viene sin marcar; tildalo si es otro.',
+    } satisfies Record<'existing' | 'repeated', string>,
+    fromRule: 'Categoría según tu regla para este comercio.',
+    remember: (merchant: string) => `Usar siempre esta categoría para ${merchant}`,
+    items: (count: number) => (count === 1 ? '1 producto leído' : `${count} productos leídos`),
+    confirm: (count: number) => (count === 1 ? 'Confirmar 1 movimiento' : `Confirmar ${count} movimientos`),
+    noneIncluded: 'Marcá al menos un movimiento para cargar, o descartá el documento.',
+    fixErrors: 'Hay datos para completar en los movimientos marcados.',
+  },
+
+  consumption: {
+    title: 'Consumo',
+    total: 'Productos comprados en',
+    empty:
+      'Este mes no hay productos cargados. Aparecen cuando confirmás un ticket que tiene el detalle de lo comprado.',
+    scope: 'Solo cuenta las compras cargadas desde un ticket con detalle de productos.',
+    ungrouped: 'Sin clasificar',
+    purchases: (count: number) => (count === 1 ? '1 vez' : `${count} veces`),
+    quantity: (amount: string) => `cantidad ${amount}`,
+    searchPlaceholder: 'Buscar un producto (leche, café…)',
+    searchEmpty: 'No hay compras de ese producto.',
+    previousMonth: 'Mes anterior',
+    nextMonth: 'Mes siguiente',
+  },
+
+  productGroups: {
+    pantry: 'Almacén',
+    meat: 'Carnes y pescados',
+    dairy: 'Lácteos y huevos',
+    produce: 'Frutas y verduras',
+    bakery: 'Panadería',
+    beverages: 'Bebidas',
+    alcohol: 'Bebidas con alcohol',
+    frozen: 'Congelados',
+    prepared_food: 'Comida hecha',
+    cleaning: 'Limpieza',
+    personal_care: 'Cuidado personal',
+    pharmacy: 'Farmacia',
+    baby: 'Bebés',
+    pets: 'Mascotas',
+    household: 'Hogar',
+    other: 'Otros',
+  } satisfies Record<ProductGroup, string>,
 
   more: {
     title: 'Más',
     accounts: 'Cuentas',
     categories: 'Categorías',
+    tags: 'Etiquetas',
+    trash: 'Papelera',
+    pending: 'Pendientes de revisión',
     data: 'Respaldo, importación y exportación',
   },
 
@@ -159,6 +367,15 @@ export const es = {
       newCategories: (names: string) => `Categorías nuevas: ${names}`,
       newTags: (names: string) => `Etiquetas nuevas: ${names}`,
       createMissing: 'Crear las categorías y etiquetas que faltan',
+      accountsTitle: 'Cuentas que no existen',
+      accountsText:
+        'El archivo nombra cuentas que la app no tiene. Decí a cuál corresponde cada una; si no, esas filas no se importan.',
+      accountIs: (name: string) => `"${name}" es`,
+      accountSkip: 'No importar esas filas',
+      categoriesTitle: 'Categorías que no existen',
+      categoriesText: 'Podés crearlas como vienen o usar una categoría que ya tenés.',
+      categoryIs: (path: string, kind: string) => `"${path}" (${kind.toLowerCase()})`,
+      categoryCreate: 'Crearla nueva',
       line: (line: number) => `Fila ${line}`,
       confirm: (count: number) => `Importar ${count} movimientos`,
       nothing: 'No hay filas para importar.',
@@ -213,7 +430,7 @@ export const es = {
     transfer_has_category: 'una transferencia no lleva categoría',
     destination_without_transfer: 'solo las transferencias tienen cuenta destino',
     same_account: 'origen y destino son la misma cuenta',
-    unknown_account: 'la cuenta no existe: creala antes de importar',
+    unknown_account: 'la cuenta no existe: elegí arriba a cuál corresponde, o creala antes de importar',
     archived_account: 'la cuenta está archivada',
     currency_mismatch: 'la moneda no es la de la cuenta',
     unknown_category: 'la categoría no existe',

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { parseCsv, toCsv } from './csv';
 import {
   IMPORT_COLUMNS,
+  categoryPathKey,
   importRowSchema,
   mapHeaders,
   parseImportRecord,
@@ -132,4 +133,13 @@ test('importRowSchema re-checks rows sent back by the client', () => {
   assert.equal(importRowSchema.safeParse({ ...row, amountCents: 0 }).success, false);
   assert.equal(importRowSchema.safeParse({ ...row, type: 'transfer' }).success, false);
   assert.equal(importRowSchema.safeParse({ ...row, installment: { number: 9, total: 6 } }).success, false);
+});
+
+test('categoryPathKey ignores case, accents and spacing, but not the kind', () => {
+  assert.equal(
+    categoryPathKey('expense', ['Súper ', 'Verdulería']),
+    categoryPathKey('expense', ['super', 'verduleria']),
+  );
+  assert.notEqual(categoryPathKey('expense', ['Otros']), categoryPathKey('income', ['Otros']));
+  assert.notEqual(categoryPathKey('expense', ['A', 'B']), categoryPathKey('expense', ['B']));
 });

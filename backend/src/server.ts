@@ -28,7 +28,12 @@ async function main(): Promise<void> {
   setInterval(() => void purgeTrash(), DAY_MS).unref();
 
   const server = createApp(container, env).listen(env.PORT, () => {
-    logger.info({ port: env.PORT, env: env.NODE_ENV }, 'Server listening');
+    logger.info(
+      { port: env.PORT, env: env.NODE_ENV, ai: env.GEMINI_API_KEY ? env.GEMINI_MODEL : 'off' },
+      'Server listening',
+    );
+    // Documents a restart left half-way are picked up again.
+    container.documents.resume();
   });
 
   const shutdown = (signal: string) => {

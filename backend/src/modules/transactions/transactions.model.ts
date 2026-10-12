@@ -23,6 +23,8 @@ export interface TransactionDoc {
   /** Integer cents, always positive. The type says which way the money moves. */
   amountCents: number;
   currency: Currency;
+  /** The amount as printed on a receipt in another currency, and the rate applied. */
+  original: { amountCents: number; currency: string; rate: number } | null;
   accountId: ObjectId;
   toAccountId: ObjectId | null;
   toAmountCents: number | null;
@@ -32,7 +34,13 @@ export interface TransactionDoc {
   tagIds: ObjectId[];
   /** Embedded: splits and items cannot exist without their transaction. */
   splits: { categoryId: ObjectId; amountCents: number }[];
-  items: { name: string; amountCents: number }[];
+  items: {
+    name: string;
+    amountCents: number;
+    product?: string;
+    group?: string | null;
+    quantity?: number | null;
+  }[];
   installment: { planId: ObjectId | null; number: number; total: number } | null;
   documentId: ObjectId | null;
   cardPeriodId: ObjectId | null;
@@ -60,6 +68,17 @@ const schema = new Schema<TransactionDoc>(
     paymentDate: { type: String, required: true },
     amountCents: { ...cents, min: 1 },
     currency: { type: String, required: true, enum: [...CURRENCIES] },
+    original: {
+      type: new Schema(
+        {
+          amountCents: { ...cents, min: 1 },
+          currency: { type: String, required: true },
+          rate: { type: Number, required: true, min: 0 },
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
     accountId: { type: Schema.Types.ObjectId, required: true },
     toAccountId: objectIdOrNull,
     toAmountCents: { type: Number, default: null },
@@ -77,7 +96,18 @@ const schema = new Schema<TransactionDoc>(
       default: [],
     },
     items: {
-      type: [new Schema({ name: { type: String, required: true }, amountCents: cents }, { _id: false })],
+      type: [
+        new Schema(
+          {
+            name: { type: String, required: true },
+            amountCents: cents,
+            product: { type: String, default: '' },
+            group: { type: String, default: null },
+            quantity: { type: Number, default: null },
+          },
+          { _id: false },
+        ),
+      ],
       default: [],
     },
     installment: {
@@ -107,5 +137,7 @@ schema.index({ toAccountId: 1 });
 schema.index({ categoryId: 1 });
 schema.index({ 'splits.categoryId': 1 });
 schema.index({ tagIds: 1 });
+schema.index({ documentId: 1 });
+schema.index({ 'original.currency': 1, date: -1 });
 
 export const TransactionModel = model<TransactionDoc>('Transaction', schema, COLLECTIONS.transactions);

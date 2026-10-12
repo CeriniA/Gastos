@@ -3,15 +3,20 @@ import {
   lastDayOfMonth,
   type Account,
   type CurrencyTotals,
+  type DocumentDetail,
+  type ExtractionResult,
   type Tag,
   type Transaction,
 } from '@gastos/shared';
 import type { DbSession, TransactionRunner } from '../core/db/transaction';
 import type { AccountsRepository } from '../modules/accounts/accounts.repository';
 import type { CategoriesRepository, CategoryRow } from '../modules/categories/categories.repository';
+import type { CategoryRulesRepository, StoredRule } from '../modules/category-rules/categoryRules.repository';
+import type { DocumentsRepository, StoredFile } from '../modules/documents/documents.repository';
 import type { TagsRepository } from '../modules/tags/tags.repository';
 import { duplicateKey } from '../modules/transactions/duplicateKey';
 import type { TransactionsRepository } from '../modules/transactions/transactions.repository';
+import type { AiExtractor, ExtractionInput } from '../providers/ai/aiExtractor';
 import { wireServices } from '../wiring';
 
 /**
@@ -28,14 +33,35 @@ interface Store {
   categories: CategoryRow[];
   tags: Tag[];
   transactions: Transaction[];
+  rules: StoredRule[];
+  documents: (DocumentDetail & { sha256: string; files: StoredFile[] })[];
 }
 
 const STAMP = '2026-10-01T00:00:00.000Z';
 
-export function createMemoryBackend(today = '2026-10-10') {
-  const store: Store = { accounts: [], categories: [], tags: [], transactions: [] };
+export function createMemoryBackend(today = '2026-10-10', options: { aiConfigured?: boolean } = {}) {
+  const store: Store = { accounts: [], categories: [], tags: [], transactions: [], rules: [], documents: [] };
   /** Switches a test can flip to make a write fail, to check that work is rolled back. */
   const faults = { insertTransactions: false };
+
+  /**
+   * A scripted AI: tests set what the next reading returns (or the error it
+   * throws) and can look at what the service sent.
+   */
+  const ai: { result: ExtractionResult; error: Error | null; calls: ExtractionInput[] } = {
+    result: { documentKind: 'receipt', transactions: [], statement: null, warnings: [] },
+    error: null,
+    calls: [],
+  };
+  const extractor: AiExtractor = {
+    promptVersion: 1,
+    async extract(input) {
+      ai.calls.push(input);
+      if (ai.error) throw ai.error;
+      return ai.result;
+    },
+  };
+  const errors: { error: unknown; context: object }[] = [];
   let sequence = 0;
   const nextId = () => {
     sequence += 1;
@@ -219,6 +245,13 @@ export function createMemoryBackend(today = '2026-10-10') {
       store.transactions[index] = { ...current, deletedAt: deletedAt ? deletedAt.toISOString() : null };
       return true;
     },
+    async deleteTrashed(id) {
+      const before = store.transactions.length;
+      store.transactions = store.transactions.filter(
+        (transaction) => transaction.id !== id || transaction.deletedAt === null,
+      );
+      return before !== store.transactions.length;
+    },
     async purgeDeletedBefore(cutoff) {
       const before = store.transactions.length;
       store.transactions = store.transactions.filter(
@@ -243,11 +276,68 @@ export function createMemoryBackend(today = '2026-10-10') {
         ),
       }));
     },
+    async amountKeysOn(dates) {
+      const keys = new Set<string>();
+      for (const transaction of store.transactions) {
+        if (transaction.deletedAt !== null || !dates.includes(transaction.date)) continue;
+        keys.add(duplicateKey(transaction.date, transaction.amountCents, transaction.currency));
+        if (transaction.original) {
+          keys.add(
+            duplicateKey(transaction.date, transaction.original.amountCents, transaction.original.currency),
+          );
+        }
+      }
+      return keys;
+    },
+    async countLiveByDocument(documentId) {
+      return store.transactions.filter(
+        (transaction) => transaction.documentId === documentId && transaction.deletedAt === null,
+      ).length;
+    },
+    async releaseDocument(documentId) {
+      store.transactions = store.transactions.map((transaction) =>
+        transaction.documentId === documentId
+          ? { ...transaction, documentId: null, source: 'manual' }
+          : transaction,
+      );
+    },
+    async trashByDocument(documentId, deletedAt) {
+      store.transactions = store.transactions.map((transaction) =>
+        transaction.documentId === documentId && transaction.deletedAt === null
+          ? { ...transaction, documentId: null, deletedAt: deletedAt.toISOString() }
+          : transaction,
+      );
+    },
     async pullTag(tagId) {
       store.transactions = store.transactions.map((transaction) => ({
         ...transaction,
         tagIds: transaction.tagIds.filter((id) => id !== tagId),
       }));
+    },
+    async findItems(range) {
+      return store.transactions
+        .filter((transaction) => transaction.deletedAt === null && transaction.status === 'confirmed')
+        .filter((transaction) => transaction.type === 'expense')
+        .filter((transaction) => !range.from || transaction.date >= range.from)
+        .filter((transaction) => !range.to || transaction.date <= range.to)
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .flatMap((transaction) =>
+          transaction.items.map((item) => ({
+            transactionId: transaction.id,
+            date: transaction.date,
+            description: transaction.description,
+            currency: transaction.currency,
+            ...item,
+          })),
+        );
+    },
+    async findLastRate(currency) {
+      const [latest] = store.transactions
+        .filter(
+          (transaction) => transaction.deletedAt === null && transaction.original?.currency === currency,
+        )
+        .sort((a, b) => b.date.localeCompare(a.date));
+      return { rate: latest?.original?.rate ?? null, date: latest?.date ?? null };
     },
     async totalsByMonth(month) {
       const totals = new Map<string, CurrencyTotals>();
@@ -285,6 +375,118 @@ export function createMemoryBackend(today = '2026-10-10') {
     },
   };
 
-  const services = wireServices({ accounts, categories, tags, transactions }, runInTransaction, () => today);
-  return { ...services, store, faults };
+  const categoryRules: CategoryRulesRepository = {
+    async findAll() {
+      return [...store.rules].sort((a, b) => a.merchantKey.localeCompare(b.merchantKey));
+    },
+    async upsert(data) {
+      const index = store.rules.findIndex((rule) => rule.merchantKey === data.merchantKey);
+      const current = store.rules[index];
+      const next: StoredRule = current ? { ...current, ...data } : { ...data, id: nextId(), ...stamps };
+      if (current) store.rules[index] = next;
+      else store.rules.push(next);
+      return next;
+    },
+    async delete(id) {
+      const before = store.rules.length;
+      store.rules = store.rules.filter((rule) => rule.id !== id);
+      return store.rules.length < before;
+    },
+    async deleteByCategory(categoryId) {
+      store.rules = store.rules.filter((rule) => rule.categoryId !== categoryId);
+    },
+    async moveCategory(fromId, toId) {
+      store.rules = store.rules.map((rule) =>
+        rule.categoryId === fromId ? { ...rule, categoryId: toId } : rule,
+      );
+    },
+  };
+
+  const withoutBytes = (document: Store['documents'][number]): DocumentDetail => {
+    const { sha256: _sha256, files, ...detail } = document;
+    return {
+      ...detail,
+      duplicateHints: [],
+      fileCount: files.length,
+      transactionCount: detail.extraction?.transactions.length ?? null,
+    };
+  };
+
+  const documents: DocumentsRepository = {
+    async create(data) {
+      sequence += 1; // Later uploads sort after earlier ones.
+      const document: Store['documents'][number] = {
+        id: nextId(),
+        kind: data.kind,
+        status: 'processing',
+        fileName: data.fileName,
+        fileCount: data.files.length,
+        accountId: data.accountId,
+        errorCode: null,
+        transactionCount: null,
+        extraction: null,
+        duplicateHints: [],
+        promptVersion: null,
+        createdAt: new Date(Date.parse(STAMP) + sequence * 1000).toISOString(),
+        updatedAt: STAMP,
+        sha256: data.sha256,
+        files: [...data.files],
+      };
+      store.documents.push(document);
+      return withoutBytes(document);
+    },
+    async findById(id) {
+      const document = store.documents.find((candidate) => candidate.id === id);
+      return document ? withoutBytes(document) : null;
+    },
+    async findBySha256(sha256) {
+      const document = store.documents.find((candidate) => candidate.sha256 === sha256);
+      return document ? withoutBytes(document) : null;
+    },
+    async findByStatus(statuses) {
+      return store.documents
+        .filter((document) => !statuses || statuses.includes(document.status))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map(withoutBytes);
+    },
+    async findNextToProcess(excludeIds) {
+      const [next] = store.documents
+        .filter((document) => document.status === 'processing' && !excludeIds.includes(document.id))
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      return next ? withoutBytes(next) : null;
+    },
+    async findFiles(id) {
+      return store.documents.find((document) => document.id === id)?.files ?? [];
+    },
+    async update(id, changes) {
+      const index = store.documents.findIndex((document) => document.id === id);
+      const current = store.documents[index];
+      if (!current) return null;
+      const { countAttempt: _countAttempt, clearFiles, errorDetail: _errorDetail, ...fields } = changes;
+      const next = { ...current, ...fields, files: clearFiles ? [] : current.files };
+      store.documents[index] = next;
+      return withoutBytes(next);
+    },
+    async delete(id) {
+      store.documents = store.documents.filter((document) => document.id !== id);
+    },
+  };
+
+  const services = wireServices(
+    { accounts, categories, categoryRules, documents, tags, transactions },
+    {
+      runInTransaction,
+      today: () => today,
+      extractor: options.aiConfigured === false ? null : extractor,
+      rates: {
+        // A fixed table instead of the network.
+        reference: async (from, to) =>
+          from === 'BRL' && to === 'ARS' ? { rate: 300, from, to, asOf: today, source: 'test' } : null,
+      },
+      // Tests decide when the background work runs: await app.documents.processQueue().
+      schedule: () => undefined,
+      onError: (error, context) => errors.push({ error, context }),
+    },
+  );
+  return { ...services, store, faults, ai, errors };
 }

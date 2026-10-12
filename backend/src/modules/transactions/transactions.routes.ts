@@ -8,9 +8,12 @@ export function createTransactionsRouter(service: TransactionsService): Router {
   router.get('/', controller.list);
   router.post('/', controller.create);
   router.get('/summary', controller.summary);
+  router.get('/last-rate', controller.lastRate);
+  router.delete('/trash', controller.emptyTrash);
   router.get('/:id', controller.get);
   router.patch('/:id', controller.update);
   router.delete('/:id', controller.remove);
   router.post('/:id/restore', controller.restore);
+  router.delete('/:id/permanent', controller.removeForever);
   return router;
 }

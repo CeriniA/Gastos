@@ -3,6 +3,7 @@ import type {
   ImportCommit,
   ImportPreview,
   ImportResult,
+  ImportReview,
   IntegrityReport,
   RestoreResult,
 } from '@gastos/shared';
@@ -20,6 +21,9 @@ export const dataApi = {
     formData.append('file', file);
     return api<ImportPreview>('/spreadsheet/import/preview', { method: 'POST', formData });
   },
+  /** Checks again rows the user adjusted after the preview. Writes nothing. */
+  reviewImport: (input: ImportReview) =>
+    api<ImportPreview>('/spreadsheet/import/review', { method: 'POST', body: input }),
   commitImport: (input: ImportCommit) =>
     api<ImportResult>('/spreadsheet/import/commit', { method: 'POST', body: input }),
 };

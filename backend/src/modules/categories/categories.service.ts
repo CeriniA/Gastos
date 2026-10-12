@@ -22,6 +22,9 @@ export interface CategoryUsage {
   /** Transactions (including the trash) that use the category directly or in a split. */
   countTransactions(categoryId: string): Promise<number>;
   moveTransactions(fromCategoryId: string, toCategoryId: string, options: WriteOptions): Promise<void>;
+  /** Merchant rules are preferences, not history: they follow or go with the category. */
+  moveRules(fromCategoryId: string, toCategoryId: string, options: WriteOptions): Promise<void>;
+  removeRules(categoryId: string, options: WriteOptions): Promise<void>;
 }
 
 function withDepth(rows: readonly CategoryRow[]): Category[] {
@@ -126,7 +129,10 @@ export function createCategoriesService(
       if (children > 0) throw new InUseError('Category', 'subcategories', children);
       const transactions = await usage.countTransactions(id);
       if (transactions > 0) throw new InUseError('Category', 'transactions', transactions);
-      await repository.delete(id);
+      await runInTransaction(async (session) => {
+        await usage.removeRules(id, { session });
+        await repository.delete(id, { session });
+      });
     },
 
     /** Moves every transaction of `sourceId` to `targetId`, then deletes the source. */
@@ -142,6 +148,7 @@ export function createCategoriesService(
       }
       await runInTransaction(async (session) => {
         await usage.moveTransactions(source.id, target.id, { session });
+        await usage.moveRules(source.id, target.id, { session });
         await repository.delete(source.id, { session });
       });
       return target;

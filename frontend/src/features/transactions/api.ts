@@ -1,5 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  LastRate,
+  ReferenceRate,
   MonthSummary,
   Paginated,
   Transaction,
@@ -18,6 +20,22 @@ export function useTransactions(query: Partial<TransactionListQuery>) {
   });
 }
 
+/** How many transactions each "load more" brings. */
+const PAGE_SIZE = 50;
+
+/** A filtered list that grows page by page. */
+export function useTransactionPages(filters: Omit<Partial<TransactionListQuery>, 'page' | 'pageSize'>) {
+  return useInfiniteQuery({
+    queryKey: [...KEY, 'pages', filters],
+    queryFn: ({ pageParam }) =>
+      api<Paginated<Transaction>>('/transactions', {
+        query: { ...filters, page: pageParam, pageSize: PAGE_SIZE },
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page * last.pageSize < last.total ? last.page + 1 : undefined),
+  });
+}
+
 export function useTransaction(id: string | undefined) {
   return useQuery({
     queryKey: [...KEY, 'detail', id],
@@ -30,6 +48,25 @@ export function useMonthSummary(month: string) {
   return useQuery({
     queryKey: [...KEY, 'summary', month],
     queryFn: () => api<MonthSummary>('/transactions/summary', { query: { month } }),
+  });
+}
+
+/** The last exchange rate the user applied to a foreign currency, if any. */
+export function useLastRate(currency: string | null) {
+  return useQuery({
+    queryKey: [...KEY, 'last-rate', currency],
+    queryFn: () => api<LastRate>('/transactions/last-rate', { query: { currency } }),
+    enabled: Boolean(currency),
+  });
+}
+
+/** A public market rate between two currencies, or null when the source has none. */
+export function useReferenceRate(from: string | null, to: string | null) {
+  return useQuery({
+    queryKey: ['exchange-rates', 'reference', from, to],
+    queryFn: () => api<ReferenceRate | null>('/exchange-rates/reference', { query: { from, to } }),
+    enabled: Boolean(from && to && from !== to),
+    staleTime: 60 * 60 * 1000,
   });
 }
 
@@ -49,6 +86,19 @@ export function useTransactionMutations() {
     }),
     remove: useMutation({
       mutationFn: (id: string) => api<void>(`/transactions/${id}`, { method: 'DELETE' }),
+      onSuccess: refresh,
+    }),
+    restore: useMutation({
+      mutationFn: (id: string) => api<Transaction>(`/transactions/${id}/restore`, { method: 'POST' }),
+      onSuccess: refresh,
+    }),
+    /** Only for what is already in the trash. Cannot be undone. */
+    removeForever: useMutation({
+      mutationFn: (id: string) => api<void>(`/transactions/${id}/permanent`, { method: 'DELETE' }),
+      onSuccess: refresh,
+    }),
+    emptyTrash: useMutation({
+      mutationFn: () => api<{ deleted: number }>('/transactions/trash', { method: 'DELETE' }),
       onSuccess: refresh,
     }),
   };

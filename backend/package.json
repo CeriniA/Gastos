@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "seed": "tsx src/scripts/seed.ts",
-    "hash-password": "tsx src/scripts/hash-password.ts"
+    "hash-password": "tsx src/scripts/hash-password.ts",
+    "try-extraction": "tsx src/scripts/try-extraction.ts"
   },
   "dependencies": {
     "@gastos/shared": "*",

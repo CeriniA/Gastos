@@ -15,6 +15,10 @@ import { createAccountsRouter } from './modules/accounts';
 import { createAuthRouter } from './modules/auth';
 import { createBackupRouter } from './modules/backup';
 import { createCategoriesRouter } from './modules/categories';
+import { createCategoryRulesRouter } from './modules/category-rules';
+import { createConsumptionRouter } from './modules/consumption';
+import { createDocumentsRouter } from './modules/documents';
+import { createExchangeRatesRouter } from './modules/exchange-rates';
 import { createSpreadsheetRouter } from './modules/spreadsheet';
 import { createTagsRouter } from './modules/tags';
 import { createTransactionsRouter } from './modules/transactions';
@@ -52,6 +56,10 @@ export function createApp(container: Container, env: Env): Express {
   api.use('/categories', json, createCategoriesRouter(container.categories));
   api.use('/tags', json, createTagsRouter(container.tags));
   api.use('/transactions', json, createTransactionsRouter(container.transactions));
+  api.use('/category-rules', json, createCategoryRulesRouter(container.categoryRules));
+  api.use('/consumption', createConsumptionRouter(container.consumption));
+  api.use('/documents', createDocumentsRouter(container.documents));
+  api.use('/exchange-rates', createExchangeRatesRouter(container.exchangeRates));
   api.use('/backup', createBackupRouter(container.backup));
   api.use('/spreadsheet', createSpreadsheetRouter(container.spreadsheet));
 

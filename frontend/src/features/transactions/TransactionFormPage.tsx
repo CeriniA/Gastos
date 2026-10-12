@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   DEFAULT_TIMEZONE,
   TRANSACTION_TYPES,
   centsToDecimalString,
+  formatMoney,
+  formatRate,
   parseAmountToCents,
   todayIso,
   transactionCreateSchema,
@@ -35,6 +37,8 @@ interface FormValues {
   description: string;
   note: string;
   tagIds: string[];
+  /** Parts of a transaction divided across categories. Empty when it has a single category. */
+  splits: { categoryId: string; amount: string }[];
 }
 
 /** Which form field shows a problem reported for a given payload field. */
@@ -57,6 +61,10 @@ function toFormValues(transaction: Transaction | undefined): FormValues {
     description: transaction?.description ?? '',
     note: transaction?.note ?? '',
     tagIds: transaction?.tagIds ?? [],
+    splits: (transaction?.splits ?? []).map((split) => ({
+      categoryId: split.categoryId,
+      amount: centsToDecimalString(split.amountCents),
+    })),
   };
 }
 
@@ -75,11 +83,14 @@ export function TransactionFormPage() {
   const values = useMemo(() => toFormValues(existing.data), [existing.data]);
   const form = useForm<FormValues>({ values });
   const { errors, isSubmitting } = form.formState;
+  const splitFields = useFieldArray({ control: form.control, name: 'splits' });
 
   const type = form.watch('type');
   const accountId = form.watch('accountId');
   const toAccountId = form.watch('toAccountId');
   const selectedTags = form.watch('tagIds');
+  const amountText = form.watch('amount');
+  const splitValues = form.watch('splits');
 
   const activeAccounts = (accounts.data ?? []).filter(
     (account) => !account.archived || account.id === existing.data?.accountId,
@@ -89,18 +100,38 @@ export function TransactionFormPage() {
   const crossCurrency =
     type === 'transfer' && Boolean(account && destination && account.currency !== destination.currency);
   const isCard = account?.type === 'credit_card';
-  const isSplit = (existing.data?.splits.length ?? 0) > 0;
+  const isSplit = type !== 'transfer' && splitFields.fields.length > 0;
+  const usedCategoryIds = [
+    existing.data?.categoryId,
+    ...(existing.data?.splits.map((split) => split.categoryId) ?? []),
+  ];
   const categoryOptions =
     type === 'transfer'
       ? []
       : orderedTree(categories.data ?? [], type).filter(
-          (category) => !category.archived || category.id === existing.data?.categoryId,
+          (category) => !category.archived || usedCategoryIds.includes(category.id),
         );
+
+  // What is left to assign, so the parts can be made to add up before saving.
+  const totalCents = parseAmountToCents(amountText) ?? 0;
+  const assignedCents = splitValues.reduce((sum, part) => sum + (parseAmountToCents(part.amount) ?? 0), 0);
+  const remainingCents = totalCents - assignedCents;
+
+  const startSplit = () => {
+    splitFields.replace([
+      { categoryId: form.getValues('categoryId'), amount: form.getValues('amount') },
+      { categoryId: '', amount: '' },
+    ]);
+  };
+  const stopSplit = () => {
+    form.setValue('categoryId', splitValues[0]?.categoryId ?? '');
+    splitFields.replace([]);
+  };
 
   const showIssues = (issues: readonly { path: string; message: string }[]) => {
     for (const issue of issues) {
       const key = issue.path.split('.')[0] ?? '';
-      const field = FIELD_OF[key] ?? (key in values ? (key as keyof FormValues) : null);
+      const field = FIELD_OF[key] ?? (key in values && key !== 'splits' ? (key as keyof FormValues) : null);
       if (field) form.setError(field, { message: fieldMessage(issue.message) });
       else setFailure(fieldMessage(issue.message));
     }
@@ -123,17 +154,37 @@ export function TransactionFormPage() {
       return;
     }
 
+    const splits: { categoryId: string; amountCents: number }[] = [];
+    if (input.type !== 'transfer') {
+      for (const part of input.splits) {
+        const cents = parseAmountToCents(part.amount);
+        if (!part.categoryId || cents === null || cents <= 0) {
+          setFailure(es.transactions.split.incomplete);
+          return;
+        }
+        splits.push({ categoryId: part.categoryId, amountCents: cents });
+      }
+      if (splits.length === 1) {
+        setFailure(es.transactions.split.needTwo);
+        return;
+      }
+      if (splits.length > 0 && splits.reduce((sum, part) => sum + part.amountCents, 0) !== amountCents) {
+        setFailure(es.transactions.split.mismatch);
+        return;
+      }
+    }
+
     const payload = {
       type: input.type,
       date: input.date,
       amountCents,
       currency: account.currency,
       accountId: input.accountId,
-      categoryId: input.type === 'transfer' ? null : input.categoryId || null,
+      categoryId: input.type === 'transfer' || splits.length > 0 ? null : input.categoryId || null,
       description: input.description,
       note: input.note,
       tagIds: input.tagIds,
-      splits: [],
+      splits,
       toAccountId: input.type === 'transfer' ? input.toAccountId || null : null,
       toAmountCents,
       paymentDate: isCard ? input.paymentDate || null : null,
@@ -141,9 +192,7 @@ export function TransactionFormPage() {
 
     try {
       if (id) {
-        // A transaction divided across categories keeps its parts: this form does not edit them.
-        const { splits: _splits, categoryId: _categoryId, ...withoutCategories } = payload;
-        const parsed = transactionUpdateSchema.safeParse(isSplit ? withoutCategories : payload);
+        const parsed = transactionUpdateSchema.safeParse(payload);
         if (!parsed.success) {
           showIssues(
             parsed.error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
@@ -255,17 +304,92 @@ export function TransactionFormPage() {
                       ))}
                   </Select>
                 </Field>
-              ) : isSplit ? null : (
-                <Field label={es.transactions.fields.category} error={errors.categoryId?.message}>
-                  <Select {...form.register('categoryId')}>
-                    <option value="">{es.transactions.noCategory}</option>
-                    {categoryOptions.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {optionLabel(category)}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
+              ) : isSplit ? (
+                <fieldset className="space-y-2 rounded-lg border border-line bg-surface p-3">
+                  <legend className="px-1 text-sm font-medium text-muted">
+                    {es.transactions.split.title}
+                  </legend>
+                  {splitFields.fields.map((field, index) => (
+                    <div key={field.id} className="flex items-end gap-2">
+                      <div className="min-w-0 flex-1">
+                        <Select
+                          aria-label={es.transactions.fields.category}
+                          {...form.register(`splits.${index}.categoryId`)}
+                        >
+                          <option value="" />
+                          {categoryOptions.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {optionLabel(category)}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                      <div className="w-28 shrink-0">
+                        <TextInput
+                          aria-label={es.transactions.fields.amount}
+                          inputMode="decimal"
+                          placeholder="0,00"
+                          className="amount"
+                          {...form.register(`splits.${index}.amount`)}
+                        />
+                      </div>
+                      <Button
+                        variant="quiet"
+                        className="shrink-0 px-2 text-expense"
+                        aria-label={es.transactions.split.removePart}
+                        onClick={() => splitFields.remove(index)}
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  ))}
+                  <p
+                    role="status"
+                    className={`text-sm ${remainingCents === 0 ? 'text-muted' : 'font-medium text-expense'}`}
+                  >
+                    {remainingCents === 0
+                      ? es.transactions.split.balanced
+                      : remainingCents > 0
+                        ? es.transactions.split.missing(
+                            formatMoney(remainingCents, account?.currency ?? 'ARS'),
+                          )
+                        : es.transactions.split.excess(
+                            formatMoney(-remainingCents, account?.currency ?? 'ARS'),
+                          )}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() =>
+                        splitFields.append({
+                          categoryId: '',
+                          amount: remainingCents > 0 ? centsToDecimalString(remainingCents) : '',
+                        })
+                      }
+                    >
+                      {es.transactions.split.addPart}
+                    </Button>
+                    <Button variant="quiet" onClick={stopSplit}>
+                      {es.transactions.split.stop}
+                    </Button>
+                  </div>
+                </fieldset>
+              ) : (
+                <div>
+                  <Field label={es.transactions.fields.category} error={errors.categoryId?.message}>
+                    <Select {...form.register('categoryId')}>
+                      <option value="">{es.transactions.noCategory}</option>
+                      {categoryOptions.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {optionLabel(category)}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Button variant="quiet" className="px-0" onClick={startSplit}>
+                    {es.transactions.split.start}
+                  </Button>
+                </div>
               )}
 
               {crossCurrency ? (
@@ -347,6 +471,33 @@ export function TransactionFormPage() {
               >
                 <TextInput maxLength={1000} {...form.register('note')} />
               </Field>
+
+              {existing.data?.original ? (
+                <p className="text-sm text-muted">
+                  {es.transactions.original(
+                    formatMoney(existing.data.original.amountCents, existing.data.original.currency),
+                    formatRate(existing.data.original.rate),
+                  )}
+                </p>
+              ) : null}
+
+              {existing.data && existing.data.items.length > 0 ? (
+                <details className="rounded-lg border border-line bg-surface">
+                  <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
+                    {es.transactions.itemsTitle(existing.data.items.length)}
+                  </summary>
+                  <ul className="divide-y divide-line border-t border-line text-sm">
+                    {existing.data.items.map((item, position) => (
+                      <li key={position} className="flex justify-between gap-3 px-3 py-1.5">
+                        <span className="min-w-0 break-words">{item.product || item.name}</span>
+                        <span className="amount shrink-0">
+                          {formatMoney(item.amountCents, existing.data?.currency ?? 'ARS')}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
 
               {failure ? <Notice tone="error">{failure}</Notice> : null}
 

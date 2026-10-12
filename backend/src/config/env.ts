@@ -26,7 +26,12 @@ const envSchema = z.object({
     .transform((value) => value.split(',').map((origin) => origin.trim().replace(/\/$/, ''))),
   APP_TIMEZONE: z.string().default(DEFAULT_TIMEZONE),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-  GEMINI_API_KEY: z.string().optional(),
+  /** Empty means AI reading is off: uploads are refused with a clear message. */
+  GEMINI_API_KEY: z
+    .string()
+    .optional()
+    .transform((value) => value?.trim() || undefined),
+  GEMINI_MODEL: z.string().min(1).default('gemini-3.5-flash-lite'),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -11,6 +11,7 @@ import { es } from '../../shared/i18n/es';
 import { QueryState } from '../../shared/ui/QueryState';
 import { Card, Notice } from '../../shared/ui/ui';
 import { useAccounts } from '../accounts/api';
+import { usePendingDocuments } from '../documents/api';
 import { useCategories } from '../categories/api';
 import { TransactionRow } from '../transactions/TransactionRow';
 import { useMonthSummary, useTransactions } from '../transactions/api';
@@ -59,10 +60,22 @@ export function HomePage() {
   const recent = useTransactions({ pageSize: 5 });
   const accounts = useAccounts();
   const categories = useCategories();
+  const pending = usePendingDocuments();
+  const pendingCount = pending.data?.length ?? 0;
 
   return (
     <>
       <h1 className="mb-4 text-2xl font-bold tracking-tight first-letter:uppercase">{formatMonth(month)}</h1>
+
+      {pendingCount > 0 ? (
+        <Link
+          to="/pendientes"
+          className="mb-4 flex min-h-12 items-center justify-between rounded-lg border border-attention bg-attention-soft px-4 font-semibold"
+        >
+          {es.documents.banner(pendingCount)}
+          <span aria-hidden="true">›</span>
+        </Link>
+      ) : null}
 
       <QueryState query={summary}>
         {(data) =>

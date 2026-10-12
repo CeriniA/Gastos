@@ -13,3 +13,7 @@ export * from './schemas/tag';
 export * from './schemas/transaction';
 export * from './schemas/backup';
 export * from './schemas/extraction';
+export * from './schemas/categoryRule';
+export * from './schemas/document';
+export * from './schemas/exchangeRate';
+export * from './schemas/consumption';

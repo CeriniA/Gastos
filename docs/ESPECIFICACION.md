@@ -37,8 +37,9 @@ Un movimiento es un **ingreso**, un **egreso** o una **transferencia**.
   partes tienen que sumar el total.
 - No se aceptan fechas futuras, salvo en movimientos proyectados (cuotas futuras, etapa 3).
 
-Estados: `borrador` (extraído por la IA, sin revisar), `confirmado` (cuenta en los informes),
-`proyectado` (cuota o fijo futuro).
+Estados: `confirmado` (cuenta en los informes) y `proyectado` (cuota o fijo futuro). Lo que lee la IA no
+es un movimiento hasta que se confirma: mientras tanto vive en su documento. El estado `borrador` existe
+en el código pero no se usa.
 
 Origen: `manual`, `documento`, `importación`, `cuota`. Un movimiento que vino de un documento o de una
 importación y se corrige a mano queda marcado como editado.
@@ -57,6 +58,12 @@ módulo de tarjetas (etapa 3) se puede escribir a mano, y si queda vacía vale l
 Pesos (ARS) y dólares (USD). Cada movimiento se guarda en su moneda y nunca se convierte al guardar.
 
 - Los totales se muestran separados por moneda.
+- **Comprobantes en otra moneda** (por ejemplo reales, comprando en Brasil con una cuenta en pesos): el
+  movimiento se guarda en la moneda de la cuenta. En la revisión se indica el cambio del día y la app
+  calcula el monto; se puede corregir el total a mano. El monto original, su moneda y el cambio quedan
+  anotados en el movimiento. La app propone un cambio (el que ya se usó ese día, una cotización pública de
+  referencia o el último usado) y el usuario lo confirma o lo corrige. Los productos del
+  ticket se convierten con el mismo cambio.
 - Vista consolidada (etapa 4): todo en pesos o todo en dólares, usando una **tasa de cambio cargada a
   mano** con fecha de inicio. Cada movimiento se convierte con la tasa vigente en su fecha; cambiar la
   tasa hoy no altera los meses anteriores. Si un período no tiene tasa, la vista avisa y no inventa.
@@ -94,23 +101,34 @@ pregunta si ese comercio va siempre ahí y, si se acepta, crea la regla.
    campos dudosos marcados.
 4. El usuario corrige, confirma o descarta.
 
-- La huella (SHA-256) del archivo impide procesarlo dos veces.
+- La huella (SHA-256) del archivo impide **contarlo** dos veces: solo se rechaza si ya fue confirmado y tiene
+  movimientos vigentes. Subir de nuevo un archivo que estaba esperando revisión, o que falló, lo vuelve a
+  leer desde cero.
+- Un documento listo para revisar o con error se puede volver a leer sin subirlo otra vez.
 - La **imagen se guarda solo mientras el documento está pendiente** y se borra al confirmar o
   descartar. La app avisa que hay que conservar la foto aparte si se necesita.
 - Si el proveedor de IA falla o llega al límite, el documento queda pendiente para reintentar.
 - A la IA se le pide que no devuelva números de tarjeta ni datos personales.
-- Formatos: JPG, PNG y PDF. Un PDF con contraseña se rechaza con aviso.
+- Formatos: JPG, PNG y WEBP, hasta 10 imágenes por documento (un ticket largo en varias fotos). PDF llega
+  con los resúmenes de tarjeta (etapa 3); uno con contraseña se rechazará con aviso.
+- Un documento descartado se borra entero y se puede volver a subir. Lo mismo vale para uno confirmado
+  cuyos movimientos se borraron todos: ya no cuenta para nada, así que no bloquea una nueva subida. Uno confirmado se conserva, sin
+  imágenes, para que su huella impida cargarlo dos veces.
+- Borrar un documento confirmado pregunta qué hacer con sus movimientos: quedan como manuales o van a la
+  papelera.
 - El contrato de lo que devuelve la IA está en `shared/src/schemas/extraction.ts` (borrador, a ajustar
   con documentos reales).
 
 ## 7. Duplicados (etapa 3; detección simple en la importación desde la etapa 1)
 
-| Caso                                             | Tratamiento                                                              |
-| ------------------------------------------------ | ------------------------------------------------------------------------ |
-| El mismo archivo subido dos veces                | Se rechaza por la huella                                                 |
-| La misma compra por dos vías (ticket y resumen)  | Coincidencia por monto, fecha cercana y cuenta: la app propone unirlos   |
-| Pago de la tarjeta                               | Transferencia, no egreso                                                 |
-| Fila de planilla igual a un movimiento existente | Se marca en la vista previa y se excluye salvo que el usuario la incluya |
+| Caso                                                                                                                   | Tratamiento                                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| El mismo archivo subido dos veces                                                                                      | Se rechaza por la huella                                                                                     |
+| La misma compra por dos vías (ticket y resumen)                                                                        | Coincidencia por monto, fecha cercana y cuenta: la app propone unirlos                                       |
+| Pago de la tarjeta                                                                                                     | Transferencia, no egreso                                                                                     |
+| Fila de planilla igual a un movimiento existente                                                                       | Se marca en la vista previa y se excluye salvo que el usuario la incluya                                     |
+| Movimiento leído de un documento con la misma fecha, monto y moneda que uno ya cargado, o que otro del mismo documento | En la revisión aparece con un aviso y sin marcar; el usuario lo tilda si es otro                             |
+| Fotos o capturas que se superponen                                                                                     | Subidas juntas ("partes de un mismo ticket" o "de una misma lista"), la IA informa cada renglón una sola vez |
 
 ## 8. Tarjetas y cuotas (etapa 3)
 
@@ -137,21 +155,27 @@ mano. Un fijo se espera cada mes, entra en la proyección y avisa si no apareci�
 Balance del mes por moneda; gasto por categoría con apertura del árbol; por cuenta; evolución mensual;
 principales comercios; cuotas y fijos pendientes; buscador con filtros; exportación a Excel.
 
+**Consumo (hecho).** La pestaña Informes muestra qué se compró en el mes, a partir de los productos
+leídos de los tickets: total por moneda, grupos (lácteos, almacén, limpieza…) con su porcentaje y, al
+abrir un grupo, cada producto con cuántas veces se compró y la cantidad. Un buscador muestra todas las
+compras de un producto con fecha, comercio y precio. Solo cuenta compras cargadas desde un ticket con
+detalle; un pago de MercadoPago sin detalle no aporta productos.
+
 ## 11. Pantallas
 
 Diseño para celular primero. Barra inferior: **Inicio, Movimientos, +, Informes, Más**.
 
-| Pantalla    | Qué muestra                                                 | Etapa |
-| ----------- | ----------------------------------------------------------- | ----- |
-| Login       | Usuario y contraseña; aviso si el servidor está despertando | 1     |
-| Inicio      | Balance del mes por moneda, últimos movimientos             | 1     |
-| Movimientos | Lista por mes; tocar uno abre la edición                    | 1     |
-| Agregar     | Carga manual (etapa 1); foto o archivo (etapa 2)            | 1 y 2 |
-| Más         | Cuentas, categorías, respaldo e importación                 | 1     |
-| Pendientes  | Bandeja única de todo lo que espera una decisión            | 2     |
-| Revisión    | Imagen y datos extraídos                                    | 2     |
-| Tarjetas    | Período en curso, cierre, vencimiento, cuotas pendientes    | 3     |
-| Informes    | Ver sección 10                                              | 4     |
+| Pantalla    | Qué muestra                                                      | Etapa |
+| ----------- | ---------------------------------------------------------------- | ----- |
+| Login       | Usuario y contraseña; aviso si el servidor está despertando      | 1     |
+| Inicio      | Balance del mes por moneda, últimos movimientos                  | 1     |
+| Movimientos | Lista por mes con buscador y filtros; tocar uno lo edita         | 1     |
+| Agregar     | Carga manual (etapa 1); foto o archivo (etapa 2)                 | 1 y 2 |
+| Más         | Cuentas, categorías, etiquetas, papelera, respaldo e importación | 1     |
+| Pendientes  | Bandeja única de todo lo que espera una decisión                 | 2     |
+| Revisión    | Imagen y datos extraídos                                         | 2     |
+| Tarjetas    | Período en curso, cierre, vencimiento, cuotas pendientes         | 3     |
+| Informes    | Ver sección 10                                                   | 4     |
 
 Toda pantalla contempla: cargando, lista vacía con indicación de qué hacer, error con reintento y
 servidor despertando.
@@ -186,7 +210,7 @@ Los ítems y las divisiones van **dentro** del movimiento: no existen sin él y 
 | Categoría con movimientos o hijas | Bloqueado: se archiva, o se une con otra                                      |
 | Cuenta con movimientos            | Bloqueado: se archiva                                                         |
 | Etiqueta                          | Se quita de todos sus movimientos en la misma operación                       |
-| Movimiento                        | Va a la papelera 30 días; se puede recuperar                                  |
+| Movimiento                        | Va a la papelera 30 días; se puede recuperar, o borrar del todo desde ahí     |
 | Documento (etapa 2)               | Pregunta: borrar sus movimientos o conservarlos como manuales                 |
 | Cuota o plan (etapa 3)            | Pregunta: solo esa cuota o el plan; las confirmadas piden confirmación aparte |
 | Período de tarjeta (etapa 3)      | Sus movimientos quedan sin período y se recalcula la fecha de pago            |

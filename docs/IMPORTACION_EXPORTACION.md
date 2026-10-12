@@ -44,10 +44,14 @@ escribe estas columnas y la importación las lee, así que un archivo exportado 
 2. Se marcan las filas que coinciden con un movimiento existente (misma fecha, monto y cuenta). Quedan
    afuera salvo que se elija incluirlas.
 3. Se listan las categorías y etiquetas que el archivo menciona y no existen. Se crean solo si se acepta.
-4. **Confirmación.** Entran todas las filas válidas juntas, o ninguna: si una falla al guardar, no queda
+   Para cada categoría se puede elegir, en cambio, una que ya existe.
+4. Se listan las cuentas que el archivo menciona y no existen. Para cada una se elige a qué cuenta
+   existente corresponde; si no se elige, sus filas no se importan. Después de cada elección la app
+   vuelve a revisar las filas (moneda, duplicados) antes de dejar confirmar.
+5. **Confirmación.** Entran todas las filas válidas juntas, o ninguna: si una falla al guardar, no queda
    media importación.
 
-Las **cuentas no se crean solas**: hay que crearlas antes, porque el archivo no dice si son tarjeta,
+Las **cuentas no se crean solas**: hay que crearlas antes o apuntarlas a una existente, porque el archivo no dice si son tarjeta,
 banco o efectivo, y eso cambia cómo se calcula la fecha de pago.
 
 ### Lo que la planilla no conserva
@@ -57,11 +61,6 @@ banco o efectivo, y eso cambia cómo se calcula la fecha de pago.
 - La cuota se guarda como dato (`3/6`) sin vincularla a un plan.
 
 Para una copia exacta, usar el respaldo.
-
-### Pendiente
-
-Elegir, para una categoría o cuenta desconocida, a cuál existente corresponde (hoy las categorías se
-crean o se rechaza; las cuentas se rechazan).
 
 ## Respaldo completo
 

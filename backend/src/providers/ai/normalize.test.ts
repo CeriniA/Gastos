@@ -1,0 +1,162 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { extractionResultSchema } from '@gastos/shared';
+import { AiProviderError } from '../../core/errors/errors';
+import { failureReason } from './aiExtractor';
+import { extractJson, normalizeExtraction } from './normalize';
+
+const food = 'a'.repeat(24);
+const salary = 'b'.repeat(24);
+const context = {
+  kind: 'receipt' as const,
+  today: '2026-10-10',
+  categories: [
+    { id: food, kind: 'expense' as const, path: 'Supermercado' },
+    { id: salary, kind: 'income' as const, path: 'Sueldo' },
+  ],
+};
+
+const answer = (transactions: unknown[], warnings: string[] = []) =>
+  JSON.stringify({ transactions, warnings });
+
+test('a clean answer becomes a valid extraction in cents', () => {
+  const result = normalizeExtraction(
+    answer([
+      {
+        type: 'expense',
+        date: '2026-10-05',
+        amount: '15400.50',
+        currency: 'ARS',
+        merchant: ' Coto ',
+        description: 'Compra de supermercado',
+        categoryId: food,
+        installmentNumber: null,
+        installmentTotal: null,
+        items: [
+          { name: 'LECHE LS 1L', amount: '1200.00', product: ' Leche ', group: 'Dairy', quantity: '2' },
+          { name: 'Pan', amount: 850, product: 'Pan', group: 'golosinas', quantity: '0,350' },
+          { name: 'Bolsa', amount: 50, quantity: -1 },
+        ],
+        uncertain: [],
+      },
+    ]),
+    context,
+  );
+  assert.equal(extractionResultSchema.safeParse(result).success, true);
+  assert.deepEqual(result.transactions, [
+    {
+      type: 'expense',
+      date: '2026-10-05',
+      amountCents: 1540050,
+      currency: 'ARS',
+      merchant: 'Coto',
+      description: 'Compra de supermercado',
+      suggestedCategoryId: food,
+      installment: null,
+      items: [
+        { name: 'LECHE LS 1L', amountCents: 120000, product: 'Leche', group: 'dairy', quantity: 2 },
+        { name: 'Pan', amountCents: 85000, product: 'Pan', group: null, quantity: 0.35 },
+        { name: 'Bolsa', amountCents: 5000, product: '', group: null, quantity: null },
+      ],
+      uncertainFields: [],
+    },
+  ]);
+  assert.equal(result.documentKind, 'receipt');
+  assert.equal(result.statement, null);
+});
+
+test('code fences and surrounding chatter are tolerated', () => {
+  const wrapped = `Claro, acá está:\n\`\`\`json\n${answer([{ type: 'income', amount: '100', currency: 'USD', date: '05/10/2026' }])}\n\`\`\``;
+  const [transaction] = normalizeExtraction(wrapped, context).transactions;
+  assert.equal(transaction?.type, 'income');
+  assert.equal(transaction?.amountCents, 10000);
+  assert.equal(transaction?.date, '2026-10-05');
+  assert.equal(transaction?.merchant, '');
+});
+
+test('Argentine number formats and negative signs are read as positive cents', () => {
+  const amounts = ['15.400,50', '$ 1.500', '-320,10', 99.9, '0'];
+  const result = normalizeExtraction(answer(amounts.map((amount) => ({ type: 'expense', amount }))), context);
+  assert.deepEqual(
+    result.transactions.map((transaction) => transaction.amountCents),
+    [1540050, 150000, 32010, 9990, null],
+  );
+});
+
+test('what cannot be trusted becomes null and is flagged, never guessed', () => {
+  const result = normalizeExtraction(
+    answer([
+      {
+        type: 'expense',
+        date: '31/02/2026',
+        amount: 'ilegible',
+        currency: 'pesos',
+        categoryId: 'no-existe',
+        installmentNumber: 7,
+        installmentTotal: 6,
+        uncertain: ['merchant', 'cualquier cosa'],
+      },
+      { type: 'expense', date: '2027-01-01', amount: '10', currency: 'ARS', categoryId: salary },
+    ]),
+    context,
+  );
+  const [first, second] = result.transactions;
+  assert.equal(first?.date, null);
+  assert.equal(first?.amountCents, null);
+  assert.equal(first?.currency, null);
+  assert.equal(first?.suggestedCategoryId, null);
+  assert.equal(first?.installment, null);
+  assert.deepEqual([...(first?.uncertainFields ?? [])].sort(), [
+    'amount',
+    'currency',
+    'date',
+    'installment',
+    'merchant',
+  ]);
+  // A date after today is a misread; an income category is not offered for an expense.
+  assert.equal(second?.date, null);
+  assert.equal(second?.suggestedCategoryId, null);
+  assert.equal(extractionResultSchema.safeParse(result).success, true);
+});
+
+test('a currency the app has no accounts in is kept as read, not dropped', () => {
+  const [transaction] = normalizeExtraction(
+    answer([{ type: 'expense', amount: '50.00', currency: ' brl ' }]),
+    context,
+  ).transactions;
+  assert.equal(transaction?.currency, 'BRL');
+  assert.equal(transaction?.amountCents, 5000);
+  assert.ok(!transaction?.uncertainFields.includes('currency'));
+});
+
+test('installments, transfers and unknown types', () => {
+  const result = normalizeExtraction(
+    answer([
+      { type: 'expense', amount: '100', installmentNumber: 3, installmentTotal: 6 },
+      { type: 'TRANSFER', amount: '100', categoryId: food },
+      { type: 'compra', amount: '100' },
+    ]),
+    context,
+  );
+  assert.equal(result.transactions.length, 2);
+  assert.deepEqual(result.transactions[0]?.installment, { number: 3, total: 6 });
+  assert.equal(result.transactions[1]?.type, 'transfer');
+  assert.equal(result.transactions[1]?.suggestedCategoryId, null);
+  assert.equal(result.warnings.length, 1);
+});
+
+test('an image without transactions is a valid, empty extraction', () => {
+  const result = normalizeExtraction(answer([], ['La imagen no muestra un comprobante.']), context);
+  assert.deepEqual(result.transactions, []);
+  assert.deepEqual(result.warnings, ['La imagen no muestra un comprobante.']);
+});
+
+test('answers that are not JSON, or not the agreed shape, fail as unreadable', () => {
+  for (const bad of ['no pude leer la imagen', '{ "transactions": [', '{"transactions": "muchas"}']) {
+    assert.throws(
+      () => normalizeExtraction(bad, context),
+      (error: unknown) => error instanceof AiProviderError && failureReason(error) === 'unreadable',
+    );
+  }
+  assert.deepEqual(extractJson('x {"a": 1} y'), { a: 1 });
+});

@@ -4,8 +4,11 @@ import { Button, PageTitle } from '../../shared/ui/ui';
 import { useAuth } from '../auth/AuthContext';
 
 const LINKS = [
+  { to: '/pendientes', label: es.more.pending },
   { to: '/mas/cuentas', label: es.more.accounts },
   { to: '/mas/categorias', label: es.more.categories },
+  { to: '/mas/etiquetas', label: es.more.tags },
+  { to: '/mas/papelera', label: es.more.trash },
   { to: '/mas/datos', label: es.more.data },
 ] as const;
 

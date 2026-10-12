@@ -1,10 +1,15 @@
 import type { FilterQuery } from 'mongoose';
 import {
+  PRODUCT_GROUPS,
   firstDayOfMonth,
   lastDayOfMonth,
+  type ConsumptionItem,
   type CurrencyTotals,
+  type LastRate,
   type Paginated,
+  type ProductGroup,
   type Transaction,
+  type TransactionItem,
   type TransactionListQuery,
 } from '@gastos/shared';
 import { createCollectionPort } from '../../core/db/collectionPort';
@@ -32,6 +37,9 @@ function toTransaction(doc: TransactionDoc): Transaction {
     paymentDate: doc.paymentDate,
     amountCents: doc.amountCents,
     currency: doc.currency,
+    original: doc.original
+      ? { amountCents: doc.original.amountCents, currency: doc.original.currency, rate: doc.original.rate }
+      : null,
     accountId: doc.accountId.toString(),
     toAccountId: idString(doc.toAccountId),
     toAmountCents: doc.toAmountCents ?? null,
@@ -43,7 +51,7 @@ function toTransaction(doc: TransactionDoc): Transaction {
       categoryId: split.categoryId.toString(),
       amountCents: split.amountCents,
     })),
-    items: (doc.items ?? []).map((item) => ({ name: item.name, amountCents: item.amountCents })),
+    items: (doc.items ?? []).map(toItem),
     installment: doc.installment
       ? {
           planId: idString(doc.installment.planId),
@@ -58,6 +66,19 @@ function toTransaction(doc: TransactionDoc): Transaction {
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
     deletedAt: isoString(doc.deletedAt),
+  };
+}
+
+/** Lines stored before products were classified read as "unknown". */
+function toItem(item: TransactionDoc['items'][number]): TransactionItem {
+  return {
+    name: item.name,
+    amountCents: item.amountCents,
+    product: item.product ?? '',
+    group: (PRODUCT_GROUPS as readonly string[]).includes(item.group ?? '')
+      ? (item.group as ProductGroup)
+      : null,
+    quantity: item.quantity ?? null,
   };
 }
 
@@ -177,6 +198,12 @@ export const transactionsRepository = {
     return result.modifiedCount === 1;
   },
 
+  /** Deletes for good a transaction that is in the trash. A live one is left alone. */
+  async deleteTrashed(id: string): Promise<boolean> {
+    const result = await TransactionModel.deleteOne({ _id: toObjectId(id), deletedAt: { $ne: null } });
+    return result.deletedCount === 1;
+  },
+
   async purgeDeletedBefore(cutoff: Date): Promise<number> {
     const result = await TransactionModel.deleteMany({ deletedAt: { $ne: null, $lt: cutoff } });
     return result.deletedCount;
@@ -207,6 +234,46 @@ export const transactionsRepository = {
     );
   },
 
+  /**
+   * Keys ("date|amountCents|currency") of live transactions on the given
+   * days, by their own amount and by the amount of the receipt they came from
+   * when that was in another currency. Used to spot a movement uploaded twice.
+   */
+  async amountKeysOn(dates: readonly string[]): Promise<Set<string>> {
+    if (dates.length === 0) return new Set();
+    const docs = await TransactionModel.find(
+      { deletedAt: null, date: { $in: [...dates] } },
+      { date: 1, amountCents: 1, currency: 1, original: 1 },
+    ).lean<Pick<TransactionDoc, 'date' | 'amountCents' | 'currency' | 'original'>[]>();
+    const keys = new Set<string>();
+    for (const doc of docs) {
+      keys.add(duplicateKey(doc.date, doc.amountCents, doc.currency));
+      if (doc.original) keys.add(duplicateKey(doc.date, doc.original.amountCents, doc.original.currency));
+    }
+    return keys;
+  },
+
+  /** Transactions of a document that still count: not in the trash. */
+  countLiveByDocument(documentId: string): Promise<number> {
+    return TransactionModel.countDocuments({ documentId: toObjectId(documentId), deletedAt: null });
+  },
+
+  async releaseDocument(documentId: string, options: WriteOptions = {}): Promise<void> {
+    await TransactionModel.updateMany(
+      { documentId: toObjectId(documentId) },
+      { $set: { documentId: null, source: 'manual' } },
+      { session: options.session },
+    );
+  },
+
+  async trashByDocument(documentId: string, deletedAt: Date, options: WriteOptions = {}): Promise<void> {
+    await TransactionModel.updateMany(
+      { documentId: toObjectId(documentId), deletedAt: null },
+      { $set: { deletedAt, documentId: null } },
+      { session: options.session },
+    );
+  },
+
   async pullTag(tagId: string, options: WriteOptions = {}): Promise<void> {
     const id = toObjectId(tagId);
     await TransactionModel.updateMany(
@@ -214,6 +281,49 @@ export const transactionsRepository = {
       { $pull: { tagIds: id } },
       { session: options.session },
     );
+  },
+
+  /**
+   * Every receipt line of the confirmed expenses bought in a date range, each
+   * with the purchase it belongs to. The basis of the consumption report.
+   */
+  async findItems(range: { from?: string; to?: string }): Promise<ConsumptionItem[]> {
+    const date = {
+      ...(range.from ? { $gte: range.from } : {}),
+      ...(range.to ? { $lte: range.to } : {}),
+    };
+    const docs = await TransactionModel.find(
+      {
+        deletedAt: null,
+        status: 'confirmed',
+        type: 'expense',
+        'items.0': { $exists: true },
+        ...(range.from || range.to ? { date } : {}),
+      },
+      { date: 1, description: 1, currency: 1, items: 1 },
+    )
+      .sort({ date: -1, createdAt: -1 })
+      .lean<Pick<TransactionDoc, '_id' | 'date' | 'description' | 'currency' | 'items'>[]>();
+    return docs.flatMap((doc) =>
+      doc.items.map((item) => ({
+        transactionId: doc._id.toString(),
+        date: doc.date,
+        description: doc.description ?? '',
+        currency: doc.currency,
+        ...toItem(item),
+      })),
+    );
+  },
+
+  /** The rate of the most recent live transaction converted from the given currency. */
+  async findLastRate(currency: string): Promise<LastRate> {
+    const doc = await TransactionModel.findOne(
+      { deletedAt: null, 'original.currency': currency },
+      { date: 1, original: 1 },
+    )
+      .sort({ date: -1, createdAt: -1 })
+      .lean<Pick<TransactionDoc, 'date' | 'original'>>();
+    return { rate: doc?.original?.rate ?? null, date: doc?.date ?? null };
   },
 
   /** Income and expense per currency for the transactions paid in a month. */
