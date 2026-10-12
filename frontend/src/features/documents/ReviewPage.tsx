@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  DEFAULT_CURRENCY,
   DEFAULT_TIMEZONE,
   TRANSACTION_TYPES,
   centsToDecimalString,
@@ -19,6 +20,7 @@ import {
   type DuplicateHint,
   type ReviewTransaction,
   type TransactionType,
+  TEXT_LIMITS,
 } from '@gastos/shared';
 import { ApiError } from '../../shared/api/client';
 import { errorMessage, fieldMessage } from '../../shared/api/errors';
@@ -117,7 +119,7 @@ function toDraft(
     toAccountId: '',
     toAmount: '',
     categoryId: transaction.suggestedCategoryId ?? '',
-    description: (transaction.description || transaction.merchant).slice(0, 200),
+    description: (transaction.description || transaction.merchant).slice(0, TEXT_LIMITS.description),
     paymentDate: '',
     remember: false,
     rate: '',
@@ -179,7 +181,7 @@ function TransactionCard({
   ]
     .filter(Boolean)
     .join(' ');
-  const itemCurrency = read.currency ?? account?.currency ?? 'ARS';
+  const itemCurrency = read.currency ?? account?.currency ?? DEFAULT_CURRENCY;
   // Wait for both sources, so an old rate is not filled in just before the better one arrives.
   const suggestionsReady = !lastRate.isLoading && !reference.isLoading;
 
@@ -412,7 +414,7 @@ function TransactionCard({
 
           <Field label={es.transactions.fields.description} error={errors.description}>
             <TextInput
-              maxLength={200}
+              maxLength={TEXT_LIMITS.description}
               value={draft.description}
               onChange={(event) => onChange({ description: event.target.value })}
             />
@@ -521,7 +523,7 @@ function ReviewForm({
           type: draft.type,
           date: draft.date,
           amountCents: amountCents ?? 0,
-          currency: account?.currency ?? 'ARS',
+          currency: account?.currency ?? DEFAULT_CURRENCY,
           accountId: draft.accountId,
           categoryId: isTransfer ? null : draft.categoryId || null,
           description: draft.description,

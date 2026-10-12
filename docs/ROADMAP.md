@@ -101,8 +101,8 @@ Revisión del 11/10/2026. No bloquea el uso; conviene no perderla de vista.
 - **Las pantallas no tienen pruebas automáticas.** Solo las reglas del backend. Un error de flujo o
   visual lo encuentra el usuario.
 - **Vulnerabilidades de las librerías** (`npm audit` del 11/10/2026: 1 baja, 2 moderadas, ninguna alta).
-  - `esbuild` (dentro de `tsup`): afecta a su servidor de desarrollo en Windows, que este proyecto no
-    usa. Se corrige con `npm audit fix`.
+  - `esbuild` (dentro de `tsup`): afectaba a su servidor de desarrollo en Windows, que este proyecto
+    no usa. Corregido con `npm audit fix` el 11/10/2026.
   - `uuid` (dentro de `exceljs`): sin corrección compatible. **No correr `npm audit fix --force`**:
     baja `exceljs` a una versión vieja y puede romper la importación y exportación. Volver a mirar
     cuando `exceljs` publique una versión que lo resuelva.
@@ -113,13 +113,25 @@ Revisión del 11/10/2026. No bloquea el uso; conviene no perderla de vista.
 
 ## Etapa 3: tarjetas, cuotas y duplicados
 
-- Definir cómo se guarda una devolución.
-- Resúmenes en PDF: movimientos, cierre, vencimiento, total; control de la suma contra el total.
-- Períodos de tarjeta (`card-periods`) y fecha de pago calculada desde el cierre (`resolvePaymentDate`
-  ya recibe ese dato).
-- Planes de cuotas (`installment-plans`): un movimiento por mes, proyectados y confirmados.
-- Detección de duplicados entre vías y propuesta de unión.
-- Pantalla de Tarjetas.
+Hecho (12/10/2026, carga a mano):
+
+- Bancos y marcas de tarjeta (`institutions`): lista editable sembrada con los comunes; cada cuenta
+  indica su banco y cada tarjeta su marca.
+- Cierres y vencimientos (`card-periods`): la fecha de pago de cada compra con tarjeta sale del cierre y
+  se recalcula al corregirlo. Pantalla Tarjetas con lo cargado por resumen y la diferencia contra su total.
+- Compras en cuotas (`installment-plans`): un movimiento por mes; las futuras proyectadas y confirmadas
+  solas al llegar su fecha.
+- Decidido cómo se guarda una devolución (ver `DECISIONES.md`).
+
+Comprobado con pruebas sobre el backend en memoria. Sin probar todavía con datos reales.
+
+Falta:
+
+- Programar las devoluciones.
+- Resúmenes en PDF leídos por la IA: movimientos, cierre, vencimiento, total; control de la suma contra el
+  total; "cuota 3 de 6" de una compra no cargada ofrece crear el plan.
+- Detección de la misma compra cargada por dos vías (ticket y resumen) y propuesta de unión.
+- Pagar la tarjeta como transferencia desde el banco, ligada a su resumen.
 
 ## Etapa 4: informes, fijos y monedas
 

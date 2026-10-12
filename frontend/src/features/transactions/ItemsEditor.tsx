@@ -8,6 +8,7 @@ import {
   transactionItemSchema,
   type ProductGroup,
   type TransactionItem,
+  TEXT_LIMITS,
 } from '@gastos/shared';
 import { es } from '../../shared/i18n/es';
 import { Button, Select, TextInput } from '../../shared/ui/ui';
@@ -108,7 +109,7 @@ export function ItemsEditor({
                 <TextInput
                   aria-label={es.items.product}
                   placeholder={es.items.product}
-                  maxLength={80}
+                  maxLength={TEXT_LIMITS.product}
                   value={item.product || item.name}
                   onChange={(event) => rename(index, event.target.value)}
                 />

@@ -16,11 +16,12 @@ import {
   type TransactionItem,
   type TransactionListQuery,
   type TransactionSource,
+  type TransactionStatus,
   type TransactionUpdate,
 } from '@gastos/shared';
 import type { WriteOptions } from '../../core/db/transaction';
 import { NotFoundError, ValidationError } from '../../core/errors/errors';
-import { resolvePaymentDate } from './paymentDate';
+import { dueDateFor, resolvePaymentDate, type PeriodDates } from './paymentDate';
 import { duplicateKey } from './duplicateKey';
 import type { TransactionRecord, TransactionsRepository } from './transactions.repository';
 
@@ -29,6 +30,8 @@ export interface TransactionDependencies {
   listAccounts(): Promise<Account[]>;
   listCategories(options?: WriteOptions): Promise<Category[]>;
   listTags(options?: WriteOptions): Promise<Tag[]>;
+  /** Closing and due dates of every card statement, which decide when card purchases are paid. */
+  listCardPeriods(options?: WriteOptions): Promise<PeriodDates[]>;
   /** Today's calendar day in the app's time zone. */
   today(): IsoDate;
 }
@@ -38,6 +41,8 @@ interface References {
   accounts: Map<string, Account>;
   categories: Map<string, Category>;
   tagIds: Set<string>;
+  /** Card statements per account. */
+  periods: Map<string, PeriodDates[]>;
   today: IsoDate;
 }
 
@@ -46,6 +51,8 @@ interface Origin {
   installment?: Installment | null;
   /** The uploaded document the transaction was read from. */
   documentId?: string;
+  /** Future installments are stored as projected; everything else is confirmed. */
+  status?: TransactionStatus;
 }
 
 /** One transaction to store in bulk, with what its origin knows about it. */
@@ -53,21 +60,28 @@ export interface BulkEntry {
   input: TransactionCreate;
   installment: Installment | null;
   documentId?: string;
+  status?: TransactionStatus;
 }
 
 type Issue = { path: string; message: string };
 
 export function createTransactionsService(repository: TransactionsRepository, deps: TransactionDependencies) {
   async function loadReferences(options: WriteOptions = {}): Promise<References> {
-    const [accounts, categories, tags] = await Promise.all([
+    const [accounts, categories, tags, periods] = await Promise.all([
       deps.listAccounts(),
       deps.listCategories(options),
       deps.listTags(options),
+      deps.listCardPeriods(options),
     ]);
+    const periodsByAccount = new Map<string, PeriodDates[]>();
+    for (const period of periods) {
+      periodsByAccount.set(period.accountId, [...(periodsByAccount.get(period.accountId) ?? []), period]);
+    }
     return {
       accounts: new Map(accounts.map((account) => [account.id, account])),
       categories: new Map(categories.map((category) => [category.id, category])),
       tagIds: new Set(tags.map((tag) => tag.id)),
+      periods: periodsByAccount,
       today: deps.today(),
     };
   }
@@ -97,8 +111,9 @@ export function createTransactionsService(repository: TransactionsRepository, de
       }
     }
 
-    // Only projected items (future installments, stage 3) may be dated ahead.
-    if (input.date > refs.today && previous?.status !== 'projected') {
+    // Only projected items (future installments) may be dated ahead.
+    const status = origin.status ?? previous?.status ?? 'confirmed';
+    if (input.date > refs.today && status !== 'projected') {
       issues.push({ path: 'date', message: 'Date cannot be in the future' });
     }
 
@@ -161,14 +176,15 @@ export function createTransactionsService(repository: TransactionsRepository, de
       : null;
     return {
       type: input.type,
-      status: previous?.status ?? 'confirmed',
+      status,
       source: origin.source,
       date: input.date,
       paymentDate: resolvePaymentDate({
         date: input.date,
         accountType: account.type,
         requested: input.paymentDate,
-        periodDueDate: null, // Stage 3: due date of the card period the date falls in.
+        periodDueDate:
+          account.type === 'credit_card' ? dueDateFor(refs.periods.get(account.id) ?? [], input.date) : null,
       }),
       amountCents: input.amountCents,
       currency: input.currency,
@@ -244,6 +260,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
             source,
             installment: entry.installment,
             documentId: entry.documentId,
+            status: entry.status,
           });
         } catch (error) {
           if (error instanceof ValidationError) {
@@ -307,6 +324,38 @@ export function createTransactionsService(repository: TransactionsRepository, de
     emptyTrash(now: Date = new Date()): Promise<number> {
       return repository.purgeDeletedBefore(new Date(now.getTime() + 1000));
     },
+
+    /**
+     * Works out again when each purchase of a card is paid, after its
+     * statement dates changed. A purchase no statement covers any more goes
+     * back to its own date if it was on one of the due dates that went away.
+     */
+    async refreshPaymentDates(
+      accountId: string,
+      staleDueDates: readonly string[],
+      options: WriteOptions = {},
+    ): Promise<number> {
+      const refs = await loadReferences(options);
+      const account = refs.accounts.get(accountId);
+      if (account?.type !== 'credit_card') return 0;
+      const periods = refs.periods.get(accountId) ?? [];
+      const updates = (await repository.findPaymentDates(accountId)).flatMap((row) => {
+        const due = dueDateFor(periods, row.date);
+        const paymentDate = due ?? (staleDueDates.includes(row.paymentDate) ? row.date : row.paymentDate);
+        return paymentDate === row.paymentDate ? [] : [{ id: row.id, paymentDate }];
+      });
+      await repository.setPaymentDates(updates, options);
+      return updates.length;
+    },
+
+    /** What each live purchase or credit of an account adds to its bill. */
+    listCharges: (accountId: string) => repository.findCharges(accountId),
+
+    /** Future installments become real when their day comes. Run daily and at startup. */
+    confirmDue: (): Promise<number> => repository.confirmProjectedUpTo(deps.today()),
+
+    trashByPlan: (planId: string, options: WriteOptions = {}) =>
+      repository.trashByPlan(planId, new Date(), options),
 
     purgeTrash(now: Date = new Date()): Promise<number> {
       const cutoff = new Date(now.getTime() - TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000);

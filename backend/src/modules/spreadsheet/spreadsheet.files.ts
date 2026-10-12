@@ -8,6 +8,10 @@ import {
   type ImportRow,
 } from '@gastos/shared';
 
+/** Excel column widths, in characters: room for text columns, compact for the rest. */
+const WIDE_COLUMN = 32;
+const NARROW_COLUMN = 16;
+
 /**
  * Reading and writing the actual files. Kept apart from the service so the
  * import rules do not depend on a spreadsheet library.
@@ -81,7 +85,10 @@ export async function writeXlsx(rows: readonly ImportRow[], fileName: string): P
   sheet.columns = IMPORT_COLUMNS.map((column) => ({
     header: column.header,
     key: column.key,
-    width: column.key === 'description' || column.key === 'category' || column.key === 'note' ? 32 : 16,
+    width:
+      column.key === 'description' || column.key === 'category' || column.key === 'note'
+        ? WIDE_COLUMN
+        : NARROW_COLUMN,
     style: AMOUNT_KEYS.has(column.key) ? { numFmt: '#,##0.00' } : {},
   }));
   sheet.getRow(1).font = { bold: true };

@@ -1,17 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { AppError, NotFoundError } from '../../core/errors/errors';
+import { NotFoundError } from '../../core/errors/errors';
+import { codeOf } from '../../testing/assertions';
 import { createMemoryBackend } from '../../testing/memory';
-
-async function codeOf(work: Promise<unknown>): Promise<string> {
-  try {
-    await work;
-  } catch (error) {
-    assert.ok(error instanceof AppError, `expected an AppError, got ${String(error)}`);
-    return error.code;
-  }
-  assert.fail('expected the operation to be rejected');
-}
 
 const expense = (accountId: string, tagIds: string[] = []) => ({
   type: 'expense' as const,
@@ -141,4 +132,54 @@ test('the reference exchange rate is only offered between two different, known c
   assert.equal((await app.exchangeRates.reference('BRL', 'ARS'))?.rate, 300);
   assert.equal(await app.exchangeRates.reference('ARS', 'ARS'), null);
   assert.equal(await app.exchangeRates.reference('XXX', 'ARS'), null);
+});
+
+test('a card is tied to an existing bank and brand of the right kind', async () => {
+  const app = createMemoryBackend();
+  const galicia = await app.institutions.create({ name: 'Galicia', kind: 'bank' });
+  const visa = await app.institutions.create({ name: 'Visa', kind: 'network' });
+
+  const card = await app.accounts.create({
+    name: 'Visa Galicia',
+    type: 'credit_card',
+    currency: 'ARS',
+    bankId: galicia.id,
+    networkId: visa.id,
+  });
+  assert.equal(card.bankId, galicia.id);
+  assert.equal(card.networkId, visa.id);
+
+  // A brand where a bank goes, a brand on something that is not a card, or one that does not exist.
+  const base = { type: 'credit_card' as const, currency: 'USD' as const };
+  assert.equal(await codeOf(app.accounts.create({ ...base, name: 'A', bankId: visa.id })), 'VALIDATION');
+  assert.equal(
+    await codeOf(app.accounts.create({ name: 'B', type: 'bank', currency: 'ARS', networkId: visa.id })),
+    'VALIDATION',
+  );
+  assert.equal(
+    await codeOf(app.accounts.create({ ...base, name: 'C', networkId: 'f'.repeat(24) })),
+    'VALIDATION',
+  );
+
+  // An archived one cannot be chosen anew, but stays on the account that has it.
+  await app.institutions.update(galicia.id, { archived: true });
+  assert.equal(await codeOf(app.accounts.create({ ...base, name: 'D', bankId: galicia.id })), 'VALIDATION');
+  assert.equal((await app.accounts.update(card.id, { name: 'Visa Galicia ARS' })).bankId, galicia.id);
+  assert.equal((await app.accounts.update(card.id, { bankId: null })).bankId, null);
+});
+
+test('banks and brands: unique per kind, and one in use is archived, not deleted', async () => {
+  const app = createMemoryBackend();
+  const bank = await app.institutions.create({ name: 'Naranja X', kind: 'bank' });
+  // The same name as a card brand is a different thing.
+  await app.institutions.create({ name: 'Naranja', kind: 'network' });
+  assert.equal(await codeOf(app.institutions.create({ name: ' naranja x ', kind: 'bank' })), 'DUPLICATE');
+
+  await app.accounts.create({ name: 'Cuenta', type: 'bank', currency: 'ARS', bankId: bank.id });
+  assert.equal(await codeOf(app.institutions.remove(bank.id)), 'IN_USE');
+  assert.equal((await app.institutions.update(bank.id, { archived: true })).archived, true);
+
+  const unused = await app.institutions.create({ name: 'Ualá', kind: 'bank' });
+  await app.institutions.remove(unused.id);
+  assert.equal(await codeOf(app.institutions.get(unused.id)), 'NOT_FOUND');
 });

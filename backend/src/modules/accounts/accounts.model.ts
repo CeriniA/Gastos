@@ -10,6 +10,8 @@ export interface AccountDoc {
   nameKey: string;
   type: AccountType;
   currency: Currency;
+  bankId: ObjectId | null;
+  networkId: ObjectId | null;
   archived: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -21,6 +23,8 @@ const schema = new Schema<AccountDoc>(
     nameKey: { type: String, required: true, unique: true },
     type: { type: String, required: true, enum: [...ACCOUNT_TYPES] },
     currency: { type: String, required: true, enum: [...CURRENCIES] },
+    bankId: { type: Schema.Types.ObjectId, default: null },
+    networkId: { type: Schema.Types.ObjectId, default: null },
     archived: { type: Boolean, required: true, default: false },
   },
   { timestamps: true },

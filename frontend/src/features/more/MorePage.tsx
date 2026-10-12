@@ -9,7 +9,9 @@ import { useAuth } from '../auth/AuthContext';
 const LINKS = [
   { to: '/pendientes', label: es.more.pending },
   { to: '/mas/cuentas', label: es.more.accounts },
+  { to: '/mas/tarjetas', label: es.more.cards },
   { to: '/mas/categorias', label: es.more.categories },
+  { to: '/mas/bancos', label: es.more.institutions },
   { to: '/mas/etiquetas', label: es.more.tags },
   { to: '/mas/papelera', label: es.more.trash },
   { to: '/mas/datos', label: es.more.data },

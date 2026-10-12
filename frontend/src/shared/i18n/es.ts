@@ -5,6 +5,7 @@ import type {
   DocumentStatus,
   ErrorCode,
   ImportIssueCode,
+  InstitutionKind,
   ProductGroup,
   TransactionType,
   UncertainField,
@@ -18,7 +19,14 @@ import type {
 export const es = {
   appName: 'Gastos',
 
-  nav: { home: 'Inicio', transactions: 'Movimientos', add: 'Agregar', reports: 'Informes', more: 'Más' },
+  nav: {
+    main: 'Principal',
+    home: 'Inicio',
+    transactions: 'Movimientos',
+    add: 'Agregar',
+    reports: 'Informes',
+    more: 'Más',
+  },
 
   common: {
     save: 'Guardar',
@@ -146,6 +154,60 @@ export const es = {
     currency: 'Moneda',
     newTitle: 'Nueva cuenta',
     fixedHint: 'El tipo y la moneda no se pueden cambiar después.',
+    bank: 'Banco o emisor',
+    network: 'Tarjeta',
+    cardHint:
+      'Si la tarjeta tiene saldo en pesos y en dólares, creá dos cuentas (por ejemplo "Visa" y "Visa USD") con el mismo banco y tarjeta: así comparten los cierres.',
+  },
+
+  institutions: {
+    title: 'Bancos y tarjetas',
+    text: 'La lista para elegir el banco de cada cuenta y la marca de cada tarjeta. Agregá las que falten.',
+    kinds: { bank: 'Bancos y emisores', network: 'Tarjetas' } satisfies Record<InstitutionKind, string>,
+    name: 'Nombre',
+    newName: { bank: 'Nuevo banco o emisor', network: 'Nueva tarjeta' } satisfies Record<
+      InstitutionKind,
+      string
+    >,
+    empty: 'La lista está vacía.',
+    deleteConfirm: (name: string) => `¿Borrar "${name}"?`,
+  },
+
+  cards: {
+    title: 'Tarjetas',
+    noCards: 'No hay tarjetas de crédito. Creá una cuenta de tipo "Tarjeta de crédito" en Más → Cuentas.',
+    openSince: (date: string) => `Compras desde el cierre del ${date}`,
+    openNoClosing: 'Compras con esta tarjeta',
+    firstHint:
+      'Cargá el cierre y el vencimiento de tu último resumen: cada compra pasa a contar en el mes en que la pagás.',
+    purchases: (count: number) => (count === 1 ? '1 movimiento' : `${count} movimientos`),
+    dueOn: (date: string) => `Vence el ${date}`,
+    closedOn: (date: string) => `Cerró el ${date}`,
+    statementTotal: (amount: string) => `El resumen dice ${amount}.`,
+    difference: (amount: string) => `Diferencia: ${amount}; puede faltar cargar algo.`,
+    matches: 'Coincide.',
+    minimumIs: (amount: string) => `Pago mínimo: ${amount}`,
+    newTitle: 'Nuevo cierre',
+    newText:
+      'Copiá las fechas del resumen. Las compras hasta el cierre se pagan en ese vencimiento; si después corregís las fechas, se reacomodan solas.',
+    closing: 'Cierre',
+    due: 'Vencimiento',
+    total: 'Total del resumen',
+    minimum: 'Pago mínimo',
+    alsoFor: 'Aplicar también a',
+    datesRequired: 'Completá el cierre y el vencimiento.',
+    deleteConfirm: 'Se borra este cierre y sus compras vuelven a contar en su propia fecha. ¿Seguir?',
+  },
+
+  installments: {
+    label: 'Cuotas',
+    hint: 'Se crea un movimiento por mes. Los de meses futuros quedan proyectados hasta que llega su fecha.',
+    single: 'En un pago',
+    option: (count: number) => `${count} cuotas`,
+    projected: 'proyectada',
+    editHint: 'Podés corregir el monto de esta cuota si el resumen dice otro (por ejemplo, con interés).',
+    deleteAll: 'Borrar todas las cuotas de esta compra',
+    deleteAllConfirm: 'Todas las cuotas de esta compra van a la papelera. ¿Seguir?',
   },
 
   categories: {
@@ -352,6 +414,8 @@ export const es = {
     title: 'Más',
     accounts: 'Cuentas',
     categories: 'Categorías',
+    cards: 'Tarjetas: cierres y vencimientos',
+    institutions: 'Bancos y tarjetas',
     tags: 'Etiquetas',
     trash: 'Papelera',
     pending: 'Pendientes de revisión',
@@ -440,6 +504,15 @@ export const es = {
     'Category is archived': 'La categoría está archivada.',
     'Category is of a different kind': 'La categoría no corresponde a este tipo de movimiento.',
     'Categories can be nested up to 3 levels': 'Las categorías admiten hasta tres niveles.',
+    'Institution does not exist': 'Ese banco o tarjeta no existe.',
+    'Institution is archived': 'Ese banco o tarjeta está archivado.',
+    'Only credit cards have a card brand': 'Solo las tarjetas de crédito llevan marca.',
+    'Account is not a credit card': 'La cuenta no es una tarjeta de crédito.',
+    'The due date must be after the closing date': 'El vencimiento tiene que ser después del cierre.',
+    'Only purchases go in installments': 'Solo un egreso se paga en cuotas.',
+    'A purchase in installments cannot be split': 'Una compra en cuotas no se divide entre categorías.',
+    'Installments are for credit cards': 'Las cuotas son para tarjetas de crédito.',
+    'A transfer cannot have products': 'Una transferencia no lleva productos.',
   } as Record<string, string>,
 
   importIssues: {

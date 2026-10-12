@@ -4,6 +4,7 @@ import {
   centsToDecimalString,
   convertCents,
   impliedRate,
+  splitInstallments,
   formatRate,
   formatMoney,
   parseAmountToCents,
@@ -69,4 +70,13 @@ test('impliedRate is the rate that links an amount to its original', () => {
   assert.equal(impliedRate(1500000, 5000), 300);
   // Converting back with it gives the same amount, whatever rounding the user applied.
   assert.equal(convertCents(1999, impliedRate(544400, 1999)), 544400);
+});
+
+test('splitInstallments divides in whole cents and gives the leftover to the first', () => {
+  assert.deepEqual(splitInstallments(100000, 4), [25000, 25000, 25000, 25000]);
+  assert.deepEqual(splitInstallments(100001, 3), [33335, 33333, 33333]);
+  assert.equal(
+    splitInstallments(987654, 7).reduce((sum, part) => sum + part, 0),
+    987654,
+  );
 });

@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  DEFAULT_CURRENCY,
   DEFAULT_TIMEZONE,
+  INSTALLMENT_CHOICES,
   TRANSACTION_TYPES,
   centsToDecimalString,
   convertCents,
@@ -16,8 +18,10 @@ import {
   transactionUpdateSchema,
   type Transaction,
   type TransactionType,
+  TEXT_LIMITS,
 } from '@gastos/shared';
 import { ApiError } from '../../shared/api/client';
+
 import { errorMessage, fieldMessage } from '../../shared/api/errors';
 import { es } from '../../shared/i18n/es';
 import { QueryState } from '../../shared/ui/QueryState';
@@ -80,7 +84,9 @@ export function TransactionFormPage() {
   const categories = useCategories();
   const tags = useTags();
   const createTag = useCreateTag();
-  const { create, update, remove } = useTransactionMutations();
+  const { create, update, remove, createInstallments, removePlan } = useTransactionMutations();
+  /** How many installments a new card purchase is paid in. 1 is a single payment. */
+  const [installments, setInstallments] = useState('1');
   const [failure, setFailure] = useState<string | null>(null);
   const [newTag, setNewTag] = useState('');
   /** The rate while the user types it. Null means: show the one the amounts imply. */
@@ -114,6 +120,8 @@ export function TransactionFormPage() {
   const crossCurrency =
     type === 'transfer' && Boolean(account && destination && account.currency !== destination.currency);
   const isCard = account?.type === 'credit_card';
+  const planId = existing.data?.installment?.planId ?? null;
+  const canSplitInInstallments = !id && type === 'expense' && isCard && splitFields.fields.length === 0;
   const isSplit = type !== 'transfer' && splitFields.fields.length > 0;
   const usedCategoryIds = [
     existing.data?.categoryId,
@@ -233,7 +241,12 @@ export function TransactionFormPage() {
           );
           return;
         }
-        await create.mutateAsync(parsed.data);
+        const count = Number(installments);
+        if (canSplitInInstallments && count >= 2) {
+          await createInstallments.mutateAsync({ transaction: parsed.data, installments: count });
+        } else {
+          await create.mutateAsync(parsed.data);
+        }
       }
       void navigate('/movimientos');
     } catch (error) {
@@ -249,6 +262,16 @@ export function TransactionFormPage() {
       const tag = await createTag.mutateAsync({ name });
       form.setValue('tagIds', [...selectedTags, tag.id]);
       setNewTag('');
+    } catch (error) {
+      setFailure(errorMessage(error));
+    }
+  };
+
+  const deletePlan = async (id: string) => {
+    if (!window.confirm(es.installments.deleteAllConfirm)) return;
+    try {
+      await removePlan.mutateAsync(id);
+      void navigate('/movimientos');
     } catch (error) {
       setFailure(errorMessage(error));
     }
@@ -402,10 +425,10 @@ export function TransactionFormPage() {
                       ? es.transactions.split.balanced
                       : remainingCents > 0
                         ? es.transactions.split.missing(
-                            formatMoney(remainingCents, account?.currency ?? 'ARS'),
+                            formatMoney(remainingCents, account?.currency ?? DEFAULT_CURRENCY),
                           )
                         : es.transactions.split.excess(
-                            formatMoney(-remainingCents, account?.currency ?? 'ARS'),
+                            formatMoney(-remainingCents, account?.currency ?? DEFAULT_CURRENCY),
                           )}
                   </p>
                   <div className="flex gap-2">
@@ -457,6 +480,41 @@ export function TransactionFormPage() {
                 </Field>
               ) : null}
 
+              {canSplitInInstallments ? (
+                <Field label={es.installments.label} hint={es.installments.hint}>
+                  <Select value={installments} onChange={(event) => setInstallments(event.target.value)}>
+                    {INSTALLMENT_CHOICES.map((count) => (
+                      <option key={count} value={String(count)}>
+                        {count === 1 ? es.installments.single : es.installments.option(count)}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : null}
+
+              {existing.data?.installment ? (
+                <div className="rounded-lg border border-line bg-surface p-3 text-sm">
+                  <p className="font-medium">
+                    {es.transactions.installment(
+                      existing.data.installment.number,
+                      existing.data.installment.total,
+                    )}
+                    {existing.data.status === 'projected' ? ` · ${es.installments.projected}` : ''}
+                  </p>
+                  <p className="text-muted">{es.installments.editHint}</p>
+                  {planId ? (
+                    <Button
+                      variant="quiet"
+                      className="px-0 text-expense"
+                      disabled={removePlan.isPending}
+                      onClick={() => void deletePlan(planId)}
+                    >
+                      {es.installments.deleteAll}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+
               {isCard ? (
                 <Field
                   label={`${es.transactions.fields.paymentDate} (${es.common.optional})`}
@@ -471,7 +529,7 @@ export function TransactionFormPage() {
                 label={`${es.transactions.fields.description} (${es.common.optional})`}
                 error={errors.description?.message}
               >
-                <TextInput maxLength={200} {...form.register('description')} />
+                <TextInput maxLength={TEXT_LIMITS.description} {...form.register('description')} />
               </Field>
 
               <fieldset>
@@ -503,7 +561,7 @@ export function TransactionFormPage() {
                     aria-label={es.transactions.fields.newTag}
                     placeholder={es.transactions.fields.newTag}
                     value={newTag}
-                    maxLength={60}
+                    maxLength={TEXT_LIMITS.name}
                     onChange={(event) => setNewTag(event.target.value)}
                   />
                   <Button
@@ -520,7 +578,7 @@ export function TransactionFormPage() {
                 label={`${es.transactions.fields.note} (${es.common.optional})`}
                 error={errors.note?.message}
               >
-                <TextInput maxLength={1000} {...form.register('note')} />
+                <TextInput maxLength={TEXT_LIMITS.note} {...form.register('note')} />
               </Field>
 
               {type === 'transfer' ? null : (
@@ -530,7 +588,7 @@ export function TransactionFormPage() {
                     setItems(next);
                     setItemsTouched(true);
                   }}
-                  currency={account?.currency ?? existing.data?.currency ?? 'ARS'}
+                  currency={account?.currency ?? existing.data?.currency ?? DEFAULT_CURRENCY}
                   totalCents={totalCents > 0 ? totalCents : null}
                   error={itemsError}
                 />

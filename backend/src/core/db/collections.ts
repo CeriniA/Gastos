@@ -1,6 +1,7 @@
 /** Collection names, defined once so models and reference checks cannot drift. */
 export const COLLECTIONS = {
   accounts: 'accounts',
+  institutions: 'institutions',
   categories: 'categories',
   tags: 'tags',
   transactions: 'transactions',

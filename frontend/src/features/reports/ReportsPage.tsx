@@ -5,6 +5,7 @@ import {
   addMonthsToKey,
   formatDate,
   formatMoney,
+  formatQuantity,
   formatMonth,
   monthKeyOf,
   todayIso,
@@ -21,10 +22,6 @@ import { useConsumptionSearch, useConsumptionSummary } from './api';
 
 function groupLabel(group: ProductGroup | null): string {
   return group ? es.productGroups[group] : es.consumption.ungrouped;
-}
-
-function formatQuantity(quantity: number): string {
-  return quantity.toLocaleString('es-AR', { maximumFractionDigits: 3 });
 }
 
 /** One group: its share of the total as a bar, and its products when opened. */

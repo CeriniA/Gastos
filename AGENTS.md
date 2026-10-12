@@ -14,7 +14,10 @@ leé `docs/ARQUITECTURA.md` y `docs/ESPECIFICACION.md`. Estas reglas no son opci
 
 - Constantes, esquemas Zod y tipos se definen **una vez** en `shared/` y se importan desde ahí.
   No dupliques un enum, un tipo ni una validación en backend o frontend.
-- Dinero: entero en centavos. Solo `shared/src/money.ts` convierte, redondea o formatea.
+- Dinero: entero en centavos. Solo `shared/src/money.ts` convierte, redondea o formatea (también las
+  cantidades: `formatQuantity`).
+- Idioma de los números y la moneda por defecto: `APP_LOCALE` y `DEFAULT_CURRENCY` en
+  `shared/src/constants.ts`. No escribas `'es-AR'` ni `'ARS'` en otro lado.
 - Fechas: texto `YYYY-MM-DD`. Solo `shared/src/dates.ts` hace cuentas con fechas.
 - Variables de entorno: solo `backend/src/config/env.ts` lee `process.env`.
 - La fecha de pago la decide únicamente `resolvePaymentDate`.
@@ -33,6 +36,15 @@ leé `docs/ARQUITECTURA.md` y `docs/ESPECIFICACION.md`. Estas reglas no son opci
 - Un service no importa la base de datos: recibe `runInTransaction` igual que el resto de sus dependencias.
 - `npm run lint` hace cumplir estas reglas. Si el lint se queja de un import, el diseño está mal: no
   desactives la regla.
+
+## Frontend
+
+- Una pantalla que guarda algo usa `useAction()` (`frontend/src/shared/ui/useAction.ts`) para correr la
+  acción y mostrar el error; no escribas otro `try/catch` con su propio estado de error.
+- Las reglas de un formulario se validan con el esquema de `shared`, no con un `if` repetido en la pantalla.
+- Una lista de opciones que el usuario ve (cuotas, grupos, tipos) sale de una constante de `shared`.
+- `npm run lint` rechaza textos escritos en las pantallas y los valores `'es-AR'` o `'ARS'` sueltos en el
+  frontend.
 
 ## Integridad de datos
 
@@ -53,8 +65,11 @@ duplicado, movimiento fijo, unión de movimientos) se aplica sin confirmación d
 
 ## Antes de terminar un cambio
 
-1. `npm run check` pasa.
-2. Las reglas nuevas tienen prueba. Las de servicios se prueban con `createMemoryBackend()`
+1. `npm run check` pasa. Incluye `npm run audit:code` (`scripts/audit.mjs`), que rechaza código copiado
+   (8 líneas iguales en dos lugares), exports que nadie usa y números sueltos: un número con significado va
+   en una constante con nombre y un comentario que diga por qué vale eso.
+2. Las reglas nuevas tienen prueba. Para esperar un error usá `codeOf` de
+   `backend/src/testing/assertions.ts`. Las de servicios se prueban con `createMemoryBackend()`
    (`backend/src/testing/memory.ts`), sin base de datos; si agregás un método a un repositorio,
    agregalo también ahí.
 3. Si cambió una decisión, está anotada en `docs/DECISIONES.md`.

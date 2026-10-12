@@ -1,4 +1,5 @@
 import type { Migration } from '../core/db/migrations';
+import { defaultInstitutions } from './2026-10-12-default-institutions';
 
 /**
  * Add migrations here in order. Example:
@@ -10,4 +11,4 @@ import type { Migration } from '../core/db/migrations';
  *     },
  *   },
  */
-export const migrations: readonly Migration[] = [];
+export const migrations: readonly Migration[] = [defaultInstitutions];

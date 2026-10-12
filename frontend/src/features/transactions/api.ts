@@ -1,5 +1,8 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { DEFAULT_PAGE_SIZE } from '@gastos/shared';
 import type {
+  InstallmentPlanCreate,
+  InstallmentPlanResult,
   LastRate,
   ReferenceRate,
   MonthSummary,
@@ -20,16 +23,13 @@ export function useTransactions(query: Partial<TransactionListQuery>) {
   });
 }
 
-/** How many transactions each "load more" brings. */
-const PAGE_SIZE = 50;
-
 /** A filtered list that grows page by page. */
 export function useTransactionPages(filters: Omit<Partial<TransactionListQuery>, 'page' | 'pageSize'>) {
   return useInfiniteQuery({
     queryKey: [...KEY, 'pages', filters],
     queryFn: ({ pageParam }) =>
       api<Paginated<Transaction>>('/transactions', {
-        query: { ...filters, page: pageParam, pageSize: PAGE_SIZE },
+        query: { ...filters, page: pageParam, pageSize: DEFAULT_PAGE_SIZE },
       }),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page * last.pageSize < last.total ? last.page + 1 : undefined),
@@ -86,6 +86,18 @@ export function useTransactionMutations() {
     }),
     remove: useMutation({
       mutationFn: (id: string) => api<void>(`/transactions/${id}`, { method: 'DELETE' }),
+      onSuccess: refresh,
+    }),
+    /** A card purchase split into one transaction per month. */
+    createInstallments: useMutation({
+      mutationFn: (input: InstallmentPlanCreate) =>
+        api<InstallmentPlanResult>('/installment-plans', { method: 'POST', body: input }),
+      onSuccess: refresh,
+    }),
+    /** Sends every installment of a purchase to the trash. */
+    removePlan: useMutation({
+      mutationFn: (planId: string) =>
+        api<{ trashed: number }>(`/installment-plans/${planId}`, { method: 'DELETE' }),
       onSuccess: refresh,
     }),
     restore: useMutation({

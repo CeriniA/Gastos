@@ -34,6 +34,7 @@ export function TransactionRow({
     transaction.installment
       ? es.transactions.installment(transaction.installment.number, transaction.installment.total)
       : null,
+    transaction.status === 'projected' ? es.installments.projected : null,
   ].filter((part) => part && part !== title);
 
   return (

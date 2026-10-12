@@ -15,5 +15,3 @@ export const authStateRepository = {
     await AuthStateModel.updateOne({ _id: AUTH_STATE_ID }, { $set: { sessionsValidFrom } }, { upsert: true });
   },
 };
-
-export type AuthStateRepository = typeof authStateRepository;

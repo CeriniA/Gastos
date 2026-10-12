@@ -3,16 +3,22 @@ import {
   lastDayOfMonth,
   type Account,
   type CurrencyTotals,
+  type CardPeriod,
   type DocumentDetail,
+  type InstallmentPlan,
+  type Institution,
   type ExtractionResult,
   type Tag,
   type Transaction,
 } from '@gastos/shared';
 import type { DbSession, TransactionRunner } from '../core/db/transaction';
 import type { AccountsRepository } from '../modules/accounts/accounts.repository';
+import type { CardPeriodsRepository } from '../modules/card-periods/cardPeriods.repository';
 import type { CategoriesRepository, CategoryRow } from '../modules/categories/categories.repository';
 import type { CategoryRulesRepository, StoredRule } from '../modules/category-rules/categoryRules.repository';
 import type { DocumentsRepository, StoredFile } from '../modules/documents/documents.repository';
+import type { InstallmentPlansRepository } from '../modules/installment-plans/installmentPlans.repository';
+import type { InstitutionsRepository } from '../modules/institutions/institutions.repository';
 import type { TagsRepository } from '../modules/tags/tags.repository';
 import { duplicateKey } from '../modules/transactions/duplicateKey';
 import type { TransactionsRepository } from '../modules/transactions/transactions.repository';
@@ -30,6 +36,9 @@ import { wireServices } from '../wiring';
 
 interface Store {
   accounts: Account[];
+  institutions: Institution[];
+  cardPeriods: CardPeriod[];
+  installmentPlans: InstallmentPlan[];
   categories: CategoryRow[];
   tags: Tag[];
   transactions: Transaction[];
@@ -38,11 +47,25 @@ interface Store {
 }
 
 const STAMP = '2026-10-01T00:00:00.000Z';
+/** The only public rate the test backend knows: reais to pesos. */
+const TEST_BRL_ARS_RATE = 300;
 
 export function createMemoryBackend(today = '2026-10-10', options: { aiConfigured?: boolean } = {}) {
   /** The clock the services see. Tests move it forward to make waiting documents due. */
   const clock = { now: new Date(`${today}T12:00:00.000Z`) };
-  const store: Store = { accounts: [], categories: [], tags: [], transactions: [], rules: [], documents: [] };
+  /** The calendar day the services see. Tests move it to make installments come due. */
+  const calendar = { today };
+  const store: Store = {
+    accounts: [],
+    institutions: [],
+    cardPeriods: [],
+    installmentPlans: [],
+    categories: [],
+    tags: [],
+    transactions: [],
+    rules: [],
+    documents: [],
+  };
   /** Switches a test can flip to make a write fail, to check that work is rolled back. */
   const faults = { insertTransactions: false };
 
@@ -109,6 +132,11 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
       store.accounts[index] = next;
       return next;
     },
+    async countByInstitution(institutionId) {
+      return store.accounts.filter(
+        (account) => account.bankId === institutionId || account.networkId === institutionId,
+      ).length;
+    },
     async delete(id) {
       const before = store.accounts.length;
       store.accounts = store.accounts.filter((account) => account.id !== id);
@@ -117,6 +145,91 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
   };
   /** Normalised names, which the real repositories keep in a `nameKey` field. */
   const keys = new Map<string, string>();
+
+  const cardPeriods: CardPeriodsRepository = {
+    async findAll() {
+      return [...store.cardPeriods].sort((a, b) => b.closingDate.localeCompare(a.closingDate));
+    },
+    async findByAccount(accountId) {
+      return store.cardPeriods
+        .filter((period) => period.accountId === accountId)
+        .sort((a, b) => b.closingDate.localeCompare(a.closingDate));
+    },
+    async findById(id) {
+      return store.cardPeriods.find((period) => period.id === id) ?? null;
+    },
+    async create(accountId, data) {
+      const period: CardPeriod = { ...data, id: nextId(), accountId, documentId: null, ...stamps };
+      store.cardPeriods.push(period);
+      return period;
+    },
+    async update(id, changes) {
+      const index = store.cardPeriods.findIndex((period) => period.id === id);
+      const current = store.cardPeriods[index];
+      if (!current) return null;
+      const next = { ...current, ...changes };
+      store.cardPeriods[index] = next;
+      return next;
+    },
+    async delete(id) {
+      store.cardPeriods = store.cardPeriods.filter((period) => period.id !== id);
+    },
+    async countByAccount(accountId) {
+      return store.cardPeriods.filter((period) => period.accountId === accountId).length;
+    },
+  };
+
+  const installmentPlans: InstallmentPlansRepository = {
+    async findById(id) {
+      return store.installmentPlans.find((plan) => plan.id === id) ?? null;
+    },
+    async create(data) {
+      const plan: InstallmentPlan = { ...data, id: nextId(), ...stamps };
+      store.installmentPlans.push(plan);
+      return plan;
+    },
+    async countByAccount(accountId) {
+      return store.installmentPlans.filter((plan) => plan.accountId === accountId).length;
+    },
+  };
+
+  const institutions: InstitutionsRepository = {
+    async findAll() {
+      return [...store.institutions].sort(
+        (a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name),
+      );
+    },
+    async findById(id) {
+      return store.institutions.find((institution) => institution.id === id) ?? null;
+    },
+    async findByNameKey(kind, key) {
+      return (
+        store.institutions.find(
+          (institution) => institution.kind === kind && keys.get(institution.id) === key,
+        ) ?? null
+      );
+    },
+    async create(data) {
+      const { nameKey, ...rest } = data;
+      const institution: Institution = { ...rest, id: nextId(), archived: false, ...stamps };
+      keys.set(institution.id, nameKey);
+      store.institutions.push(institution);
+      return institution;
+    },
+    async update(id, changes) {
+      const index = store.institutions.findIndex((institution) => institution.id === id);
+      const current = store.institutions[index];
+      if (!current) return null;
+      const { nameKey, ...rest } = changes;
+      if (nameKey !== undefined) keys.set(id, nameKey);
+      const next = { ...current, ...rest };
+      store.institutions[index] = next;
+      return next;
+    },
+    async delete(id) {
+      store.institutions = store.institutions.filter((institution) => institution.id !== id);
+    },
+  };
 
   const categories: CategoriesRepository = {
     async findAll() {
@@ -310,6 +423,45 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
           : transaction,
       );
     },
+    async findPaymentDates(accountId) {
+      return store.transactions
+        .filter((transaction) => transaction.accountId === accountId)
+        .map(({ id, date, paymentDate }) => ({ id, date, paymentDate }));
+    },
+    async setPaymentDates(updates) {
+      const byId = new Map(updates.map((update) => [update.id, update.paymentDate]));
+      store.transactions = store.transactions.map((transaction) =>
+        byId.has(transaction.id) ? { ...transaction, paymentDate: byId.get(transaction.id)! } : transaction,
+      );
+    },
+    async findCharges(accountId) {
+      return store.transactions
+        .filter((transaction) => transaction.accountId === accountId && transaction.deletedAt === null)
+        .filter((transaction) => transaction.status !== 'draft' && transaction.type !== 'transfer')
+        .map((transaction) => ({
+          date: transaction.date,
+          paymentDate: transaction.paymentDate,
+          signedCents: transaction.type === 'expense' ? transaction.amountCents : -transaction.amountCents,
+        }));
+    },
+    async confirmProjectedUpTo(date) {
+      let count = 0;
+      store.transactions = store.transactions.map((transaction) => {
+        if (transaction.status !== 'projected' || transaction.date > date) return transaction;
+        count += 1;
+        return { ...transaction, status: 'confirmed' };
+      });
+      return count;
+    },
+    async trashByPlan(planId, deletedAt) {
+      let count = 0;
+      store.transactions = store.transactions.map((transaction) => {
+        if (transaction.installment?.planId !== planId || transaction.deletedAt !== null) return transaction;
+        count += 1;
+        return { ...transaction, deletedAt: deletedAt.toISOString() };
+      });
+      return count;
+    },
     async pullTag(tagId) {
       store.transactions = store.transactions.map((transaction) => ({
         ...transaction,
@@ -485,21 +637,33 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
   };
 
   const services = wireServices(
-    { accounts, categories, categoryRules, documents, tags, transactions },
+    {
+      accounts,
+      cardPeriods,
+      categories,
+      categoryRules,
+      documents,
+      installmentPlans,
+      institutions,
+      tags,
+      transactions,
+    },
     {
       runInTransaction,
-      today: () => today,
+      today: () => calendar.today,
       now: () => clock.now,
       extractor: options.aiConfigured === false ? null : extractor,
       rates: {
         // A fixed table instead of the network.
         reference: async (from, to) =>
-          from === 'BRL' && to === 'ARS' ? { rate: 300, from, to, asOf: today, source: 'test' } : null,
+          from === 'BRL' && to === 'ARS'
+            ? { rate: TEST_BRL_ARS_RATE, from, to, asOf: today, source: 'test' }
+            : null,
       },
       // Tests decide when the background work runs: await app.documents.processQueue().
       schedule: () => undefined,
       onError: (error, context) => errors.push({ error, context }),
     },
   );
-  return { ...services, store, faults, ai, errors, clock };
+  return { ...services, store, faults, ai, errors, clock, calendar };
 }

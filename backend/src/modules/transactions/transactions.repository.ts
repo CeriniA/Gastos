@@ -22,6 +22,18 @@ import { TransactionModel, type TransactionDoc } from './transactions.model';
 /** Everything the service decides about a transaction before it is stored. */
 export type TransactionRecord = Omit<Transaction, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>;
 
+export interface PaymentDateRow {
+  id: string;
+  date: string;
+  paymentDate: string;
+}
+
+export interface ChargeRow {
+  date: string;
+  paymentDate: string;
+  signedCents: number;
+}
+
 export type TransactionFilter = Omit<TransactionListQuery, 'categoryId'> & {
   /** A category together with its descendants. */
   categoryIds?: string[];
@@ -272,6 +284,72 @@ export const transactionsRepository = {
       { $set: { deletedAt, documentId: null } },
       { session: options.session },
     );
+  },
+
+  /** Date and payment date of every transaction of an account, the trash included. */
+  async findPaymentDates(accountId: string): Promise<PaymentDateRow[]> {
+    const docs = await TransactionModel.find(
+      { accountId: toObjectId(accountId) },
+      { date: 1, paymentDate: 1 },
+    ).lean<Pick<TransactionDoc, '_id' | 'date' | 'paymentDate'>[]>();
+    return docs.map((doc) => ({ id: doc._id.toString(), date: doc.date, paymentDate: doc.paymentDate }));
+  },
+
+  async setPaymentDates(
+    updates: readonly { id: string; paymentDate: string }[],
+    options: WriteOptions = {},
+  ): Promise<void> {
+    if (updates.length === 0) return;
+    await TransactionModel.bulkWrite(
+      updates.map((update) => ({
+        updateOne: {
+          filter: { _id: toObjectId(update.id) },
+          update: { $set: { paymentDate: update.paymentDate } },
+        },
+      })),
+      { session: options.session },
+    );
+  },
+
+  /**
+   * What each live purchase or credit adds to an account's bill: expenses
+   * positive, incomes (credits, refunds) negative. Projected installments
+   * count, drafts do not.
+   */
+  async findCharges(accountId: string): Promise<ChargeRow[]> {
+    const docs = await TransactionModel.find(
+      {
+        accountId: toObjectId(accountId),
+        deletedAt: null,
+        status: { $in: ['confirmed', 'projected'] },
+        type: { $in: ['expense', 'income'] },
+      },
+      { date: 1, paymentDate: 1, type: 1, amountCents: 1 },
+    ).lean<Pick<TransactionDoc, 'date' | 'paymentDate' | 'type' | 'amountCents'>[]>();
+    return docs.map((doc) => ({
+      date: doc.date,
+      paymentDate: doc.paymentDate,
+      signedCents: doc.type === 'expense' ? doc.amountCents : -doc.amountCents,
+    }));
+  },
+
+  /** Projected installments whose day has come become confirmed. Returns how many. */
+  async confirmProjectedUpTo(date: string): Promise<number> {
+    const result = await TransactionModel.updateMany(
+      { status: 'projected', date: { $lte: date } },
+      { $set: { status: 'confirmed' } },
+    );
+    return result.modifiedCount;
+  },
+
+  /** Sends to the trash every live transaction of an installment plan. Returns how many. */
+  async trashByPlan(planId: string, deletedAt: Date, options: WriteOptions = {}): Promise<number> {
+    const result = await TransactionModel.updateMany(
+      { 'installment.planId': toObjectId(planId), deletedAt: null },
+      { $set: { deletedAt } },
+      { session: options.session },
+    );
+    return result.modifiedCount;
   },
 
   async pullTag(tagId: string, options: WriteOptions = {}): Promise<void> {

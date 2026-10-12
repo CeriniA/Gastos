@@ -20,9 +20,12 @@ import { useMonthSummary, useTransactions } from '../transactions/api';
  * One currency's month: the balance, and a bar whose two parts are as wide
  * as income and expense are large, so the month reads at a glance.
  */
+/** With nothing in the month, the bar shows two equal halves. */
+const HALF_PERCENT = 50;
+
 function MonthBalance({ totals }: { totals: CurrencyTotals }) {
   const volume = totals.incomeCents + totals.expenseCents;
-  const incomeShare = volume === 0 ? 50 : Math.round((totals.incomeCents / volume) * 100);
+  const incomeShare = volume === 0 ? HALF_PERCENT : Math.round((totals.incomeCents / volume) * 100);
   const positive = totals.balanceCents >= 0;
   return (
     <Card>

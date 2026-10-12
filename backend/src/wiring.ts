@@ -2,6 +2,11 @@ import type { IsoDate } from '@gastos/shared';
 import type { TransactionRunner } from './core/db/transaction';
 import type { AccountsRepository } from './modules/accounts/accounts.repository';
 import { createAccountsService, type AccountsService } from './modules/accounts/accounts.service';
+import type { CardPeriodsRepository } from './modules/card-periods/cardPeriods.repository';
+import {
+  createCardPeriodsService,
+  type CardPeriodsService,
+} from './modules/card-periods/cardPeriods.service';
 import type { CategoriesRepository } from './modules/categories/categories.repository';
 import { createCategoriesService, type CategoriesService } from './modules/categories/categories.service';
 import type { CategoryRulesRepository } from './modules/category-rules/categoryRules.repository';
@@ -11,6 +16,16 @@ import {
 } from './modules/category-rules/categoryRules.service';
 import { createConsumptionService, type ConsumptionService } from './modules/consumption/consumption.service';
 import type { DocumentsRepository } from './modules/documents/documents.repository';
+import type { InstallmentPlansRepository } from './modules/installment-plans/installmentPlans.repository';
+import {
+  createInstallmentPlansService,
+  type InstallmentPlansService,
+} from './modules/installment-plans/installmentPlans.service';
+import type { InstitutionsRepository } from './modules/institutions/institutions.repository';
+import {
+  createInstitutionsService,
+  type InstitutionsService,
+} from './modules/institutions/institutions.service';
 import { createDocumentsService, type DocumentsService } from './modules/documents/documents.service';
 import {
   createExchangeRatesService,
@@ -29,9 +44,12 @@ import type { RateProvider } from './providers/rates/rateProvider';
 
 export interface Repositories {
   accounts: AccountsRepository;
+  cardPeriods: CardPeriodsRepository;
   categories: CategoriesRepository;
   categoryRules: CategoryRulesRepository;
   documents: DocumentsRepository;
+  installmentPlans: InstallmentPlansRepository;
+  institutions: InstitutionsRepository;
   tags: TagsRepository;
   transactions: TransactionsRepository;
 }
@@ -54,11 +72,14 @@ export interface Runtime {
 
 export interface Services {
   accounts: AccountsService;
+  cardPeriods: CardPeriodsService;
   categories: CategoriesService;
   categoryRules: CategoryRulesService;
   consumption: ConsumptionService;
   documents: DocumentsService;
   exchangeRates: ExchangeRatesService;
+  installmentPlans: InstallmentPlansService;
+  institutions: InstitutionsService;
   tags: TagsService;
   transactions: TransactionsService;
   spreadsheet: SpreadsheetService;
@@ -82,11 +103,37 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     listAccounts: () => accounts.list(),
     listCategories: (options) => categories.list(options),
     listTags: (options) => tags.list(options),
+    listCardPeriods: (options) => cardPeriods.listDates(options),
     today,
   });
 
   const accounts: AccountsService = createAccountsService(repositories.accounts, {
     countTransactions: transactions.countByAccount,
+    countCardPeriods: async (id) =>
+      (await cardPeriods.countByAccount(id)) + (await installmentPlans.countByAccount(id)),
+    findInstitution: (id) => institutions.find(id),
+  });
+
+  const cardPeriods: CardPeriodsService = createCardPeriodsService(repositories.cardPeriods, {
+    listAccounts: () => accounts.list(),
+    refreshPaymentDates: transactions.refreshPaymentDates,
+    listCharges: transactions.listCharges,
+    runInTransaction,
+  });
+
+  const installmentPlans: InstallmentPlansService = createInstallmentPlansService(
+    repositories.installmentPlans,
+    {
+      listAccounts: () => accounts.list(),
+      createTransactions: (entries, options) => transactions.createMany(entries, 'installment', options),
+      trashTransactions: transactions.trashByPlan,
+      today,
+      runInTransaction,
+    },
+  );
+
+  const institutions: InstitutionsService = createInstitutionsService(repositories.institutions, {
+    countAccounts: accounts.countByInstitution,
   });
 
   const categoryRules: CategoryRulesService = createCategoryRulesService(repositories.categoryRules, {
@@ -147,11 +194,14 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
 
   return {
     accounts,
+    cardPeriods,
     categories,
     categoryRules,
     consumption,
     documents,
     exchangeRates,
+    installmentPlans,
+    institutions,
     tags,
     transactions,
     spreadsheet,

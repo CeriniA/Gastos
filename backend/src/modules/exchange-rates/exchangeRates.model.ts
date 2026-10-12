@@ -13,10 +13,13 @@ export interface ExchangeRateDoc {
   updatedAt: Date;
 }
 
+/** A rate of zero would make every conversion zero. */
+const MIN_RATE = 0.0001;
+
 const schema = new Schema<ExchangeRateDoc>(
   {
     validFrom: { type: String, required: true, unique: true },
-    arsPerUsd: { type: Number, required: true, min: 0.0001 },
+    arsPerUsd: { type: Number, required: true, min: MIN_RATE },
   },
   { timestamps: true },
 );

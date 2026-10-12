@@ -1,4 +1,4 @@
-import type { UploadableDocumentKind } from '@gastos/shared';
+import { DOCUMENT_IMAGE_TYPES, type UploadableDocumentKind } from '@gastos/shared';
 
 /**
  * Shrinks a photo in the browser before uploading, so it travels fast on
@@ -9,7 +9,10 @@ import type { UploadableDocumentKind } from '@gastos/shared';
 /** Screenshots are tall and full of small text, so they keep more pixels. */
 const MAX_SIDE: Record<UploadableDocumentKind, number> = { receipt: 1800, screenshot: 2400 };
 const SMALL_ENOUGH_BYTES = 1_200_000;
-const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp'];
+/** Small text on receipts stays readable at this quality, at a fraction of the size. */
+const JPEG_QUALITY = 0.85;
+/** What the server accepts as it is; anything else is converted to JPEG. */
+const ACCEPTED: readonly string[] = DOCUMENT_IMAGE_TYPES;
 
 export async function compressImage(file: File, kind: UploadableDocumentKind): Promise<File> {
   if (ACCEPTED.includes(file.type) && file.size <= SMALL_ENOUGH_BYTES) return file;
@@ -24,7 +27,9 @@ export async function compressImage(file: File, kind: UploadableDocumentKind): P
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close();
 
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY),
+    );
     if (!blob) return file;
     // Keep the original when it is already an accepted type and no bigger.
     if (ACCEPTED.includes(file.type) && blob.size >= file.size) return file;

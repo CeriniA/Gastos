@@ -20,7 +20,6 @@ export const categoryUpdateSchema = z
 export type CategoryUpdate = z.infer<typeof categoryUpdateSchema>;
 
 export const categoryMergeSchema = z.object({ targetId: objectIdSchema });
-export type CategoryMerge = z.infer<typeof categoryMergeSchema>;
 
 export interface Category {
   id: string;

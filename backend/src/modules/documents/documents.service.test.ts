@@ -7,8 +7,8 @@ import {
   type ExtractedTransaction,
   type ExtractionResult,
 } from '@gastos/shared';
-import { AppError } from '../../core/errors/errors';
 import { extractionFailure } from '../../providers/ai/aiExtractor';
+import { codeOf } from '../../testing/assertions';
 import { createMemoryBackend } from '../../testing/memory';
 import { detectImageType } from './fileType';
 
@@ -22,16 +22,6 @@ const png = (label: string) =>
     Buffer.from(label.padEnd(16, '.')),
   ]);
 const photo = (label: string) => ({ originalName: `${label}.jpg`, content: jpeg(label) });
-
-async function codeOf(work: Promise<unknown>): Promise<string> {
-  try {
-    await work;
-  } catch (error) {
-    assert.ok(error instanceof AppError, `expected an AppError, got ${String(error)}`);
-    return error.code;
-  }
-  assert.fail('expected the operation to be rejected');
-}
 
 const read = (overrides: Partial<ExtractedTransaction> = {}): ExtractedTransaction => ({
   type: 'expense',

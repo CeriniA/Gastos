@@ -12,12 +12,20 @@ try {
   // No .env file: in production the variables come from the host.
 }
 
+/** Defaults for local development; Render sets its own port. */
+const DEFAULT_PORT = 4000;
+/** A shorter secret can be guessed; this is what HS256 tokens need. */
+const MIN_JWT_SECRET_LENGTH = 32;
+const DEFAULT_SESSION_DAYS = 30;
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(4000),
+  PORT: z.coerce.number().int().positive().default(DEFAULT_PORT),
   MONGODB_URI: z.string().min(1),
-  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
-  JWT_EXPIRES_DAYS: z.coerce.number().int().positive().default(30),
+  JWT_SECRET: z
+    .string()
+    .min(MIN_JWT_SECRET_LENGTH, `JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters`),
+  JWT_EXPIRES_DAYS: z.coerce.number().int().positive().default(DEFAULT_SESSION_DAYS),
   AUTH_USERNAME: z.string().min(1),
   AUTH_PASSWORD_HASH: z.string().regex(/^\$2[aby]\$/, 'AUTH_PASSWORD_HASH must be a bcrypt hash'),
   CORS_ORIGIN: z

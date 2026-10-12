@@ -114,12 +114,20 @@ Cada decisión tomada en el diseño, con su motivo. Una decisión nueva o que ca
 | Los productos no tienen que sumar el total del movimiento                                                                | Los tickets traen descuentos, recargos y renglones que no son productos; se avisa la diferencia, no se bloquea                                         |
 | Un documento sin cupo de IA espera y se reintenta solo, sin estado nuevo                                                 | Sigue "procesando" con una hora de reintento; no hizo falta cambiar los estados ni migrar datos                                                        |
 | Esperas de 1, 5, 15, 30, 60, 120, 240 y 480 minutos                                                                      | Cubren tanto el límite por minuto como el diario sin insistirle a la IA; unas 16 horas en total                                                        |
+| Una tarjeta con pesos y dólares son dos cuentas                                                                          | Cada cuenta sigue teniendo una sola moneda: no cambian saldos, informes ni importación                                                                 |
+| Los cierres se guardan por cuenta; al cargar uno se ofrece aplicarlo a las otras tarjetas del mismo banco y marca        | Simple y explícito: no hay que modelar "una tarjeta con varias cuentas"                                                                                |
+| La fecha de pago de una compra con tarjeta la decide el primer cierre igual o posterior a su fecha                       | Es la regla del resumen; con cierres cargados gana sobre la fecha escrita a mano                                                                       |
+| Cambiar o borrar un cierre recalcula las compras de esa tarjeta en la misma operación                                    | La fecha de pago es un dato guardado (para filtrar por mes) y no puede quedar desactualizada                                                           |
+| Bancos y marcas son una lista editable, sembrada con los comunes por una migración                                       | Se eligen en vez de escribirse, sin quedar atados a una lista fija                                                                                     |
+| Las cuotas futuras se guardan como proyectadas y se confirman solas al llegar su fecha                                   | Se ven y suman en el resumen de la tarjeta, pero el balance del mes solo cuenta lo que ya pasó                                                         |
+| Los centavos que no dividen exacto y los productos van en la primera cuota                                               | Como suelen hacerlo los emisores; el consumo no cuenta el mismo producto varias veces                                                                  |
+| Borrar una compra en cuotas manda las cuotas a la papelera y conserva el plan                                            | Una cuota restaurada sigue apuntando a un plan que existe                                                                                              |
+| Una devolución es un egreso marcado, con monto positivo, que resta                                                       | Resta en su categoría como pidió el usuario, sin montos negativos que rompan las validaciones (pendiente de programar)                                 |
 
 ## Abiertas
 
-| Tema                                                           | Cuándo se define               |
-| -------------------------------------------------------------- | ------------------------------ |
-| Cómo guardar una devolución (hoy el monto es siempre positivo) | Al empezar la etapa 3          |
-| Contrato exacto de la IA por tipo de documento                 | Etapa 2, con documentos reales |
-| Margen de días para considerar duplicada una compra            | Etapa 3                        |
-| Qué cotización usar como referencia                            | La carga el usuario a mano     |
+| Tema                                                | Cuándo se define               |
+| --------------------------------------------------- | ------------------------------ |
+| Contrato exacto de la IA por tipo de documento      | Etapa 2, con documentos reales |
+| Margen de días para considerar duplicada una compra | Etapa 3                        |
+| Qué cotización usar como referencia                 | La carga el usuario a mano     |

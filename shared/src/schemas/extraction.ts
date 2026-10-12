@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { DOCUMENT_KINDS, TRANSACTION_TYPES } from '../constants';
+import { DOCUMENT_KINDS, MAX_DOCUMENT_TRANSACTIONS, TEXT_LIMITS, TRANSACTION_TYPES } from '../constants';
 import { currencyCodeSchema, isoDateSchema, objectIdSchema } from './common';
-import { MAX_TRANSACTION_ITEMS, transactionItemSchema, type TransactionItem } from './transaction';
+import { MAX_TRANSACTION_ITEMS, transactionItemSchema } from './transaction';
 
 /**
  * Contract between the app and whatever AI reads a document.
@@ -11,7 +11,9 @@ import { MAX_TRANSACTION_ITEMS, transactionItemSchema, type TransactionItem } fr
  * Every field the model may fail to read is nullable: a missing value becomes
  * a flagged field in the review screen, never a guess.
  */
-export const EXTRACTION_CONTRACT_VERSION = 0;
+/** What the AI may add as remarks about a document. */
+export const MAX_WARNINGS = 50;
+export const MAX_WARNING_LENGTH = 300;
 
 /** Fields the review screen can flag as doubtful. */
 export const UNCERTAIN_FIELDS = [
@@ -27,7 +29,6 @@ export type UncertainField = (typeof UNCERTAIN_FIELDS)[number];
 
 /** A line of a receipt as the AI reads it: the same shape a transaction stores. */
 export const extractedItemSchema = transactionItemSchema;
-export type ExtractedItem = TransactionItem;
 
 export const extractedTransactionSchema = z.object({
   type: z.enum(TRANSACTION_TYPES),
@@ -35,8 +36,8 @@ export const extractedTransactionSchema = z.object({
   amountCents: z.number().int().positive().nullable(),
   /** The currency printed on the document. It may be one the app has no accounts in (BRL, EUR). */
   currency: currencyCodeSchema.nullable(),
-  merchant: z.string().max(200),
-  description: z.string().max(200),
+  merchant: z.string().max(TEXT_LIMITS.description),
+  description: z.string().max(TEXT_LIMITS.description),
   /** Must be one of the user's existing categories; the model cannot invent one. */
   suggestedCategoryId: objectIdSchema.nullable(),
   installment: z.object({ number: z.number().int().min(1), total: z.number().int().min(1) }).nullable(),
@@ -54,14 +55,13 @@ export const extractedStatementSchema = z.object({
   minimumPaymentCents: z.number().int().nullable(),
   currency: currencyCodeSchema.nullable(),
 });
-export type ExtractedStatement = z.infer<typeof extractedStatementSchema>;
 
 export const extractionResultSchema = z.object({
   documentKind: z.enum(DOCUMENT_KINDS),
-  transactions: z.array(extractedTransactionSchema).max(500),
+  transactions: z.array(extractedTransactionSchema).max(MAX_DOCUMENT_TRANSACTIONS),
   /** Card statements only (stage 3). */
   statement: extractedStatementSchema.nullable(),
-  warnings: z.array(z.string().max(300)).max(50),
+  warnings: z.array(z.string().max(MAX_WARNING_LENGTH)).max(MAX_WARNINGS),
 });
 export type ExtractionResult = z.infer<typeof extractionResultSchema>;
 

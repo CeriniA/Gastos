@@ -11,6 +11,56 @@ export const DEFAULT_TIMEZONE = 'America/Argentina/Buenos_Aires';
 export const CURRENCIES = ['ARS', 'USD'] as const;
 export type Currency = (typeof CURRENCIES)[number];
 
+/** The currency to assume when nothing says otherwise (a new account, a screen without one). */
+export const DEFAULT_CURRENCY: Currency = 'ARS';
+
+/** How long each kind of text the user types can be. Schemas, screens and the AI cleanup share them. */
+export const TEXT_LIMITS = {
+  /** Accounts, categories, tags, banks; also a search. */
+  name: 60,
+  /** Description, merchant, a receipt line. */
+  description: 200,
+  note: 1000,
+  /** Generic product name ("Yerba"). */
+  product: 80,
+} as const;
+
+/** Largest quantity a receipt line can carry (units, kilos or litres). */
+export const MAX_ITEM_QUANTITY = 100_000;
+
+/** Most installments a purchase can be split in. */
+export const MAX_INSTALLMENTS = 60;
+
+/** Most tags on one transaction, and most parts a transaction can be split in. */
+export const MAX_TAGS = 20;
+export const MAX_SPLITS = 20;
+
+/** Most transactions one document can bring. */
+export const MAX_DOCUMENT_TRANSACTIONS = 500;
+
+/** Transactions a list page returns at once: by default, and at most. */
+export const DEFAULT_PAGE_SIZE = 50;
+export const MAX_PAGE_SIZE = 200;
+
+/** Largest amount accepted, in cents: far above any real purchase, so a typo with extra zeros is caught. */
+export const MAX_AMOUNT_CENTS = 1_000_000_000_000;
+
+/** Largest exchange rate accepted (units of the account currency per unit of the other). */
+export const MAX_RATE = 1_000_000_000;
+
+/** Longest username and password the login accepts. */
+export const MAX_USERNAME_LENGTH = 100;
+export const MAX_PASSWORD_LENGTH = 200;
+
+/** Decimals kept in an exchange rate. */
+export const RATE_DECIMALS = 6;
+
+/** How much of a technical error is kept for the logs. */
+export const MAX_ERROR_DETAIL = 500;
+
+/** How numbers, money and dates are written for the user. */
+export const APP_LOCALE = 'es-AR';
+
 export const TRANSACTION_TYPES = ['income', 'expense', 'transfer'] as const;
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 
@@ -20,6 +70,34 @@ export type CategoryKind = (typeof CATEGORY_KINDS)[number];
 
 export const ACCOUNT_TYPES = ['cash', 'bank', 'wallet', 'credit_card'] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
+
+/** Who issues an account (a bank) and, for a card, its brand (a network). */
+export const INSTITUTION_KINDS = ['bank', 'network'] as const;
+export type InstitutionKind = (typeof INSTITUTION_KINDS)[number];
+
+/** Loaded once so the lists start useful; the user adds, renames or archives from there. */
+export const DEFAULT_INSTITUTIONS: Record<InstitutionKind, readonly string[]> = {
+  bank: [
+    'Banco Nación',
+    'Banco Provincia',
+    'Banco Ciudad',
+    'Galicia',
+    'Santander',
+    'BBVA',
+    'Macro',
+    'ICBC',
+    'Credicoop',
+    'Patagonia',
+    'Supervielle',
+    'Comafi',
+    'Hipotecario',
+    'Brubank',
+    'Naranja X',
+    'Mercado Pago',
+    'Ualá',
+  ],
+  network: ['Visa', 'Mastercard', 'American Express', 'Cabal', 'Naranja'],
+};
 
 /**
  * draft: extracted by the AI, waiting for the user's review.

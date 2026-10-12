@@ -99,3 +99,37 @@ export function PageTitle({ children, action }: { children: ReactNode; action?: 
     </header>
   );
 }
+
+/** A row of mutually exclusive choices that switches what the screen shows below it. */
+export function Tabs<T extends string>({
+  options,
+  value,
+  label,
+  onChange,
+}: {
+  options: readonly T[];
+  value: T;
+  label: (option: T) => string;
+  onChange: (option: T) => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      className="mb-4 grid gap-1 rounded-lg border border-line bg-surface p-1"
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+    >
+      {options.map((option) => (
+        <button
+          key={option}
+          role="tab"
+          type="button"
+          aria-selected={value === option}
+          onClick={() => onChange(option)}
+          className={`min-h-10 rounded-md text-sm font-semibold ${value === option ? 'bg-income text-surface' : 'text-muted'}`}
+        >
+          {label(option)}
+        </button>
+      ))}
+    </div>
+  );
+}

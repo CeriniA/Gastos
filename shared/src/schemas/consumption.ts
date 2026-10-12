@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ProductGroup } from '../constants';
+import { TEXT_LIMITS, type ProductGroup } from '../constants';
 import { isoDateSchema, monthKeySchema } from './common';
 
 /**
@@ -9,7 +9,7 @@ import { isoDateSchema, monthKeySchema } from './common';
 export const consumptionSummaryQuerySchema = z.object({ month: monthKeySchema });
 
 export const consumptionSearchQuerySchema = z.object({
-  q: z.string().trim().min(2).max(60),
+  q: z.string().trim().min(2).max(TEXT_LIMITS.name),
   from: isoDateSchema.optional(),
   to: isoDateSchema.optional(),
 });

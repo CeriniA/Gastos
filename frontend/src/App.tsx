@@ -2,12 +2,14 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AccountsPage } from './features/accounts/AccountsPage';
 import { useAuth } from './features/auth/AuthContext';
 import { LoginPage } from './features/auth/LoginPage';
+import { CardsPage } from './features/cards/CardsPage';
 import { CategoriesPage } from './features/categories/CategoriesPage';
 import { DataPage } from './features/data/DataPage';
 import { AddPage } from './features/documents/AddPage';
 import { PendingPage } from './features/documents/PendingPage';
 import { ReviewPage } from './features/documents/ReviewPage';
 import { HomePage } from './features/home/HomePage';
+import { InstitutionsPage } from './features/institutions/InstitutionsPage';
 import { MorePage } from './features/more/MorePage';
 import { ReportsPage } from './features/reports/ReportsPage';
 import { TagsPage } from './features/tags/TagsPage';
@@ -35,6 +37,8 @@ export function App() {
         <Route path="mas" element={<MorePage />} />
         <Route path="mas/cuentas" element={<AccountsPage />} />
         <Route path="mas/categorias" element={<CategoriesPage />} />
+        <Route path="mas/tarjetas" element={<CardsPage />} />
+        <Route path="mas/bancos" element={<InstitutionsPage />} />
         <Route path="mas/etiquetas" element={<TagsPage />} />
         <Route path="mas/papelera" element={<TrashPage />} />
         <Route path="mas/datos" element={<DataPage />} />

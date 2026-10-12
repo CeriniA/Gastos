@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import {
+  MAX_ITEM_QUANTITY,
+  MAX_RATE,
+  MAX_SPLITS,
+  MAX_TAGS,
   PRODUCT_GROUPS,
+  TEXT_LIMITS,
   TRANSACTION_SOURCES,
   TRANSACTION_TYPES,
   type Currency,
@@ -29,7 +34,7 @@ export const originalAmountSchema = z.object({
   amountCents: amountCentsSchema,
   currency: currencyCodeSchema,
   /** Units of the account's currency per one unit of the original currency. */
-  rate: z.number().positive().max(1_000_000_000),
+  rate: z.number().positive().max(MAX_RATE),
 });
 export type OriginalAmount = z.infer<typeof originalAmountSchema>;
 
@@ -41,13 +46,13 @@ export type OriginalAmount = z.infer<typeof originalAmountSchema>;
  * are read. The amount may be negative: a discount is a line too.
  */
 export const transactionItemSchema = z.object({
-  name: z.string().trim().max(200),
+  name: z.string().trim().max(TEXT_LIMITS.description),
   amountCents: z.number().int(),
   /** Generic name without brand or size, e.g. "Yerba". Empty when unknown. */
-  product: z.string().trim().max(80).default(''),
+  product: z.string().trim().max(TEXT_LIMITS.product).default(''),
   group: z.enum(PRODUCT_GROUPS).nullable().default(null),
   /** Units, kilos or litres. Null when unknown. */
-  quantity: z.number().positive().max(100_000).nullable().default(null),
+  quantity: z.number().positive().max(MAX_ITEM_QUANTITY).nullable().default(null),
 });
 export type TransactionItem = z.infer<typeof transactionItemSchema>;
 
@@ -65,11 +70,11 @@ const fields = {
   currency: currencySchema,
   accountId: objectIdSchema,
   categoryId: objectIdSchema.nullable(),
-  description: z.string().trim().max(200),
-  note: z.string().trim().max(1000),
-  tagIds: z.array(objectIdSchema).max(20),
+  description: z.string().trim().max(TEXT_LIMITS.description),
+  note: z.string().trim().max(TEXT_LIMITS.note),
+  tagIds: z.array(objectIdSchema).max(MAX_TAGS),
   /** One receipt divided across categories. Must add up to amountCents. */
-  splits: z.array(splitSchema).max(20),
+  splits: z.array(splitSchema).max(MAX_SPLITS),
   /** Transfers only. */
   toAccountId: objectIdSchema.nullable(),
   /** Transfers between accounts of different currencies only. */

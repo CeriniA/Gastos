@@ -1,17 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { AppError, NotFoundError } from '../../core/errors/errors';
+import { NotFoundError } from '../../core/errors/errors';
+import { codeOf } from '../../testing/assertions';
 import { createMemoryBackend } from '../../testing/memory';
-
-async function codeOf(work: Promise<unknown>): Promise<string> {
-  try {
-    await work;
-  } catch (error) {
-    assert.ok(error instanceof AppError, `expected an AppError, got ${String(error)}`);
-    return error.code;
-  }
-  assert.fail('expected the operation to be rejected');
-}
 
 async function tree() {
   const app = createMemoryBackend();

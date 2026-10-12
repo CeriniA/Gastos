@@ -14,11 +14,14 @@ import { errorHandler, notFoundHandler } from './core/middleware/errorHandler';
 import { createAccountsRouter } from './modules/accounts';
 import { createAuthRouter } from './modules/auth';
 import { createBackupRouter } from './modules/backup';
+import { createCardPeriodsRouter } from './modules/card-periods';
 import { createCategoriesRouter } from './modules/categories';
 import { createCategoryRulesRouter } from './modules/category-rules';
 import { createConsumptionRouter } from './modules/consumption';
 import { createDocumentsRouter } from './modules/documents';
 import { createExchangeRatesRouter } from './modules/exchange-rates';
+import { createInstallmentPlansRouter } from './modules/installment-plans';
+import { createInstitutionsRouter } from './modules/institutions';
 import { createSpreadsheetRouter } from './modules/spreadsheet';
 import { createTagsRouter } from './modules/tags';
 import { createTransactionsRouter } from './modules/transactions';
@@ -53,6 +56,9 @@ export function createApp(container: Container, env: Env): Express {
   // bodies (backup restore, import) declare their own parser and limit.
   const json = express.json({ limit: '200kb' });
   api.use('/accounts', json, createAccountsRouter(container.accounts));
+  api.use('/card-periods', json, createCardPeriodsRouter(container.cardPeriods));
+  api.use('/installment-plans', json, createInstallmentPlansRouter(container.installmentPlans));
+  api.use('/institutions', json, createInstitutionsRouter(container.institutions));
   api.use('/categories', json, createCategoriesRouter(container.categories));
   api.use('/tags', json, createTagsRouter(container.tags));
   api.use('/transactions', json, createTransactionsRouter(container.transactions));

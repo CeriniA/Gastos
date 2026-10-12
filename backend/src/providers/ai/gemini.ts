@@ -1,3 +1,4 @@
+import { MAX_ERROR_DETAIL } from '@gastos/shared';
 import { extractionFailure, type AiExtractor, type ExtractionInput } from './aiExtractor';
 import { normalizeExtraction } from './normalize';
 import { PROMPT_VERSION, buildPrompt } from './prompt';
@@ -22,6 +23,8 @@ export interface GeminiOptions {
 }
 
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
+/** A long receipt in several photos can take a while to read. */
+const DEFAULT_TIMEOUT_MS = 90_000;
 /** Waits before retrying a rate-limited or overloaded request. */
 const RETRY_DELAYS_MS = [2_000, 6_000];
 
@@ -41,7 +44,7 @@ export function createGeminiExtractor(options: GeminiOptions): AiExtractor {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': options.apiKey },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(options.timeoutMs ?? 90_000),
+        signal: AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS),
       });
     } catch (error) {
       throw extractionFailure('unavailable', 'Could not reach the AI service', { cause: String(error) });
@@ -80,7 +83,7 @@ export function createGeminiExtractor(options: GeminiOptions): AiExtractor {
       }
 
       const status = response.status;
-      const detail = (await response.text().catch(() => '')).slice(0, 500);
+      const detail = (await response.text().catch(() => '')).slice(0, MAX_ERROR_DETAIL);
       if (status === 400 && 'generationConfig' in body) {
         body = { contents };
         continue;

@@ -1,4 +1,4 @@
-import type { Currency } from './constants';
+import { APP_LOCALE, RATE_DECIMALS, type Currency } from './constants';
 
 /**
  * Money is always an integer number of cents. This module is the only place
@@ -64,7 +64,7 @@ export function centsToNumber(cents: number): number {
 }
 
 /** "$ 15.400,50" / "US$ 100,00" / "R$ 50,00" for display. Accepts any ISO 4217 code. */
-export function formatMoney(cents: number, currency: Currency | string, locale = 'es-AR'): string {
+export function formatMoney(cents: number, currency: Currency | string, locale = APP_LOCALE): string {
   return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
 }
 
@@ -94,7 +94,21 @@ export function convertCents(cents: number, rate: number): number {
  * instead of the rate typed, so it stays true when the total is corrected.
  */
 export function impliedRate(amountCents: number, originalCents: number): number {
-  return Number((amountCents / originalCents).toFixed(6));
+  return Number((amountCents / originalCents).toFixed(RATE_DECIMALS));
+}
+
+/**
+ * A total divided in equal installments, in whole cents. The cents that do
+ * not divide evenly go to the first one, as card issuers usually do.
+ */
+export function splitInstallments(totalCents: number, count: number): number[] {
+  const base = Math.floor(totalCents / count);
+  return Array.from({ length: count }, (_, index) => (index === 0 ? totalCents - base * (count - 1) : base));
+}
+
+/** A quantity as printed for the user: "1,5", "0,35", "12". */
+export function formatQuantity(quantity: number): string {
+  return quantity.toLocaleString(APP_LOCALE, { maximumFractionDigits: 3 });
 }
 
 export function sumCents(values: readonly number[]): number {

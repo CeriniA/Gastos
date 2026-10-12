@@ -128,6 +128,8 @@ src/
 
 - Los datos del servidor tienen una sola copia: la caché de TanStack Query.
 - Las pantallas validan con los esquemas de `shared` y muestran los mensajes de `es.ts`.
+- Toda acción que guarda algo pasa por `useAction()` (`shared/ui/useAction.ts`): un solo lugar decide cómo
+  se muestra un error.
 - `shared/` no importa de `features/`.
 
 ## Cómo agregar un módulo

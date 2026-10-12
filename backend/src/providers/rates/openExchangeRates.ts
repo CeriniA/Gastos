@@ -26,10 +26,15 @@ interface ApiResponse {
   rates?: Record<string, number>;
 }
 
+/** Public rates change once a day; asking more often only spends the free quota. */
+const DEFAULT_CACHE_MS = 6 * 60 * 60 * 1000;
+/** A reference rate is a convenience: better none than a slow review screen. */
+const TIMEOUT_MS = 8_000;
+
 export function createOpenExchangeRates(options: OpenExchangeRatesOptions = {}): RateProvider {
   const doFetch = options.fetch ?? fetch;
   const now = options.now ?? Date.now;
-  const cacheMs = options.cacheMs ?? 6 * 60 * 60 * 1000;
+  const cacheMs = options.cacheMs ?? DEFAULT_CACHE_MS;
   const cache = new Map<string, { at: number; asOf: string; rates: Record<string, number> }>();
 
   async function load(base: string) {
@@ -37,7 +42,7 @@ export function createOpenExchangeRates(options: OpenExchangeRatesOptions = {}):
     if (cached && now() - cached.at < cacheMs) return cached;
     try {
       const response = await doFetch(`${ENDPOINT}/${encodeURIComponent(base)}`, {
-        signal: AbortSignal.timeout(8_000),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
       });
       if (!response.ok) return null;
       const data = (await response.json()) as ApiResponse;

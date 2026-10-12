@@ -8,12 +8,13 @@ import { migrations } from './migrations';
 import { accountsPort, accountsRepository } from './modules/accounts';
 import { authStateRepository, createAuthService, type AuthService } from './modules/auth';
 import { createBackupService, type BackupService } from './modules/backup';
-import { cardPeriodsPort } from './modules/card-periods';
+import { cardPeriodsPort, cardPeriodsRepository } from './modules/card-periods';
 import { categoriesPort, categoriesRepository } from './modules/categories';
 import { categoryRulesPort, categoryRulesRepository } from './modules/category-rules';
 import { documentsPort, documentsRepository } from './modules/documents';
 import { exchangeRatesPort } from './modules/exchange-rates';
-import { installmentPlansPort } from './modules/installment-plans';
+import { installmentPlansPort, installmentPlansRepository } from './modules/installment-plans';
+import { institutionsPort, institutionsRepository } from './modules/institutions';
 import { recurringsPort } from './modules/recurrings';
 import { tagsPort, tagsRepository } from './modules/tags';
 import { transactionsPort, transactionsRepository } from './modules/transactions';
@@ -31,6 +32,7 @@ export interface Container extends Services {
  * collection into the backup, the restore and the integrity check.
  */
 const collectionPorts: readonly CollectionPort[] = [
+  institutionsPort,
   accountsPort,
   categoriesPort,
   tagsPort,
@@ -57,9 +59,12 @@ export function createContainer(env: Env): Container {
   const services = wireServices(
     {
       accounts: accountsRepository,
+      cardPeriods: cardPeriodsRepository,
       categories: categoriesRepository,
       categoryRules: categoryRulesRepository,
       documents: documentsRepository,
+      installmentPlans: installmentPlansRepository,
+      institutions: institutionsRepository,
       tags: tagsRepository,
       transactions: transactionsRepository,
     },

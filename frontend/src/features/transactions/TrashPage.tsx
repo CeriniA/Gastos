@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { formatDate, formatMoney, type Account, type Category, type Transaction } from '@gastos/shared';
 import { errorMessage } from '../../shared/api/errors';
 import { es } from '../../shared/i18n/es';
+import { useAction } from '../../shared/ui/useAction';
 import { Button, Loading, Notice, PageTitle } from '../../shared/ui/ui';
 import { useAccounts } from '../accounts/api';
 import { useCategories } from '../categories/api';
@@ -55,17 +55,8 @@ export function TrashPage() {
   const accounts = useAccounts();
   const categories = useCategories();
   const { restore, removeForever, emptyTrash } = useTransactionMutations();
-  const [failure, setFailure] = useState<string | null>(null);
+  const { failure, run } = useAction();
   const busy = restore.isPending || removeForever.isPending || emptyTrash.isPending;
-
-  const run = async (work: () => Promise<unknown>) => {
-    setFailure(null);
-    try {
-      await work();
-    } catch (error) {
-      setFailure(errorMessage(error));
-    }
-  };
 
   if (trash.isPending) return <Loading />;
   if (trash.error) return <Notice tone="error">{errorMessage(trash.error)}</Notice>;

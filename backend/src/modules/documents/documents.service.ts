@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import {
   DOCUMENT_RETRY_DELAYS_MINUTES,
+  MAX_ERROR_DETAIL,
+  TEXT_LIMITS,
   TRANSIENT_DOCUMENT_ERRORS,
   PENDING_DOCUMENT_RETENTION_DAYS,
   MAX_DOCUMENT_BYTES,
@@ -30,6 +32,8 @@ import { extractionFailure, failureReason, type AiExtractor } from '../../provid
 import type { DocumentsRepository, StoredFile } from './documents.repository';
 import { detectImageType } from './fileType';
 import { applyCategorySuggestions } from './suggestions';
+
+const MINUTE_MS = 60_000;
 
 /** What the documents module needs from the rest of the app. */
 export interface DocumentDependencies {
@@ -127,7 +131,8 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
     return { ...document, duplicateHints: await duplicateHints(document) };
   }
 
-  const detailOf = (error: unknown) => String(error instanceof Error ? error.message : error).slice(0, 500);
+  const detailOf = (error: unknown) =>
+    String(error instanceof Error ? error.message : error).slice(0, MAX_ERROR_DETAIL);
 
   async function fail(id: string, errorCode: DocumentErrorCode, error: unknown): Promise<void> {
     deps.onError(error, { documentId: id, errorCode });
@@ -155,7 +160,7 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
     await repository.update(document.id, {
       errorCode,
       errorDetail: detailOf(error),
-      retryAt: new Date(deps.now().getTime() + delay * 60_000).toISOString(),
+      retryAt: new Date(deps.now().getTime() + delay * MINUTE_MS).toISOString(),
       waits: document.waits + 1,
       countAttempt: true,
     });
@@ -307,7 +312,7 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
 
       const created = await repository.create({
         kind: input.kind,
-        fileName: uploads[0]?.originalName.slice(0, 200) || 'document',
+        fileName: uploads[0]?.originalName.slice(0, TEXT_LIMITS.description) || 'document',
         sha256,
         accountId: input.accountId ?? null,
         files,

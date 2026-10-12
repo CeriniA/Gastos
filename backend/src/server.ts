@@ -8,6 +8,8 @@ import { migrations } from './migrations';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
+/** Time given to finish open requests on shutdown before forcing the exit. */
+const SHUTDOWN_GRACE_MS = 10_000;
 
 async function main(): Promise<void> {
   await connectDatabase(env.MONGODB_URI);
@@ -23,6 +25,8 @@ async function main(): Promise<void> {
     try {
       const purged = await container.transactions.purgeTrash();
       if (purged > 0) logger.info({ purged }, 'Trash purged');
+      const due = await container.transactions.confirmDue();
+      if (due > 0) logger.info({ due }, 'Installments due confirmed');
       const dropped = await container.documents.purgeStale();
       if (dropped > 0) logger.info({ dropped }, 'Unreviewed uploads dropped');
     } catch (error) {
@@ -48,7 +52,7 @@ async function main(): Promise<void> {
     server.close(() => {
       void disconnectDatabase().finally(() => process.exit(0));
     });
-    setTimeout(() => process.exit(1), 10_000).unref();
+    setTimeout(() => process.exit(1), SHUTDOWN_GRACE_MS).unref();
   };
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));

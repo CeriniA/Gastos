@@ -33,7 +33,7 @@ export function AppShell() {
         <Outlet />
       </main>
       <nav
-        aria-label="Principal"
+        aria-label={es.nav.main}
         className="fixed inset-x-0 bottom-0 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)]"
       >
         <div className="mx-auto flex max-w-xl items-center px-2">

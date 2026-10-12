@@ -3,10 +3,18 @@
 App web personal para llevar ingresos y egresos: carga manual, fotos de tickets, capturas de
 MercadoLibre/MercadoPago y resúmenes de tarjeta leídos con IA, en pesos y dólares.
 
-Este repositorio es la **base del proyecto** (etapa 1 de `docs/ROADMAP.md`): estructura, capas,
-esquemas compartidos, login, cuentas, categorías, etiquetas, movimientos manuales, balance del mes,
-respaldo completo, exportación e importación de planillas. La lectura con IA, las tarjetas, las cuotas
-y los informes se construyen sobre esto en las etapas siguientes.
+Qué hace hoy (el detalle, en `docs/ROADMAP.md`):
+
+- Cuentas, categorías en árbol, etiquetas, bancos y marcas de tarjeta; movimientos manuales con división
+  entre categorías, productos, buscador, filtros y papelera.
+- Lectura de tickets y capturas con IA (Gemini), con revisión antes de guardar, conversión de otras
+  monedas y reintento automático cuando la IA se queda sin cupo.
+- Consumo por producto.
+- Tarjetas: cierres y vencimientos cargados a mano, fecha de pago calculada por el resumen y compras en
+  cuotas.
+- Balance del mes por moneda, respaldo completo, exportación e importación de planillas.
+
+Falta: leer resúmenes de tarjeta en PDF, devoluciones, informes y movimientos fijos.
 
 ## Stack
 
@@ -100,7 +108,8 @@ lo avisa en pantalla.
 
 | Comando                                            | Qué hace                                                               |
 | -------------------------------------------------- | ---------------------------------------------------------------------- |
-| `npm run check`                                    | Tipos, lint y pruebas                                                  |
+| `npm run check`                                    | Tipos, lint, auditoría de código y pruebas                             |
+| `npm run audit:code`                               | Código copiado, exports sin uso y números sueltos                      |
 | `npm test`                                         | Solo pruebas                                                           |
 | `npm run lint`                                     | Estilo y reglas de arquitectura                                        |
 | `npm run format`                                   | Formatea el código                                                     |

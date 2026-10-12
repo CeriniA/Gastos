@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import {
+  MAX_DOCUMENT_TRANSACTIONS,
+  MAX_INSTALLMENTS,
+  MAX_ITEM_QUANTITY,
+  MAX_TRANSACTION_ITEMS,
+  MAX_WARNINGS,
+  MAX_WARNING_LENGTH,
   PRODUCT_GROUPS,
+  TEXT_LIMITS,
   TRANSACTION_TYPES,
   UNCERTAIN_FIELDS,
   parseAmountToCents,
@@ -80,7 +87,7 @@ function toCents(value: string | number | null | undefined): number | null {
 function toQuantity(value: string | number | null | undefined): number | null {
   if (value === null || value === undefined || value === '') return null;
   const quantity = typeof value === 'number' ? value : Number(value.trim().replace(',', '.'));
-  return Number.isFinite(quantity) && quantity > 0 && quantity <= 100_000 ? quantity : null;
+  return Number.isFinite(quantity) && quantity > 0 && quantity <= MAX_ITEM_QUANTITY ? quantity : null;
 }
 
 function oneOf<T extends string>(values: readonly T[], candidate: string | null | undefined): T | null {
@@ -97,7 +104,7 @@ export function normalizeExtraction(
     throw extractionFailure('unreadable', 'The model answered with an unexpected structure');
 
   const categoryKinds = new Map(context.categories.map((category) => [category.id, category.kind]));
-  const warnings = (parsed.data.warnings ?? []).map((warning) => warning.slice(0, 300));
+  const warnings = (parsed.data.warnings ?? []).map((warning) => warning.slice(0, MAX_WARNING_LENGTH));
   const transactions: ExtractedTransaction[] = [];
 
   for (const raw of parsed.data.transactions ?? []) {
@@ -137,7 +144,7 @@ export function normalizeExtraction(
       Number.isInteger(total) &&
       number! >= 1 &&
       total! >= number! &&
-      total! <= 120;
+      total! <= MAX_INSTALLMENTS;
     if (!validInstallment && (number || total)) uncertain.add('installment');
 
     transactions.push({
@@ -145,34 +152,34 @@ export function normalizeExtraction(
       date,
       amountCents,
       currency,
-      merchant: (raw.merchant ?? '').trim().slice(0, 200),
-      description: (raw.description ?? '').trim().slice(0, 200),
+      merchant: (raw.merchant ?? '').trim().slice(0, TEXT_LIMITS.description),
+      description: (raw.description ?? '').trim().slice(0, TEXT_LIMITS.description),
       suggestedCategoryId,
       installment: validInstallment ? { number: number!, total: total! } : null,
       items: (raw.items ?? [])
         .flatMap((item) => {
-          const name = (item.name ?? '').trim().slice(0, 200);
+          const name = (item.name ?? '').trim().slice(0, TEXT_LIMITS.description);
           const itemCents = toCents(item.amount);
           if (name === '' || itemCents === null) return [];
           return [
             {
               name,
               amountCents: itemCents,
-              product: (item.product ?? '').trim().slice(0, 80),
+              product: (item.product ?? '').trim().slice(0, TEXT_LIMITS.product),
               group: oneOf(PRODUCT_GROUPS, item.group),
               quantity: toQuantity(item.quantity),
             },
           ];
         })
-        .slice(0, 200),
+        .slice(0, MAX_TRANSACTION_ITEMS),
       uncertainFields: [...uncertain],
     });
   }
 
   return {
     documentKind: context.kind,
-    transactions: transactions.slice(0, 500),
+    transactions: transactions.slice(0, MAX_DOCUMENT_TRANSACTIONS),
     statement: null,
-    warnings: warnings.slice(0, 50),
+    warnings: warnings.slice(0, MAX_WARNINGS),
   };
 }

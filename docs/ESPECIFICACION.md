@@ -75,6 +75,13 @@ Pesos (ARS) y dólares (USD). Cada movimiento se guarda en su moneda y nunca se 
 Efectivo, cuenta bancaria, billetera virtual o tarjeta de crédito, cada una con su moneda. El tipo y la
 moneda no se cambian después de crearla. Una cuenta con movimientos no se borra: se archiva.
 
+Cada cuenta puede indicar su **banco o emisor**, y una tarjeta de crédito su **marca** (Visa, Mastercard…),
+elegidos de una lista que arranca con los más comunes de Argentina y que el usuario amplía, renombra o
+archiva en Más → Bancos y tarjetas. Uno en uso no se borra: se archiva.
+
+Una tarjeta con saldo en pesos y en dólares son **dos cuentas** (por ejemplo "Visa" y "Visa USD") con el
+mismo banco y marca. Comparten cierres: al cargar uno, la app ofrece aplicarlo a las dos.
+
 ## 5. Categorías y etiquetas
 
 **Categorías**: árbol de hasta **tres niveles**, con listas separadas para ingresos y egresos. Se arman
@@ -139,6 +146,22 @@ pregunta si ese comercio va siempre ahí y, si se acepta, crea la regla.
 
 ## 8. Tarjetas y cuotas (etapa 3)
 
+**Hecho (carga a mano):**
+
+- En Más → Tarjetas se cargan el **cierre y el vencimiento** de cada resumen, y opcionalmente su total y
+  pago mínimo. Una compra con tarjeta se paga en el vencimiento del primer cierre igual o posterior a su
+  fecha; mientras no haya un cierre que la cubra, cuenta en su propia fecha. Corregir o borrar un cierre
+  reacomoda solas las compras afectadas.
+- Por cada resumen la pantalla muestra lo que la app tiene cargado para ese vencimiento y, si se cargó el
+  total del resumen, la diferencia: sirve para descubrir compras que faltan.
+- Una compra con tarjeta se puede cargar **en cuotas** (2 a 24 en la pantalla, hasta 60 por la API): se
+  crea un movimiento por mes, vinculados a un plan. Las cuotas futuras quedan **proyectadas**: se ven en
+  la lista, cuentan en el resumen de su tarjeta y no cuentan en el balance hasta que llega su fecha, cuando
+  se confirman solas. Cada cuota se puede corregir (interés) o borrar sola; también se pueden mandar todas
+  a la papelera juntas.
+
+**Lo que sigue:**
+
 - Cada resumen crea un **período**: cierre, vencimiento, total y pago mínimo, leídos del resumen y
   editables a mano. Si trae el próximo cierre, se guarda para el período siguiente.
 - El cierre decide en qué resumen cae una compra y, por lo tanto, su fecha de pago.
@@ -148,8 +171,9 @@ pregunta si ese comercio va siempre ahí y, si se acepta, crea la regla.
 - Con interés, vale el monto real de cada resumen, no el total dividido.
 - Del resumen se ignoran saldo y pago anteriores; intereses, impuestos y comisiones van a "Cargos
   financieros"; la suma de lo extraído se controla contra el total del resumen.
-- Devoluciones: restan en su categoría de egreso, no son ingresos. _Pendiente de diseño:_ hoy el monto
-  es siempre positivo; la forma de guardar una devolución se define al empezar la etapa 3.
+- Devoluciones: restan en su categoría de egreso, no son ingresos. **Decidido, falta programarlo:** se
+  guardan como un egreso marcado como devolución, con monto positivo; los totales del mes, el consumo y el
+  resumen de la tarjeta lo restan en vez de sumarlo.
 
 ## 9. Movimientos fijos (etapa 4)
 
@@ -178,17 +202,17 @@ detalle o con productos cargados a mano; un pago de MercadoPago sin detalle no a
 
 Diseño para celular primero. Barra inferior: **Inicio, Movimientos, +, Informes, Más**.
 
-| Pantalla    | Qué muestra                                                      | Etapa |
-| ----------- | ---------------------------------------------------------------- | ----- |
-| Login       | Usuario y contraseña; aviso si el servidor está despertando      | 1     |
-| Inicio      | Balance del mes por moneda, últimos movimientos                  | 1     |
-| Movimientos | Lista por mes con buscador y filtros; tocar uno lo edita         | 1     |
-| Agregar     | Carga manual (etapa 1); foto o archivo (etapa 2)                 | 1 y 2 |
-| Más         | Cuentas, categorías, etiquetas, papelera, respaldo e importación | 1     |
-| Pendientes  | Bandeja única de todo lo que espera una decisión                 | 2     |
-| Revisión    | Imagen y datos extraídos                                         | 2     |
-| Tarjetas    | Período en curso, cierre, vencimiento, cuotas pendientes         | 3     |
-| Informes    | Ver sección 10                                                   | 4     |
+| Pantalla    | Qué muestra                                                                        | Etapa |
+| ----------- | ---------------------------------------------------------------------------------- | ----- |
+| Login       | Usuario y contraseña; aviso si el servidor está despertando                        | 1     |
+| Inicio      | Balance del mes por moneda, últimos movimientos                                    | 1     |
+| Movimientos | Lista por mes con buscador y filtros; tocar uno lo edita                           | 1     |
+| Agregar     | Carga manual (etapa 1); foto o archivo (etapa 2)                                   | 1 y 2 |
+| Más         | Cuentas, tarjetas, categorías, bancos, etiquetas, papelera, respaldo e importación | 1 y 3 |
+| Pendientes  | Bandeja única de todo lo que espera una decisión                                   | 2     |
+| Revisión    | Imagen y datos extraídos                                                           | 2     |
+| Tarjetas    | Compras desde el último cierre, cada resumen con lo cargado, alta de cierres       | 3     |
+| Informes    | Ver sección 10                                                                     | 4     |
 
 Toda pantalla contempla: cargando, lista vacía con indicación de qué hacer, error con reintento y
 servidor despertando.

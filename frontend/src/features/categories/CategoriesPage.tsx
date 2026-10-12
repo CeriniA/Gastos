@@ -9,11 +9,12 @@ import {
   type Category,
   type CategoryKind,
   type CategoryUpdate,
+  TEXT_LIMITS,
 } from '@gastos/shared';
-import { errorMessage } from '../../shared/api/errors';
 import { es } from '../../shared/i18n/es';
+import { useAction } from '../../shared/ui/useAction';
 import { QueryState } from '../../shared/ui/QueryState';
-import { Button, Card, Field, Notice, PageTitle, Select, TextInput } from '../../shared/ui/ui';
+import { Button, Card, Field, Notice, PageTitle, Select, Tabs, TextInput } from '../../shared/ui/ui';
 import { useCategories, useCategoryMutations } from './api';
 import { optionLabel, orderedTree } from './tree';
 
@@ -78,7 +79,11 @@ function CategoryEditor({
     <div className="space-y-4 border-t border-line bg-paper p-3">
       <form onSubmit={(event) => void save(event)} className="space-y-3" noValidate>
         <Field label={es.categories.name}>
-          <TextInput value={name} maxLength={60} onChange={(event) => setName(event.target.value)} />
+          <TextInput
+            value={name}
+            maxLength={TEXT_LIMITS.name}
+            onChange={(event) => setName(event.target.value)}
+          />
         </Field>
         <Field label={es.categories.parent} hint={es.categories.moveHint}>
           <Select value={parentId} onChange={(event) => setParentId(event.target.value)}>
@@ -155,20 +160,8 @@ export function CategoriesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const busy = create.isPending || update.isPending || remove.isPending || merge.isPending;
   const [kind, setKind] = useState<CategoryKind>('expense');
-  const [failure, setFailure] = useState<string | null>(null);
+  const { failure, run } = useAction();
   const form = useForm<FormValues>({ defaultValues: { name: '', parentId: '' } });
-
-  /** Runs a change and tells whether it went through. */
-  const run = async (work: Promise<unknown>): Promise<boolean> => {
-    setFailure(null);
-    try {
-      await work;
-      return true;
-    } catch (error) {
-      setFailure(errorMessage(error));
-      return false;
-    }
-  };
 
   const submit = form.handleSubmit(async (values) => {
     const parsed = categoryCreateSchema.safeParse({
@@ -187,27 +180,16 @@ export function CategoriesPage() {
     <>
       <PageTitle>{es.categories.title}</PageTitle>
 
-      <div
-        role="tablist"
-        className="mb-4 grid grid-cols-2 gap-1 rounded-lg border border-line bg-surface p-1"
-      >
-        {CATEGORY_KINDS.map((option) => (
-          <button
-            key={option}
-            role="tab"
-            type="button"
-            aria-selected={kind === option}
-            onClick={() => {
-              setKind(option);
-              setEditingId(null);
-              form.reset();
-            }}
-            className={`min-h-10 rounded-md text-sm font-semibold ${kind === option ? 'bg-income text-surface' : 'text-muted'}`}
-          >
-            {es.kinds[option]}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        options={CATEGORY_KINDS}
+        value={kind}
+        label={(option) => es.kinds[option]}
+        onChange={(option) => {
+          setKind(option);
+          setEditingId(null);
+          form.reset();
+        }}
+      />
 
       {failure ? (
         <div className="mb-4">

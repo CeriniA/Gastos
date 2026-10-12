@@ -19,6 +19,8 @@ export interface RecurringDoc {
   updatedAt: Date;
 }
 
+const LAST_DAY_OF_MONTH = 31;
+
 const schema = new Schema<RecurringDoc>(
   {
     name: { type: String, required: true, trim: true },
@@ -28,7 +30,7 @@ const schema = new Schema<RecurringDoc>(
     currency: { type: String, required: true, enum: [...CURRENCIES] },
     accountId: { type: Schema.Types.ObjectId, required: true },
     categoryId: { type: Schema.Types.ObjectId, default: null },
-    dayOfMonth: { type: Number, required: true, min: 1, max: 31 },
+    dayOfMonth: { type: Number, required: true, min: 1, max: LAST_DAY_OF_MONTH },
     active: { type: Boolean, required: true, default: true },
   },
   { timestamps: true },

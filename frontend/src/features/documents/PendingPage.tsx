@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   DEFAULT_TIMEZONE,
@@ -6,8 +5,8 @@ import {
   formatTime,
   type DocumentSummary,
 } from '@gastos/shared';
-import { errorMessage } from '../../shared/api/errors';
 import { es } from '../../shared/i18n/es';
+import { useAction } from '../../shared/ui/useAction';
 import { QueryState } from '../../shared/ui/QueryState';
 import { Button, Notice, PageTitle } from '../../shared/ui/ui';
 import { useDocumentMutations, usePendingDocuments } from './api';
@@ -24,16 +23,7 @@ const TONE: Record<DocumentSummary['status'], string> = {
 export function PendingPage() {
   const documents = usePendingDocuments();
   const { retry, discard } = useDocumentMutations();
-  const [failure, setFailure] = useState<string | null>(null);
-
-  const run = async (work: Promise<unknown>) => {
-    setFailure(null);
-    try {
-      await work;
-    } catch (error) {
-      setFailure(errorMessage(error));
-    }
-  };
+  const { failure, run } = useAction();
 
   const discardDocument = (id: string) => {
     if (window.confirm(es.documents.discardConfirm)) void run(discard.mutateAsync(id));

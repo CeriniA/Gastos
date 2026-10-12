@@ -30,6 +30,9 @@ export interface DocumentChanges {
   clearFiles?: boolean;
 }
 
+/** Pending documents are few; the list is capped so a forgotten pile cannot slow it down. */
+const LIST_LIMIT = 200;
+
 /** A document without its image bytes, which are only loaded when needed. */
 type LightDoc = Omit<DocumentDoc, 'files'> & { files: { mimeType: string }[] };
 const WITHOUT_BYTES = { 'files.data': 0 } as const;
@@ -100,7 +103,7 @@ export const documentsRepository = {
     const filter = statuses ? { status: { $in: [...statuses] } } : {};
     const docs = await DocumentModel.find(filter, WITHOUT_BYTES)
       .sort({ createdAt: -1 })
-      .limit(200)
+      .limit(LIST_LIMIT)
       .lean<LightDoc[]>();
     return docs.map(toDetail);
   },

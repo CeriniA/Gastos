@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import {
+  MAX_INSTALLMENTS,
+  MAX_TAGS,
+  TEXT_LIMITS,
   CURRENCIES,
   MAX_CATEGORY_DEPTH,
   MAX_IMPORT_ROWS,
@@ -140,7 +143,7 @@ export interface ImportIssue {
 }
 
 const installmentSchema = z
-  .object({ number: z.number().int().min(1), total: z.number().int().min(1).max(120) })
+  .object({ number: z.number().int().min(1), total: z.number().int().min(1).max(MAX_INSTALLMENTS) })
   .refine((value) => value.number <= value.total, 'Installment number exceeds the total');
 
 /** A spreadsheet row after parsing: names instead of ids, amounts in cents. */
@@ -150,14 +153,14 @@ export const importRowSchema = z
     type: z.enum(TRANSACTION_TYPES),
     amountCents: z.number().int().positive(),
     currency: z.enum(CURRENCIES),
-    account: z.string().trim().min(1).max(60),
-    categoryPath: z.array(z.string().trim().min(1).max(60)).max(MAX_CATEGORY_DEPTH),
-    description: z.string().trim().max(200),
-    tags: z.array(z.string().trim().min(1).max(60)).max(20),
-    note: z.string().trim().max(1000),
+    account: z.string().trim().min(1).max(TEXT_LIMITS.name),
+    categoryPath: z.array(z.string().trim().min(1).max(TEXT_LIMITS.name)).max(MAX_CATEGORY_DEPTH),
+    description: z.string().trim().max(TEXT_LIMITS.description),
+    tags: z.array(z.string().trim().min(1).max(TEXT_LIMITS.name)).max(MAX_TAGS),
+    note: z.string().trim().max(TEXT_LIMITS.note),
     installment: installmentSchema.nullable(),
     paymentDate: isoDateSchema.nullable(),
-    toAccount: z.string().trim().min(1).max(60).nullable(),
+    toAccount: z.string().trim().min(1).max(TEXT_LIMITS.name).nullable(),
     toAmountCents: z.number().int().positive().nullable(),
   })
   .superRefine((row, context) => {
@@ -268,14 +271,14 @@ export function parseImportRecord(record: ImportRecord): { row: ImportRow | null
       currency,
       account: text('account'),
       categoryPath,
-      description: text('description').slice(0, 200),
+      description: text('description').slice(0, TEXT_LIMITS.description),
       tags: uniqueByKey(
         text('tags')
           .split(',')
           .map((tag) => tag.trim())
           .filter((tag) => tag !== ''),
       ),
-      note: text('note').slice(0, 1000),
+      note: text('note').slice(0, TEXT_LIMITS.note),
       installment,
       paymentDate,
       toAccount,

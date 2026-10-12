@@ -1,9 +1,12 @@
 import { z } from 'zod';
 import {
+  MAX_DOCUMENT_FILES,
   UPLOADABLE_DOCUMENT_KINDS,
   type DocumentErrorCode,
   type DocumentKind,
   type DocumentStatus,
+  MAX_DOCUMENT_TRANSACTIONS,
+  MAX_INSTALLMENTS,
 } from '../constants';
 import { categoryRuleInputSchema } from './categoryRule';
 import { objectIdSchema } from './common';
@@ -22,21 +25,20 @@ export const documentListQuerySchema = z.object({
   /** pending: everything still waiting for the AI or for the user. */
   status: z.enum(['pending', 'all']).default('pending'),
 });
-export type DocumentListQuery = z.infer<typeof documentListQuerySchema>;
 
 /** One transaction as the user left it in the review screen. */
 export const documentConfirmEntrySchema = z.object({
   /** Carries its products in `items`, already in the account's currency. */
   transaction: transactionCreateSchema,
   installment: z
-    .object({ number: z.number().int().min(1), total: z.number().int().min(1).max(120) })
+    .object({ number: z.number().int().min(1), total: z.number().int().min(1).max(MAX_INSTALLMENTS) })
     .refine((value) => value.number <= value.total, 'Installment number exceeds the total')
     .nullable()
     .default(null),
 });
 
 export const documentConfirmSchema = z.object({
-  transactions: z.array(documentConfirmEntrySchema).min(1).max(500),
+  transactions: z.array(documentConfirmEntrySchema).min(1).max(MAX_DOCUMENT_TRANSACTIONS),
   /** Merchant rules the user agreed to remember while reviewing. */
   rules: z.array(categoryRuleInputSchema).max(100).default([]),
 });
@@ -49,7 +51,11 @@ export const documentDeleteQuerySchema = z.object({
 
 export const documentFileParamsSchema = z.object({
   id: objectIdSchema,
-  index: z.coerce.number().int().min(0).max(20),
+  index: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_DOCUMENT_FILES - 1),
 });
 
 export interface DocumentSummary {

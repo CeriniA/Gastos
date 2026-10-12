@@ -5,6 +5,8 @@
  * arithmetic.
  */
 
+import { APP_LOCALE } from './constants';
+
 export type IsoDate = string;
 export type MonthKey = string;
 
@@ -15,11 +17,18 @@ function pad(value: number, length = 2): string {
   return String(value).padStart(length, '0');
 }
 
+/** Dates outside these years are typos, not real transactions. */
+const MIN_YEAR = 1900;
+const MAX_YEAR = 2200;
+/** "05/10/26" means 2026. */
+const TWO_DIGIT_YEAR_BASE = 2000;
+const TWO_DIGIT_YEAR_LIMIT = 100;
+
 function build(year: number, month: number, day: number): IsoDate | null {
   const date = new Date(Date.UTC(year, month - 1, day));
   const valid =
     date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
-  return valid && year >= 1900 && year <= 2200 ? `${pad(year, 4)}-${pad(month)}-${pad(day)}` : null;
+  return valid && year >= MIN_YEAR && year <= MAX_YEAR ? `${pad(year, 4)}-${pad(month)}-${pad(day)}` : null;
 }
 
 export function isIsoDate(value: string): boolean {
@@ -88,7 +97,7 @@ export function parseFlexibleDate(input: unknown): IsoDate | null {
   const dayFirst = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(text);
   if (dayFirst) {
     const rawYear = Number(dayFirst[3]);
-    const year = rawYear < 100 ? 2000 + rawYear : rawYear;
+    const year = rawYear < TWO_DIGIT_YEAR_LIMIT ? TWO_DIGIT_YEAR_BASE + rawYear : rawYear;
     return build(year, Number(dayFirst[2]), Number(dayFirst[1]));
   }
   return null;
@@ -101,7 +110,7 @@ export function formatDate(date: IsoDate): string {
 
 /** "14:05": the hour and minute of a moment, in the given time zone. */
 export function formatTime(moment: string | Date, timeZone: string): string {
-  return new Intl.DateTimeFormat('es-AR', {
+  return new Intl.DateTimeFormat(APP_LOCALE, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
@@ -110,7 +119,7 @@ export function formatTime(moment: string | Date, timeZone: string): string {
 }
 
 /** "octubre de 2026" for display. */
-export function formatMonth(month: MonthKey, locale = 'es-AR'): string {
+export function formatMonth(month: MonthKey, locale = APP_LOCALE): string {
   const date = new Date(`${month}-01T00:00:00Z`);
   return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date);
 }

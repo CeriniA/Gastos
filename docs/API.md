@@ -38,13 +38,51 @@ Los esquemas de entrada y los tipos de salida están en `shared/src/schemas/`.
 
 ## Cuentas
 
-| Método | Ruta            | Descripción                                      |
-| ------ | --------------- | ------------------------------------------------ |
-| GET    | `/accounts`     | Todas, incluidas las archivadas                  |
-| POST   | `/accounts`     | `{ name, type, currency }`                       |
-| GET    | `/accounts/:id` |                                                  |
-| PATCH  | `/accounts/:id` | `{ name?, archived? }`. Tipo y moneda no cambian |
-| DELETE | `/accounts/:id` | `IN_USE` si tiene movimientos                    |
+| Método | Ruta            | Descripción                                                           |
+| ------ | --------------- | --------------------------------------------------------------------- |
+| GET    | `/accounts`     | Todas, incluidas las archivadas                                       |
+| POST   | `/accounts`     | `{ name, type, currency, bankId?, networkId? }`                       |
+| GET    | `/accounts/:id` |                                                                       |
+| PATCH  | `/accounts/:id` | `{ name?, archived?, bankId?, networkId? }`. Tipo y moneda no cambian |
+| DELETE | `/accounts/:id` | `IN_USE` si tiene movimientos, cierres o planes de cuotas             |
+
+`bankId` apunta a un banco o emisor y `networkId` a una marca de tarjeta (solo tarjetas de crédito), los dos
+de `/institutions`.
+
+## Bancos y tarjetas
+
+| Método | Ruta                | Descripción                                                 |
+| ------ | ------------------- | ----------------------------------------------------------- |
+| GET    | `/institutions`     | Bancos (`kind: bank`) y marcas de tarjeta (`kind: network`) |
+| POST   | `/institutions`     | `{ name, kind }`. Nombre único dentro de su tipo            |
+| PATCH  | `/institutions/:id` | `{ name?, archived? }`. El tipo no cambia                   |
+| DELETE | `/institutions/:id` | `IN_USE` si alguna cuenta lo usa; en ese caso se archiva    |
+
+La lista arranca con los bancos y marcas más comunes de Argentina (migración
+`2026-10-12-default-institutions`).
+
+## Tarjetas: cierres y vencimientos
+
+| Método | Ruta                       | Descripción                                                                                                           |
+| ------ | -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/card-periods?accountId=` | `{ periods, open }`: cada cierre con lo que la app le cargó (`chargedCents`), y lo comprado después del último cierre |
+| POST   | `/card-periods`            | `{ accountIds, closingDate, dueDate, totalCents?, minimumPaymentCents? }`. Un período por cuenta, todos o ninguno     |
+| PATCH  | `/card-periods/:id`        | Cualquiera de los cuatro datos                                                                                        |
+| DELETE | `/card-periods/:id`        | Sus compras vuelven a pagarse en su propia fecha                                                                      |
+
+Una compra con tarjeta se paga en el vencimiento del primer cierre igual o posterior a su fecha. Al crear,
+cambiar o borrar un cierre, el backend recalcula la fecha de pago de las compras de esa tarjeta.
+
+## Cuotas
+
+| Método | Ruta                     | Descripción                                                                                             |
+| ------ | ------------------------ | ------------------------------------------------------------------------------------------------------- |
+| POST   | `/installment-plans`     | `{ transaction, installments }` (2 a 60). `transaction` es la compra entera; crea un movimiento por mes |
+| DELETE | `/installment-plans/:id` | Manda todas las cuotas a la papelera: `{ trashed }`. El plan queda                                      |
+
+Cada cuota tiene la fecha de la compra más los meses que corresponden. Las que ya llegaron quedan
+`confirmed`; las futuras, `projected`, y se confirman solas cuando llega su fecha (al arrancar el servidor y
+una vez por día). Los centavos que no dividen exacto van a la primera cuota, y los productos también.
 
 ## Categorías
 
@@ -194,4 +232,4 @@ del ticket, `product` el nombre genérico en español ("Leche"), `group` uno de 
 
 ## Por venir
 
-Etapa 3: `/card-periods`, `/installment-plans`. Etapa 4: `/reports`, `/recurrings`, `/exchange-rates`.
+Etapa 4: `/reports`, `/recurrings`, `/exchange-rates`.

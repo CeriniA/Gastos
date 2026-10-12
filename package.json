@@ -19,7 +19,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "tsx --test \"shared/src/**/*.test.ts\" \"backend/src/**/*.test.ts\"",
-    "check": "npm run typecheck && npm run lint && npm run test"
+    "audit:code": "node scripts/audit.mjs",
+    "check": "npm run typecheck && npm run lint && npm run audit:code && npm run test"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

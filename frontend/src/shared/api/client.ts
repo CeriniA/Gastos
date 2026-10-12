@@ -8,6 +8,7 @@ import { API_PREFIX, ERROR_CODES, type ApiErrorBody, type ErrorCode } from '@gas
 const ORIGIN = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000').replace(/\/$/, '');
 const BASE_URL = `${ORIGIN}${API_PREFIX}`;
 const TOKEN_KEY = 'gastos.token';
+const DOWNLOAD_RELEASE_MS = 10_000;
 
 export class ApiError extends Error {
   constructor(
@@ -139,5 +140,6 @@ export async function download(path: string, query?: Query): Promise<void> {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  // The browser needs a moment to start the download before the link can be released.
+  setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_RELEASE_MS);
 }
