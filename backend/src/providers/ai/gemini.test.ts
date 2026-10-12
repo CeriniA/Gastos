@@ -150,3 +150,14 @@ test('network failures, blocked answers and nonsense are each named', async () =
   const nonsense = setup([() => modelAnswer('No veo ningún comprobante.')]);
   assert.equal(await reasonOf(nonsense.extractor.extract(input)), 'unreadable');
 });
+
+test("a card statement's text travels after the instructions, with no image", async () => {
+  const { extractor, requests } = setup([good]);
+  await extractor.extract({ ...input, kind: 'card_statement', files: [], text: 'RESUMEN VISA' });
+  const contents = requests[0]?.body.contents as { parts: Record<string, unknown>[] }[];
+  const parts = contents[0]?.parts ?? [];
+  assert.equal(parts.length, 2);
+  assert.match(String(parts[0]?.text), /credit card statement/);
+  assert.match(String(parts[0]?.text), /"statement"/);
+  assert.deepEqual(parts[1], { text: 'RESUMEN VISA' });
+});

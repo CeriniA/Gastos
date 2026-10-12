@@ -19,6 +19,7 @@ const expense = (accountId: string, tagIds: string[] = []) => ({
   toAmountCents: null,
   paymentDate: null,
   original: null,
+  refund: false,
   items: [],
 });
 

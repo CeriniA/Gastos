@@ -39,6 +39,7 @@ async function setup() {
             toAmountCents: null,
             paymentDate: null,
             original: null,
+            refund: false,
             items,
           },
           installment: null,

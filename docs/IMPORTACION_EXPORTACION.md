@@ -16,21 +16,21 @@ Los dos están en **Más → Respaldo y datos**.
 Una fila por movimiento. La definición única está en `shared/src/importFormat.ts`: la exportación
 escribe estas columnas y la importación las lee, así que un archivo exportado se puede volver a importar.
 
-| Columna        | Obligatoria                  | Ejemplo                      | Notas                                                          |
-| -------------- | ---------------------------- | ---------------------------- | -------------------------------------------------------------- |
-| Fecha          | Sí                           | `2026-10-05`                 | También `05/10/2026` o una fecha de Excel. No puede ser futura |
-| Tipo           | Sí                           | `egreso`                     | `egreso`, `ingreso` o `transferencia`                          |
-| Monto          | Sí                           | `15400,50`                   | Mayor que cero. Acepta `15.400,50` y números de Excel          |
-| Moneda         | Sí                           | `ARS`                        | `ARS` o `USD`. Tiene que ser la de la cuenta                   |
-| Cuenta         | Sí                           | `Visa Banco X`               | Tiene que existir en la app                                    |
-| Categoría      | No                           | `Vivienda > Servicios > Luz` | Niveles separados por `>`; hasta tres                          |
-| Descripción    | No                           | `Edesur`                     |                                                                |
-| Etiquetas      | No                           | `casa, fijo`                 | Separadas por coma                                             |
-| Nota           | No                           |                              |                                                                |
-| Cuota          | No                           | `3/6`                        | También `3 de 6`                                               |
-| Fecha de pago  | No                           | `2026-11-10`                 | Solo se usa en cuentas de tarjeta de crédito                   |
-| Cuenta destino | Solo transferencias          | `MercadoPago`                | Distinta de la cuenta de origen                                |
-| Monto destino  | Solo entre monedas distintas | `100,00`                     | Lo que llega a la cuenta destino                               |
+| Columna        | Obligatoria                  | Ejemplo                      | Notas                                                                     |
+| -------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------- |
+| Fecha          | Sí                           | `2026-10-05`                 | También `05/10/2026` o una fecha de Excel. No puede ser futura            |
+| Tipo           | Sí                           | `egreso`                     | `egreso`, `ingreso`, `transferencia` o `devolución` (un egreso que resta) |
+| Monto          | Sí                           | `15400,50`                   | Mayor que cero. Acepta `15.400,50` y números de Excel                     |
+| Moneda         | Sí                           | `ARS`                        | `ARS` o `USD`. Tiene que ser la de la cuenta                              |
+| Cuenta         | Sí                           | `Visa Banco X`               | Tiene que existir en la app                                               |
+| Categoría      | No                           | `Vivienda > Servicios > Luz` | Niveles separados por `>`; hasta tres                                     |
+| Descripción    | No                           | `Edesur`                     |                                                                           |
+| Etiquetas      | No                           | `casa, fijo`                 | Separadas por coma                                                        |
+| Nota           | No                           |                              |                                                                           |
+| Cuota          | No                           | `3/6`                        | También `3 de 6`                                                          |
+| Fecha de pago  | No                           | `2026-11-10`                 | Solo se usa en cuentas de tarjeta de crédito                              |
+| Cuenta destino | Solo transferencias          | `MercadoPago`                | Distinta de la cuenta de origen                                           |
+| Monto destino  | Solo entre monedas distintas | `100,00`                     | Lo que llega a la cuenta destino                                          |
 
 - Los encabezados no distinguen mayúsculas ni acentos. Se aceptan `Importe` por Monto y `Detalle` o
   `Concepto` por Descripción. Las columnas que la app no conoce se ignoran y se avisa.

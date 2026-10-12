@@ -2,6 +2,7 @@ export * from './constants';
 export * from './money';
 export * from './dates';
 export * from './text';
+export * from './redaction';
 export * from './csv';
 export * from './categoryTree';
 export * from './importFormat';

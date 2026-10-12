@@ -6,6 +6,8 @@ import {
   documentListQuerySchema,
   documentUploadSchema,
   idParamsSchema,
+  statementPreviewSchema,
+  statementUploadSchema,
 } from '@gastos/shared';
 import { noContent, ok, parse } from '../../core/http/http';
 import type { DocumentsService } from './documents.service';
@@ -21,6 +23,13 @@ export function createDocumentsController(service: DocumentsService) {
       files.map((file) => ({ originalName: file.originalname, content: file.buffer })),
     );
     ok(res, created, 202);
+  };
+  const previewStatement: RequestHandler = async (req, res) => {
+    const { password } = parse(statementPreviewSchema, req.body);
+    ok(res, await service.previewStatement(req.file?.buffer ?? null, password));
+  };
+  const uploadStatement: RequestHandler = async (req, res) => {
+    ok(res, await service.uploadStatement(parse(statementUploadSchema, req.body)), 202);
   };
   const get: RequestHandler = async (req, res) => {
     ok(res, await service.get(parse(idParamsSchema, req.params).id));
@@ -44,5 +53,5 @@ export function createDocumentsController(service: DocumentsService) {
     await service.remove(id, parse(documentDeleteQuerySchema, req.query).transactions);
     noContent(res);
   };
-  return { list, upload, get, file, retry, confirm, remove };
+  return { list, upload, previewStatement, uploadStatement, get, file, retry, confirm, remove };
 }

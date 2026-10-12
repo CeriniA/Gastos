@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   formatTime,
+  addDays,
   addMonths,
   addMonthsToKey,
   isIsoDate,
@@ -50,4 +51,10 @@ test('parseFlexibleDate reads day-first dates and spreadsheet dates', () => {
 
 test('formatTime shows the hour in the app time zone, not UTC', () => {
   assert.equal(formatTime('2026-10-11T17:05:00.000Z', 'America/Argentina/Buenos_Aires'), '14:05');
+});
+
+test('days are added across months and years, and back', () => {
+  assert.equal(addDays('2026-10-25', 15), '2026-11-09');
+  assert.equal(addDays('2026-12-31', 1), '2027-01-01');
+  assert.equal(addDays('2026-03-01', -1), '2026-02-28');
 });

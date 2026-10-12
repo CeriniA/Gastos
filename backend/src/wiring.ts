@@ -40,6 +40,7 @@ import {
   type TransactionsService,
 } from './modules/transactions/transactions.service';
 import type { AiExtractor } from './providers/ai/aiExtractor';
+import type { PdfTextReader } from './providers/pdf/pdfReader';
 import type { RateProvider } from './providers/rates/rateProvider';
 
 export interface Repositories {
@@ -63,6 +64,8 @@ export interface Runtime {
   now: () => Date;
   /** Null when no AI key is configured. */
   extractor: AiExtractor | null;
+  /** Reads the text of card statements' PDFs. */
+  pdfReader: PdfTextReader;
   /** Public exchange rates, offered as a starting point. Null to do without. */
   rates: RateProvider | null;
   /** Starts background work without waiting for it. */
@@ -127,6 +130,10 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
       listAccounts: () => accounts.list(),
       createTransactions: (entries, options) => transactions.createMany(entries, 'installment', options),
       trashTransactions: transactions.trashByPlan,
+      listClosingDates: async (accountId) =>
+        (await cardPeriods.listDates())
+          .filter((period) => period.accountId === accountId)
+          .map((period) => period.closingDate),
       today,
       runInTransaction,
     },
@@ -172,6 +179,7 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
 
   const documents: DocumentsService = createDocumentsService(repositories.documents, {
     extractor: runtime.extractor,
+    pdfReader: runtime.pdfReader,
     listAccounts: accounts.list,
     listCategories: categories.list,
     ruleLookup: () => categoryRules.lookup(),
@@ -179,8 +187,12 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     createTransactions: (entries, options) => transactions.createMany(entries, 'document', options),
     countLiveTransactions: transactions.countLiveByDocument,
     findSameDayAmounts: transactions.findSameDayAmounts,
+    findInstallments: transactions.findInstallments,
     releaseTransactions: transactions.releaseDocument,
     trashTransactions: transactions.trashByDocument,
+    createCardPeriods: cardPeriods.createFromDocument,
+    releaseCardPeriods: cardPeriods.releaseDocument,
+    continueInstallments: (input, options) => installmentPlans.continueFromStatement(input, options),
     runInTransaction,
     today,
     now: runtime.now,

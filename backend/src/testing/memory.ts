@@ -1,6 +1,8 @@
 import {
   firstDayOfMonth,
+  givenBack,
   lastDayOfMonth,
+  spendingCents,
   type Account,
   type CurrencyTotals,
   type CardPeriod,
@@ -20,9 +22,10 @@ import type { DocumentsRepository, StoredFile } from '../modules/documents/docum
 import type { InstallmentPlansRepository } from '../modules/installment-plans/installmentPlans.repository';
 import type { InstitutionsRepository } from '../modules/institutions/institutions.repository';
 import type { TagsRepository } from '../modules/tags/tags.repository';
-import { duplicateKey } from '../modules/transactions/duplicateKey';
+import { duplicateKey, installmentKey } from '../modules/transactions/duplicateKey';
 import type { TransactionsRepository } from '../modules/transactions/transactions.repository';
 import type { AiExtractor, ExtractionInput } from '../providers/ai/aiExtractor';
+import type { PdfReadError, PdfTextReader } from '../providers/pdf/pdfReader';
 import { wireServices } from '../wiring';
 
 /**
@@ -84,6 +87,19 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
       ai.calls.push(input);
       if (ai.error) throw ai.error;
       return ai.result;
+    },
+  };
+  /** A scripted PDF library: tests set the pages the next PDF has, or the error it throws. */
+  const pdf: { pages: string[]; error: PdfReadError | null; passwords: (string | undefined)[] } = {
+    pages: [],
+    error: null,
+    passwords: [],
+  };
+  const pdfReader: PdfTextReader = {
+    async read(_content, options) {
+      pdf.passwords.push(options.password);
+      if (pdf.error) throw pdf.error;
+      return { pages: pdf.pages };
     },
   };
   const errors: { error: unknown; context: object }[] = [];
@@ -159,9 +175,14 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
       return store.cardPeriods.find((period) => period.id === id) ?? null;
     },
     async create(accountId, data) {
-      const period: CardPeriod = { ...data, id: nextId(), accountId, documentId: null, ...stamps };
+      const period: CardPeriod = { ...data, id: nextId(), accountId, ...stamps };
       store.cardPeriods.push(period);
       return period;
+    },
+    async clearDocument(documentId) {
+      store.cardPeriods = store.cardPeriods.map((period) =>
+        period.documentId === documentId ? { ...period, documentId: null } : period,
+      );
     },
     async update(id, changes) {
       const index = store.cardPeriods.findIndex((period) => period.id === id);
@@ -391,6 +412,17 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
         ),
       }));
     },
+    async installmentKeys(amounts) {
+      return new Set(
+        store.transactions.flatMap((transaction) =>
+          transaction.deletedAt === null &&
+          transaction.installment &&
+          amounts.includes(transaction.amountCents)
+            ? [installmentKey(transaction.installment, transaction.amountCents, transaction.currency)]
+            : [],
+        ),
+      );
+    },
     async amountKeysOn(dates) {
       const keys = new Set<string>();
       for (const transaction of store.transactions) {
@@ -441,7 +473,7 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
         .map((transaction) => ({
           date: transaction.date,
           paymentDate: transaction.paymentDate,
-          signedCents: transaction.type === 'expense' ? transaction.amountCents : -transaction.amountCents,
+          signedCents: transaction.type === 'expense' ? spendingCents(transaction) : -transaction.amountCents,
         }));
     },
     async confirmProjectedUpTo(date) {
@@ -481,7 +513,7 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
             date: transaction.date,
             description: transaction.description,
             currency: transaction.currency,
-            ...item,
+            ...givenBack(item, transaction.refund),
           })),
         );
     },
@@ -510,7 +542,7 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
           balanceCents: 0,
         };
         if (transaction.type === 'income') entry.incomeCents += transaction.amountCents;
-        else entry.expenseCents += transaction.amountCents;
+        else entry.expenseCents += spendingCents(transaction);
         entry.balanceCents = entry.incomeCents - entry.expenseCents;
         totals.set(transaction.currency, entry);
       }
@@ -560,6 +592,7 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
     const { sha256: _sha256, files, ...detail } = document;
     return {
       ...detail,
+      text: null,
       duplicateHints: [],
       fileCount: files.length,
       transactionCount: detail.extraction?.transactions.length ?? null,
@@ -581,6 +614,7 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
         waits: 0,
         transactionCount: null,
         extraction: null,
+        text: data.text,
         duplicateHints: [],
         promptVersion: null,
         createdAt: new Date(Date.parse(STAMP) + sequence * 1000).toISOString(),
@@ -615,12 +649,15 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
     async findFiles(id) {
       return store.documents.find((document) => document.id === id)?.files ?? [];
     },
+    async findText(id) {
+      return store.documents.find((document) => document.id === id)?.text ?? null;
+    },
     async update(id, changes) {
       const index = store.documents.findIndex((document) => document.id === id);
       const current = store.documents[index];
       if (!current) return null;
       const { countAttempt: _countAttempt, clearFiles, errorDetail: _errorDetail, ...fields } = changes;
-      const next = { ...current, ...fields, files: clearFiles ? [] : current.files };
+      const next = clearFiles ? { ...current, ...fields, files: [], text: null } : { ...current, ...fields };
       store.documents[index] = next;
       return withoutBytes(next);
     },
@@ -653,6 +690,7 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
       today: () => calendar.today,
       now: () => clock.now,
       extractor: options.aiConfigured === false ? null : extractor,
+      pdfReader,
       rates: {
         // A fixed table instead of the network.
         reference: async (from, to) =>
@@ -665,5 +703,5 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
       onError: (error, context) => errors.push({ error, context }),
     },
   );
-  return { ...services, store, faults, ai, errors, clock, calendar };
+  return { ...services, store, faults, ai, pdf, errors, clock, calendar };
 }

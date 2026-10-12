@@ -30,12 +30,14 @@ function addToProduct(products: Map<string, ProductConsumption>, item: Consumpti
   const product = productOf(item);
   const key = nameKey(product);
   const current = products.get(key);
+  // Giving something back is not buying it again.
+  const purchases = item.refund ? 0 : 1;
   if (!current) {
-    products.set(key, { product, totalCents: item.amountCents, purchases: 1, quantity: item.quantity });
+    products.set(key, { product, totalCents: item.amountCents, purchases, quantity: item.quantity });
     return;
   }
   current.totalCents += item.amountCents;
-  current.purchases += 1;
+  current.purchases += purchases;
   // A total quantity only means something when every line stated one.
   current.quantity =
     current.quantity === null || item.quantity === null

@@ -123,8 +123,14 @@ pregunta si ese comercio va siempre ahí y, si se acepta, crea la regla.
   espera queda como error, con la foto guardada para reintentar a mano. El servidor gratuito se duerme
   sin uso: dormido no reintenta, y retoma al volver a abrir la app.
 - A la IA se le pide que no devuelva números de tarjeta ni datos personales.
-- Formatos: JPG, PNG y WEBP, hasta 10 imágenes por documento (un ticket largo en varias fotos). PDF llega
-  con los resúmenes de tarjeta (etapa 3); uno con contraseña se rechazará con aviso.
+- **Resumen de tarjeta en PDF**, en dos pasos. Primero el servidor saca el texto del PDF (hasta 20 páginas;
+  si tiene contraseña, se escribe y no se guarda) y tapa con `***` lo que reconoce: números de tarjeta y
+  de cuenta, DNI, CUIT, mails y lo que sigue a "Titular:", "Domicilio:", "Teléfono:". No guarda nada. El
+  usuario lee el texto, lo corrige y agrega palabras para tapar siempre (su nombre, su calle), que se
+  recuerdan solo en su teléfono. Recién cuando aprieta "Mandar a la IA" se guarda ese texto y se lee como
+  cualquier documento. El PDF no se guarda nunca. Un PDF escaneado, sin texto, se rechaza con aviso.
+- Formatos: JPG, PNG y WEBP, hasta 10 imágenes por documento (un ticket largo en varias fotos). Los
+  resúmenes de tarjeta llegan en PDF (ver abajo).
 - Un documento descartado se borra entero y se puede volver a subir. Lo mismo vale para uno confirmado
   cuyos movimientos se borraron todos: ya no cuenta para nada, así que no bloquea una nueva subida. Uno confirmado se conserva, sin
   imágenes, para que su huella impida cargarlo dos veces.
@@ -155,25 +161,47 @@ pregunta si ese comercio va siempre ahí y, si se acepta, crea la regla.
 - Por cada resumen la pantalla muestra lo que la app tiene cargado para ese vencimiento y, si se cargó el
   total del resumen, la diferencia: sirve para descubrir compras que faltan.
 - Una compra con tarjeta se puede cargar **en cuotas** (2 a 24 en la pantalla, hasta 60 por la API): se
-  crea un movimiento por mes, vinculados a un plan. Las cuotas futuras quedan **proyectadas**: se ven en
+  crea un movimiento por mes, vinculados a un plan. La primera lleva la fecha de la compra; si la tarjeta
+  tiene cierres cargados, las siguientes se fechan 15 días después del cierre que cubre la compra, un mes
+  aparte, así cada una cae en su resumen aunque la compra sea justo antes del cierre (sin cierres, van un
+  mes aparte de la compra). Las cuotas futuras quedan **proyectadas**: se ven en
   la lista, cuentan en el resumen de su tarjeta y no cuentan en el balance hasta que llega su fecha, cuando
   se confirman solas. Cada cuota se puede corregir (interés) o borrar sola; también se pueden mandar todas
   a la papelera juntas.
 
+**Hecho (lectura del resumen, sin probar con uno real):**
+
+- La IA lee del resumen los movimientos y el **período**: cierre, vencimiento, total y pago mínimo, y el
+  próximo cierre y vencimiento si están. En la revisión se ofrecen los dos períodos, editables, para las
+  tarjetas que el usuario marque (la de pesos y la de dólares del mismo banco y marca vienen marcadas). Se
+  guardan junto con las compras, todo o nada; si ese cierre ya estaba cargado, la confirmación avisa.
+- Las líneas en dólares van de entrada a la tarjeta en dólares, si existe.
+- La revisión muestra cuánto suma lo marcado en la moneda del resumen contra su total.
+- Una cuota que cobra el resumen ("cuota 3 de 6") se fecha el día del cierre: el resumen imprime la fecha
+  de la compra original, y la cuota se paga en este resumen.
+- Si esa compra no está cargada, la revisión ofrece (marcado de entrada) crear también las cuotas que
+  faltan, de 4 a 6, por el mismo monto y proyectadas, con su plan. Las anteriores no se crean: se pagaron
+  antes. Se fechan 15 días después del cierre y un mes aparte, para que cada una caiga en su resumen.
+- Si la cuota ya está cargada (mismo número, total y monto, por ejemplo proyectada por el resumen anterior),
+  aparece como repetida y sin marcar: no se vuelve a crear.
+
+**Devoluciones (hecho):**
+
+- Una devolución es un **egreso marcado como devolución**, con monto positivo, en la categoría de lo que se
+  compró. Resta del egreso del mes, del resumen de la tarjeta y del consumo (sus productos cuentan como
+  devueltos, no como compras). No es un ingreso.
+- Se marca al cargar o editar un egreso, en la revisión de lo leído (la IA la propone cuando el comprobante
+  o el resumen dice "devolución", "reintegro", "anulación", "bonificación") y en la planilla, con el tipo
+  `devolución`. Una devolución no va en cuotas.
+
 **Lo que sigue:**
 
-- Cada resumen crea un **período**: cierre, vencimiento, total y pago mínimo, leídos del resumen y
-  editables a mano. Si trae el próximo cierre, se guarda para el período siguiente.
 - El cierre decide en qué resumen cae una compra y, por lo tanto, su fecha de pago.
 - Una compra en cuotas genera **un movimiento por mes**, vinculados a un plan. Las futuras quedan como
   proyectadas y pasan a confirmadas cuando llega el resumen que las incluye.
-- Un resumen que dice "cuota 3 de 6" de una compra no cargada ofrece crear el plan completo.
 - Con interés, vale el monto real de cada resumen, no el total dividido.
 - Del resumen se ignoran saldo y pago anteriores; intereses, impuestos y comisiones van a "Cargos
   financieros"; la suma de lo extraído se controla contra el total del resumen.
-- Devoluciones: restan en su categoría de egreso, no son ingresos. **Decidido, falta programarlo:** se
-  guardan como un egreso marcado como devolución, con monto positivo; los totales del mes, el consumo y el
-  resumen de la tarjeta lo restan en vez de sumarlo.
 
 ## 9. Movimientos fijos (etapa 4)
 

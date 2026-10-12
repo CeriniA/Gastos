@@ -23,6 +23,7 @@ async function setup() {
     toAmountCents: null,
     paymentDate: null,
     original: null,
+    refund: false,
     items: [{ name: 'Heladera', amountCents: 100001, product: 'Heladera', group: 'household', quantity: 1 }],
     ...changes,
   });
@@ -111,4 +112,26 @@ test('only card purchases go in installments, and a plan can be sent to the tras
   assert.equal(await app.installmentPlans.remove(plan.id), 6);
   assert.ok(app.store.transactions.every((transaction) => transaction.deletedAt !== null));
   assert.equal(await codeOf(app.installmentPlans.remove('f'.repeat(24))), 'NOT_FOUND');
+});
+
+test('a purchase the day before the closing is paid in consecutive statements', async () => {
+  const { app, visa, purchase } = await setup();
+  for (const [closingDate, dueDate] of [
+    ['2026-09-08', '2026-09-20'],
+    ['2026-10-05', '2026-10-17'],
+    ['2026-11-04', '2026-11-16'],
+  ] as const) {
+    await app.cardPeriods.create({
+      accountIds: [visa.id],
+      closingDate,
+      dueDate,
+      totalCents: null,
+      minimumPaymentCents: null,
+    });
+  }
+  await app.installmentPlans.create({ transaction: purchase({ date: '2026-09-07' }), installments: 3 });
+  assert.deepEqual(
+    app.store.transactions.map((transaction) => transaction.paymentDate),
+    ['2026-09-20', '2026-10-17', '2026-11-16'],
+  );
 });

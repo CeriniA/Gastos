@@ -35,6 +35,8 @@ import { useTransaction, useTransactionMutations } from './api';
 
 interface FormValues {
   type: TransactionType;
+  /** Expenses only: money given back for a purchase. */
+  refund: boolean;
   amount: string;
   date: string;
   accountId: string;
@@ -59,6 +61,7 @@ const FIELD_OF: Record<string, keyof FormValues> = {
 function toFormValues(transaction: Transaction | undefined): FormValues {
   return {
     type: transaction?.type ?? 'expense',
+    refund: transaction?.refund ?? false,
     amount: transaction ? centsToDecimalString(transaction.amountCents) : '',
     date: transaction?.date ?? todayIso(DEFAULT_TIMEZONE),
     accountId: transaction?.accountId ?? '',
@@ -106,6 +109,7 @@ export function TransactionFormPage() {
   const splitFields = useFieldArray({ control: form.control, name: 'splits' });
 
   const type = form.watch('type');
+  const refund = form.watch('refund');
   const accountId = form.watch('accountId');
   const toAccountId = form.watch('toAccountId');
   const selectedTags = form.watch('tagIds');
@@ -121,7 +125,8 @@ export function TransactionFormPage() {
     type === 'transfer' && Boolean(account && destination && account.currency !== destination.currency);
   const isCard = account?.type === 'credit_card';
   const planId = existing.data?.installment?.planId ?? null;
-  const canSplitInInstallments = !id && type === 'expense' && isCard && splitFields.fields.length === 0;
+  const canSplitInInstallments =
+    !id && type === 'expense' && !refund && isCard && splitFields.fields.length === 0;
   const isSplit = type !== 'transfer' && splitFields.fields.length > 0;
   const usedCategoryIds = [
     existing.data?.categoryId,
@@ -207,6 +212,8 @@ export function TransactionFormPage() {
 
     const payload = {
       type: input.type,
+      // Only an expense can be one; changing the type clears the mark.
+      refund: input.type === 'expense' && input.refund,
       date: input.date,
       amountCents,
       currency: account.currency,
@@ -478,6 +485,16 @@ export function TransactionFormPage() {
                     {...form.register('toAmount')}
                   />
                 </Field>
+              ) : null}
+
+              {type === 'expense' && !existing.data?.installment ? (
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input type="checkbox" className="size-5" {...form.register('refund')} />
+                    {es.transactions.refund}
+                  </label>
+                  <p className="mt-1 text-sm text-muted">{es.transactions.refundHint}</p>
+                </div>
               ) : null}
 
               {canSplitInInstallments ? (

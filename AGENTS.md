@@ -79,5 +79,7 @@ duplicado, movimiento fijo, unión de movimientos) se aplica sin confirmación d
 
 - No poner la clave de la IA ni ningún secreto en el frontend ni en el repositorio.
 - No guardar imágenes de comprobantes después de que el usuario confirma o descarta la revisión.
+- No mandar a la IA un resumen de tarjeta sin pasar por el tapado de datos (`shared/src/redaction.ts`) y la
+  aprobación del usuario. El PDF y su contraseña no se guardan.
 - No agregar dependencias sin necesidad: el backend corre con 512 MB de memoria.
 - No agregar una función de la "segunda versión" (`docs/ROADMAP.md`) sin que el usuario la pida.

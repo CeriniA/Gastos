@@ -26,16 +26,16 @@ export interface DocumentChanges {
   waits?: number;
   /** Adds one to the number of reading attempts. */
   countAttempt?: boolean;
-  /** Deletes the stored images. */
+  /** Deletes what was stored to be read: the images or the text. */
   clearFiles?: boolean;
 }
 
 /** Pending documents are few; the list is capped so a forgotten pile cannot slow it down. */
 const LIST_LIMIT = 200;
 
-/** A document without its image bytes, which are only loaded when needed. */
-type LightDoc = Omit<DocumentDoc, 'files'> & { files: { mimeType: string }[] };
-const WITHOUT_BYTES = { 'files.data': 0 } as const;
+/** A document without its image bytes or text, which are only loaded when needed. */
+type LightDoc = Omit<DocumentDoc, 'files' | 'text'> & { files: { mimeType: string }[] };
+const WITHOUT_BYTES = { 'files.data': 0, text: 0 } as const;
 
 function toDetail(doc: LightDoc): DocumentDetail {
   const extraction = (doc.extraction ?? null) as ReviewExtraction | null;
@@ -51,6 +51,7 @@ function toDetail(doc: LightDoc): DocumentDetail {
     waits: doc.waits ?? 0,
     transactionCount: extraction ? extraction.transactions.length : null,
     extraction,
+    text: null,
     duplicateHints: [],
     promptVersion: doc.promptVersion ?? null,
     createdAt: doc.createdAt.toISOString(),
@@ -76,6 +77,7 @@ export const documentsRepository = {
     sha256: string;
     accountId: string | null;
     files: readonly StoredFile[];
+    text: string | null;
   }): Promise<DocumentDetail> {
     const doc = await DocumentModel.create({
       kind: data.kind,
@@ -84,6 +86,7 @@ export const documentsRepository = {
       sha256: data.sha256,
       accountId: toObjectIdOrNull(data.accountId),
       files: data.files.map((file) => ({ mimeType: file.mimeType, data: file.content })),
+      text: data.text,
     });
     return toDetail(doc.toObject() as DocumentDoc);
   },
@@ -131,6 +134,12 @@ export const documentsRepository = {
     return (doc?.files ?? []).map((file) => ({ mimeType: file.mimeType, content: toBuffer(file.data) }));
   },
 
+  /** A card statement's text; null for images. Documents stored before statements existed have none. */
+  async findText(id: string): Promise<string | null> {
+    const doc = await DocumentModel.findById(toObjectId(id), { text: 1 }).lean<Pick<DocumentDoc, 'text'>>();
+    return doc?.text ?? null;
+  },
+
   async update(
     id: string,
     changes: DocumentChanges,
@@ -144,7 +153,7 @@ export const documentsRepository = {
     const doc = await DocumentModel.findByIdAndUpdate(
       toObjectId(id),
       {
-        $set: { ...fields, ...(clearFiles ? { files: [] } : {}) },
+        $set: { ...fields, ...(clearFiles ? { files: [], text: null } : {}) },
         ...(countAttempt ? { $inc: { attempts: 1 } } : {}),
       },
       { new: true, session: options.session, projection: WITHOUT_BYTES },

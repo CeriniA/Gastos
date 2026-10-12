@@ -116,7 +116,7 @@ export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 export const DOCUMENT_STATUSES = ['processing', 'ready', 'confirmed', 'discarded', 'error'] as const;
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
 
-/** What can be uploaded today. Card statements arrive with stage 3. */
+/** What can be uploaded as images. Card statements arrive as the text of their PDF instead. */
 export const UPLOADABLE_DOCUMENT_KINDS = ['receipt', 'screenshot'] as const;
 export type UploadableDocumentKind = (typeof UPLOADABLE_DOCUMENT_KINDS)[number];
 
@@ -147,6 +147,24 @@ export const TRANSIENT_DOCUMENT_ERRORS = ['rate_limited', 'unavailable'] as cons
 export const MAX_DOCUMENT_FILES = 10;
 /** All the parts of one document together; MongoDB stores at most 16 MB per document. */
 export const MAX_DOCUMENT_BYTES = 12 * 1024 * 1024;
+
+/**
+ * A card statement runs to a handful of pages. A longer PDF is not a
+ * statement, and reading it would strain a server with 512 MB of memory.
+ */
+export const MAX_STATEMENT_PAGES = 20;
+/** About twenty dense pages of text: the most one statement sends to the AI. */
+export const MAX_STATEMENT_TEXT_LENGTH = 100_000;
+/** Bank PDF passwords are short (often the holder's DNI); the limit only stops abuse. */
+export const MAX_PDF_PASSWORD_LENGTH = 64;
+/** A statement brings its own closing and due dates and, when printed, the next ones. */
+export const MAX_STATEMENT_PERIODS = 2;
+/** What a hidden piece of personal data becomes in the text the AI receives. */
+export const REDACTION_MARK = '***';
+/** Words the user hides in every statement (their name, their street). */
+export const MAX_HIDDEN_WORDS = 20;
+/** Shorter words ("de", "y") would blank out half the statement. */
+export const MIN_HIDDEN_WORD_LENGTH = 3;
 
 /**
  * What kind of thing a purchased product is. A short, fixed list so that

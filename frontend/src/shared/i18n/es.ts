@@ -2,6 +2,7 @@ import type {
   AccountType,
   CategoryKind,
   DocumentErrorCode,
+  DocumentKind,
   DocumentStatus,
   ErrorCode,
   ImportIssueCode,
@@ -97,6 +98,10 @@ export const es = {
     noCategory: 'Sin categoría',
     transferTo: (account: string) => `Transferencia a ${account}`,
     installment: (number: number, total: number) => `Cuota ${number} de ${total}`,
+    refund: 'Es una devolución',
+    refundHint:
+      'Te devolvieron plata de una compra: resta del gasto de su categoría y del resumen de la tarjeta.',
+    refundTag: 'devolución',
     count: (count: number) => (count === 1 ? '1 movimiento' : `${count} movimientos`),
     loadMore: 'Cargar más',
     filters: {
@@ -259,10 +264,11 @@ export const es = {
     takePhoto: 'Sacar foto',
     chooseFiles: 'Elegir de la galería',
     kind: 'Qué es',
-    kinds: { receipt: 'Ticket o factura', screenshot: 'Captura de una app' } satisfies Record<
-      UploadableDocumentKind,
-      string
-    >,
+    kinds: {
+      receipt: 'Ticket o factura',
+      screenshot: 'Captura de una app',
+      card_statement: 'Resumen de tarjeta',
+    } satisfies Record<DocumentKind, string>,
     account: 'Cuenta con la que pagaste',
     accountLater: 'La elijo al revisar',
     groupQuestion: 'Elegiste varias fotos',
@@ -286,12 +292,45 @@ export const es = {
       `Se subieron ${ok} de ${total}. Las demás ya estaban subidas o no se pudieron leer.`,
     manualTitle: 'A mano',
     manual: 'Cargar un movimiento',
+    statementTitle: 'Resumen de tarjeta',
+    statementText:
+      'Subí el PDF del resumen. Antes de mandarlo a la IA vas a ver el texto y podés tapar lo que quieras.',
+    statement: 'Leer un resumen en PDF',
+  },
+
+  statement: {
+    title: 'Resumen de tarjeta',
+    intro:
+      'La app saca el texto del PDF y tapa los números de tarjeta, documentos, mails y lo que sigue a "Titular:" o "Domicilio:". A la IA solo le llega el texto que apruebes, nunca el PDF.',
+    file: 'PDF del resumen',
+    choose: 'Elegir el PDF',
+    chosen: (name: string) => `Elegido: ${name}`,
+    password: 'Contraseña del PDF',
+    passwordHint: 'Solo si el banco lo protege (a veces es el DNI). No se guarda.',
+    account: 'Tarjeta',
+    read: 'Leer el PDF',
+    reading: 'Leyendo el PDF…',
+    found: (pages: number, hidden: number) =>
+      `${pages === 1 ? '1 página' : `${pages} páginas`}. Se taparon ${hidden === 1 ? '1 dato' : `${hidden} datos`}.`,
+    check:
+      'Leé el texto antes de mandarlo. Si queda tu nombre, tu dirección u otro dato tuyo, borralo o agregalo abajo para taparlo siempre.',
+    words: 'Tapar siempre',
+    wordsHint:
+      'Tu nombre, tu apellido, tu calle. Se tapan en este y en los próximos resúmenes, y solo se recuerdan en este teléfono.',
+    wordPlaceholder: 'Por ejemplo, tu apellido',
+    addWord: 'Tapar',
+    removeWord: (word: string) => `Dejar de tapar ${word}`,
+    text: 'Texto que se manda a la IA',
+    send: 'Mandar a la IA',
+    sending: 'Mandando…',
+    another: 'Elegir otro PDF',
+    keepText: 'El texto no se conserva después de confirmar. El PDF no se guarda nunca.',
   },
 
   documents: {
     pendingTitle: 'Pendientes',
     empty: 'No hay nada esperando tu revisión.',
-    expiry: (days: number) => `Lo que no revises en ${days} días se descarta solo, con su imagen.`,
+    expiry: (days: number) => `Lo que no revises en ${days} días se descarta solo, con su imagen o texto.`,
     banner: (count: number) =>
       count === 1 ? '1 documento espera tu revisión' : `${count} documentos esperan tu revisión`,
     statuses: {
@@ -304,7 +343,7 @@ export const es = {
     found: (count: number) => (count === 1 ? '1 movimiento' : `${count} movimientos`),
     waiting: 'Esperando a la IA',
     waitingText: (time: string, tries: number) =>
-      `La IA llegó a su límite o no respondió. Se vuelve a intentar sola a las ${time} (intento ${tries + 1}). La foto queda guardada.`,
+      `La IA llegó a su límite o no respondió. Se vuelve a intentar sola a las ${time} (intento ${tries + 1}). Lo subido queda guardado.`,
     retryNow: 'Intentar ahora',
     review: 'Revisar',
     retry: 'Reintentar',
@@ -319,6 +358,26 @@ export const es = {
       unreadable: 'No se pudo entender la imagen. Probá con una foto más nítida.',
     } satisfies Record<DocumentErrorCode, string>,
     reviewTitle: 'Revisar lo leído',
+    sentText: 'Texto que se mandó a la IA',
+    periodsTitle: 'Fechas del resumen',
+    periodsText:
+      'Con el cierre y el vencimiento guardados, cada compra cuenta en el mes en que la pagás. Las podés corregir después en Más → Tarjetas.',
+    thisPeriod: 'Este resumen',
+    nextPeriod: 'Próximo resumen',
+    savePeriod: 'Guardar estas fechas',
+    periodCards: 'Para las tarjetas',
+    periodCardsMissing: 'Elegí al menos una tarjeta.',
+    periodExists:
+      'Ese cierre ya está cargado para esa tarjeta. Destildá "Guardar estas fechas" o corregilo en Más → Tarjetas.',
+    continuePlan: (from: number, total: number) =>
+      from === total
+        ? `Crear también la cuota ${total}, que queda proyectada`
+        : `Crear también las cuotas ${from} a ${total}, que quedan proyectadas`,
+    continuePlanHint:
+      'Usalo si esta compra no está cargada. Las cuotas siguientes van por el mismo monto; si cambian, las corregís.',
+    statementSum: (sum: string, total: string) => `Lo marcado suma ${sum}; el resumen dice ${total}.`,
+    statementGap: (difference: string) =>
+      `Diferencia: ${difference}. Puede ser saldo anterior, pagos, o algo que la IA no leyó.`,
     nothingFound: 'No se encontró ningún movimiento en la imagen.',
     imageAlt: (index: number) => `Imagen ${index} del documento`,
     accountForAll: 'Cuenta para todos',
@@ -513,6 +572,19 @@ export const es = {
     'A purchase in installments cannot be split': 'Una compra en cuotas no se divide entre categorías.',
     'Installments are for credit cards': 'Las cuotas son para tarjetas de crédito.',
     'A transfer cannot have products': 'Una transferencia no lleva productos.',
+    'Attach the statement PDF': 'Elegí el PDF del resumen.',
+    'Only PDF files are accepted': 'El archivo no es un PDF.',
+    'The PDF is protected with a password': 'El PDF tiene contraseña: escribila abajo.',
+    'The PDF password is wrong': 'La contraseña del PDF no es correcta.',
+    'The PDF has too many pages for a statement': 'El PDF tiene demasiadas páginas para ser un resumen.',
+    'The PDF could not be read': 'No se pudo abrir el PDF. Probá descargarlo de nuevo del banco.',
+    'The PDF has no text: it is a scanned image':
+      'El PDF es una imagen escaneada, sin texto. Podés sacar capturas solo de la parte de los consumos y subirlas como "Captura de una app".',
+    'The PDF has too much text for a statement': 'El PDF tiene demasiado texto para ser un resumen.',
+    'Only a card statement brings closing dates': 'Solo un resumen de tarjeta trae fechas de cierre.',
+    'Only an expense can be a refund': 'Solo un egreso puede ser una devolución.',
+    'A refund is not paid in installments': 'Una devolución no va en cuotas.',
+    'There are no installments left to create': 'Esa es la última cuota: no quedan cuotas por crear.',
   } as Record<string, string>,
 
   importIssues: {

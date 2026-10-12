@@ -35,6 +35,7 @@ export function TransactionRow({
       ? es.transactions.installment(transaction.installment.number, transaction.installment.total)
       : null,
     transaction.status === 'projected' ? es.installments.projected : null,
+    transaction.refund ? es.transactions.refundTag : null,
   ].filter((part) => part && part !== title);
 
   return (
@@ -44,8 +45,10 @@ export function TransactionRow({
           <span className="block truncate font-medium">{title}</span>
           <span className="block truncate text-sm text-muted">{details.join(', ')}</span>
         </span>
-        <span className={`amount shrink-0 font-semibold ${TONE[transaction.type]}`}>
-          {SIGN[transaction.type]}
+        <span
+          className={`amount shrink-0 font-semibold ${transaction.refund ? TONE.income : TONE[transaction.type]}`}
+        >
+          {transaction.refund ? SIGN.income : SIGN[transaction.type]}
           {formatMoney(transaction.amountCents, transaction.currency)}
         </span>
       </Link>

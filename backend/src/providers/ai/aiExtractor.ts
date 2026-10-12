@@ -8,8 +8,8 @@ import type {
 import { AiProviderError } from '../../core/errors/errors';
 
 /**
- * The app's only view of an AI model: hand over the images of a document, get
- * back a structured extraction. Nothing outside this folder knows which
+ * The app's only view of an AI model: hand over the images of a document (or
+ * the text of a card statement), get back a structured extraction. Nothing outside this folder knows which
  * provider is behind it, so swapping Gemini for another service or a local
  * model is one new file plus one line in the composition root.
  *
@@ -28,8 +28,10 @@ export interface AiExtractor {
 
 export interface ExtractionInput {
   kind: DocumentKind;
-  /** One image, or several parts of the same long receipt, in order. */
+  /** One image, or several parts of the same long receipt, in order. Empty for a card statement. */
   files: readonly { content: Buffer; mimeType: string }[];
+  /** A card statement's text, personal data already hidden. */
+  text?: string | null;
   /** The user's categories: the model may only suggest one of these. */
   categories: readonly ExtractionCategory[];
   /** Lets the model resolve "hoy", "ayer" and dates printed without a year. */

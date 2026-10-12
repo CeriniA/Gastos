@@ -46,6 +46,7 @@ test('a clean answer becomes a valid extraction in cents', () => {
   assert.deepEqual(result.transactions, [
     {
       type: 'expense',
+      refund: false,
       date: '2026-10-05',
       amountCents: 1540050,
       currency: 'ARS',
@@ -159,4 +160,54 @@ test('answers that are not JSON, or not the agreed shape, fail as unreadable', (
     );
   }
   assert.deepEqual(extractJson('x {"a": 1} y'), { a: 1 });
+});
+
+test("a card statement's dates and amounts are read, future dates included", () => {
+  const answer = JSON.stringify({
+    transactions: [],
+    statement: {
+      closingDate: '2026-10-08',
+      dueDate: '2026-10-20',
+      nextClosingDate: '05/11/2026',
+      nextDueDate: 'mañana',
+      total: '4000.00',
+      minimumPayment: 400,
+      currency: 'ars',
+    },
+    warnings: [],
+  });
+  const result = normalizeExtraction(answer, { ...context, kind: 'card_statement' });
+  assert.equal(extractionResultSchema.safeParse(result).success, true);
+  assert.deepEqual(result.statement, {
+    closingDate: '2026-10-08',
+    dueDate: '2026-10-20',
+    nextClosingDate: '2026-11-05',
+    nextDueDate: null,
+    totalCents: 400000,
+    minimumPaymentCents: 40000,
+    currency: 'ARS',
+  });
+
+  // Only a statement has statement data, whatever the model sends.
+  assert.equal(normalizeExtraction(answer, context).statement, null);
+  assert.equal(
+    normalizeExtraction(JSON.stringify({ transactions: [] }), { ...context, kind: 'card_statement' })
+      .statement,
+    null,
+  );
+});
+
+test('only an expense is kept as a refund', () => {
+  const result = normalizeExtraction(
+    answer([
+      { type: 'expense', refund: true, amount: '10', currency: 'ARS' },
+      { type: 'income', refund: true, amount: '10', currency: 'ARS' },
+      { type: 'expense', amount: '10', currency: 'ARS' },
+    ]),
+    context,
+  );
+  assert.deepEqual(
+    result.transactions.map((transaction) => transaction.refund),
+    [true, false, false],
+  );
 });

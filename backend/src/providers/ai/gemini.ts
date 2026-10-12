@@ -60,6 +60,7 @@ export function createGeminiExtractor(options: GeminiOptions): AiExtractor {
             inline_data: { mime_type: file.mimeType, data: file.content.toString('base64') },
           })),
           { text: buildPrompt(input) },
+          ...(input.text ? [{ text: input.text }] : []),
         ],
       },
     ];

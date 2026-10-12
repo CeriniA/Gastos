@@ -22,7 +22,7 @@ import {
 import type { WriteOptions } from '../../core/db/transaction';
 import { NotFoundError, ValidationError } from '../../core/errors/errors';
 import { dueDateFor, resolvePaymentDate, type PeriodDates } from './paymentDate';
-import { duplicateKey } from './duplicateKey';
+import { duplicateKey, installmentKey } from './duplicateKey';
 import type { TransactionRecord, TransactionsRepository } from './transactions.repository';
 
 /** What the transactions module needs from the rest of the app. */
@@ -176,6 +176,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
       : null;
     return {
       type: input.type,
+      refund: input.refund,
       status,
       source: origin.source,
       date: input.date,
@@ -282,6 +283,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
       const movedInTime = patch.date !== undefined || patch.accountId !== undefined;
       const merged: TransactionCreate = {
         type: patch.type ?? previous.type,
+        refund: patch.refund ?? previous.refund,
         date: patch.date ?? previous.date,
         amountCents: patch.amountCents ?? previous.amountCents,
         currency: patch.currency ?? previous.currency,
@@ -407,6 +409,18 @@ export function createTransactionsService(repository: TransactionsRepository, de
       const keys = await repository.amountKeysOn([...new Set(candidates.map((candidate) => candidate.date))]);
       return candidates.map((candidate) =>
         keys.has(duplicateKey(candidate.date, candidate.amountCents, candidate.currency)),
+      );
+    },
+
+    /** For each candidate, whether a live transaction is already that installment of that amount. */
+    async findInstallments(
+      candidates: readonly { number: number; total: number; amountCents: number; currency: string }[],
+    ): Promise<boolean[]> {
+      const keys = await repository.installmentKeys([
+        ...new Set(candidates.map((candidate) => candidate.amountCents)),
+      ]);
+      return candidates.map((candidate) =>
+        keys.has(installmentKey(candidate, candidate.amountCents, candidate.currency)),
       );
     },
 

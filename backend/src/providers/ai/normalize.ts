@@ -13,6 +13,7 @@ import {
   parseAmountToCents,
   parseFlexibleDate,
   type DocumentKind,
+  type ExtractedStatement,
   type ExtractedTransaction,
   type ExtractionResult,
   type UncertainField,
@@ -36,6 +37,7 @@ const rawSchema = z.object({
       z
         .object({
           type: z.string().nullish(),
+          refund: z.boolean().nullish(),
           date: z.string().nullish(),
           amount: looseAmount,
           currency: z.string().nullish(),
@@ -62,8 +64,22 @@ const rawSchema = z.object({
         .passthrough(),
     )
     .nullish(),
+  statement: z
+    .object({
+      closingDate: z.string().nullish(),
+      dueDate: z.string().nullish(),
+      nextClosingDate: z.string().nullish(),
+      nextDueDate: z.string().nullish(),
+      total: looseAmount,
+      minimumPayment: looseAmount,
+      currency: z.string().nullish(),
+    })
+    .passthrough()
+    .nullish(),
   warnings: z.array(z.string()).nullish(),
 });
+
+type RawStatement = NonNullable<z.infer<typeof rawSchema>['statement']>;
 
 /** Models sometimes wrap the JSON in a code fence or add a sentence around it. */
 export function extractJson(text: string): unknown {
@@ -88,6 +104,31 @@ function toQuantity(value: string | number | null | undefined): number | null {
   if (value === null || value === undefined || value === '') return null;
   const quantity = typeof value === 'number' ? value : Number(value.trim().replace(',', '.'));
   return Number.isFinite(quantity) && quantity > 0 && quantity <= MAX_ITEM_QUANTITY ? quantity : null;
+}
+
+/** Any ISO code is kept: a receipt in reais is still a readable receipt. */
+function toCurrency(value: string | null | undefined): string | null {
+  const code = (value ?? '').trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(code) ? code : null;
+}
+
+const toDate = (value: string | null | undefined) => (value ? parseFlexibleDate(value) : null);
+
+/**
+ * A statement's own dates and amounts. Unlike a purchase, its due date and the
+ * next closing are in the future, so future dates are kept here.
+ */
+function toStatement(raw: RawStatement | null | undefined): ExtractedStatement | null {
+  if (!raw) return null;
+  return {
+    closingDate: toDate(raw.closingDate),
+    dueDate: toDate(raw.dueDate),
+    nextClosingDate: toDate(raw.nextClosingDate),
+    nextDueDate: toDate(raw.nextDueDate),
+    totalCents: toCents(raw.total),
+    minimumPaymentCents: toCents(raw.minimumPayment),
+    currency: toCurrency(raw.currency),
+  };
 }
 
 function oneOf<T extends string>(values: readonly T[], candidate: string | null | undefined): T | null {
@@ -119,16 +160,14 @@ export function normalizeExtraction(
       if (known) uncertain.add(known);
     }
 
-    let date = raw.date ? parseFlexibleDate(raw.date) : null;
+    let date = toDate(raw.date);
     if (date && date > context.today) date = null; // A future date on a receipt is a misread.
     if (!date) uncertain.add('date');
 
     const amountCents = toCents(raw.amount);
     if (amountCents === null) uncertain.add('amount');
 
-    // Any ISO code is kept: a receipt in reais is still a readable receipt.
-    const code = (raw.currency ?? '').trim().toUpperCase();
-    const currency = /^[A-Z]{3}$/.test(code) ? code : null;
+    const currency = toCurrency(raw.currency);
     if (!currency) uncertain.add('currency');
 
     // The model may only pick an existing category of the right kind.
@@ -149,6 +188,7 @@ export function normalizeExtraction(
 
     transactions.push({
       type,
+      refund: type === 'expense' && raw.refund === true,
       date,
       amountCents,
       currency,
@@ -179,7 +219,7 @@ export function normalizeExtraction(
   return {
     documentKind: context.kind,
     transactions: transactions.slice(0, MAX_DOCUMENT_TRANSACTIONS),
-    statement: null,
+    statement: context.kind === 'card_statement' ? toStatement(parsed.data.statement) : null,
     warnings: warnings.slice(0, MAX_WARNINGS),
   };
 }

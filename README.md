@@ -12,9 +12,12 @@ Qué hace hoy (el detalle, en `docs/ROADMAP.md`):
 - Consumo por producto.
 - Tarjetas: cierres y vencimientos cargados a mano, fecha de pago calculada por el resumen y compras en
   cuotas.
+- Resúmenes de tarjeta en PDF: el texto, con los datos personales tapados y aprobado por el usuario, va a la
+  IA; los cierres se guardan con las compras (sin probar todavía con un resumen real).
+- Devoluciones que restan en su categoría; cuotas leídas de un resumen que crean las que faltan.
 - Balance del mes por moneda, respaldo completo, exportación e importación de planillas.
 
-Falta: leer resúmenes de tarjeta en PDF, devoluciones, informes y movimientos fijos.
+Falta: informes y movimientos fijos.
 
 ## Stack
 

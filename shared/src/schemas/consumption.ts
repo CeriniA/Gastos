@@ -26,7 +26,10 @@ export interface ConsumptionItem {
   product: string;
   group: ProductGroup | null;
   quantity: number | null;
+  /** Negative on a refund's lines: the thing was given back. */
   amountCents: number;
+  /** The line belongs to a refund: it takes away and is not a purchase. */
+  refund: boolean;
 }
 
 export interface ProductConsumption {

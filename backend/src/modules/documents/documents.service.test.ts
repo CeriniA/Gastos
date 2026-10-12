@@ -25,6 +25,7 @@ const photo = (label: string) => ({ originalName: `${label}.jpg`, content: jpeg(
 
 const read = (overrides: Partial<ExtractedTransaction> = {}): ExtractedTransaction => ({
   type: 'expense',
+  refund: false,
   date: '2026-10-05',
   amountCents: 1540050,
   currency: 'ARS',
@@ -76,12 +77,15 @@ function confirmation(
           toAmountCents: null,
           paymentDate: null,
           original: null,
+          refund: false,
           items: [{ name: 'Consumo', amountCents: 1540050, product: '', group: null, quantity: null }],
         },
         installment: null,
+        continuePlan: false,
       },
     ],
     rules: [],
+    cardPeriods: [],
     ...overrides,
   };
 }
@@ -441,6 +445,7 @@ test('a receipt in another currency is stored in the account currency, with what
   ) => ({
     transactions: [{ ...base, transaction: { ...base.transaction, date, amountCents, original } }],
     rules: [],
+    cardPeriods: [],
   });
 
   // The original currency must be a different one: converting pesos to pesos is a mistake.
@@ -511,7 +516,7 @@ test('a receipt can be uploaded again once all its transactions were deleted', a
   const first = await app.documents.upload({ kind: 'receipt' }, [photo('luz')]);
   await app.documents.processQueue();
   const both = confirmation(bank.id, power.id).transactions[0]!;
-  await app.documents.confirm(first.id, { transactions: [both, both], rules: [] });
+  await app.documents.confirm(first.id, { transactions: [both, both], rules: [], cardPeriods: [] });
   const [one, two] = app.store.transactions;
 
   // While one of its transactions still counts, the upload is a duplicate.

@@ -51,8 +51,7 @@ export function PendingPage() {
                     : ''}
                 </p>
                 <p className="truncate text-sm text-muted">
-                  {es.add.kinds[document.kind === 'screenshot' ? 'screenshot' : 'receipt']},{' '}
-                  {document.fileName}
+                  {es.add.kinds[document.kind]}, {document.fileName}
                 </p>
                 {document.status === 'error' && document.errorCode ? (
                   <p className="mt-1 text-sm">{es.documents.errors[document.errorCode]}</p>

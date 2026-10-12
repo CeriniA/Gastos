@@ -6,7 +6,7 @@ import type { DocumentsService } from './documents.service';
 
 export function createDocumentsRouter(service: DocumentsService): Router {
   const controller = createDocumentsController(service);
-  // Images are read from memory and never written to the server's disk.
+  // Images and PDFs are read from memory and never written to the server's disk.
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: MAX_UPLOAD_BYTES, files: MAX_DOCUMENT_FILES },
@@ -15,6 +15,9 @@ export function createDocumentsRouter(service: DocumentsService): Router {
   const router = Router();
   router.get('/', controller.list);
   router.post('/', upload.array('files', MAX_DOCUMENT_FILES), controller.upload);
+  // A statement's PDF is read in memory and dropped: only the text the user approves is stored.
+  router.post('/statement/preview', upload.single('file'), controller.previewStatement);
+  router.post('/statement', express.json({ limit: '1mb' }), controller.uploadStatement);
   router.get('/:id', controller.get);
   router.get('/:id/files/:index', controller.file);
   router.post('/:id/retry', controller.retry);

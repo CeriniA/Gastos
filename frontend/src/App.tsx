@@ -8,6 +8,7 @@ import { DataPage } from './features/data/DataPage';
 import { AddPage } from './features/documents/AddPage';
 import { PendingPage } from './features/documents/PendingPage';
 import { ReviewPage } from './features/documents/ReviewPage';
+import { StatementPage } from './features/documents/StatementPage';
 import { HomePage } from './features/home/HomePage';
 import { InstitutionsPage } from './features/institutions/InstitutionsPage';
 import { MorePage } from './features/more/MorePage';
@@ -28,6 +29,7 @@ export function App() {
       <Route element={<AppShell />}>
         <Route index element={<HomePage />} />
         <Route path="agregar" element={<AddPage />} />
+        <Route path="agregar/resumen" element={<StatementPage />} />
         <Route path="pendientes" element={<PendingPage />} />
         <Route path="pendientes/:id" element={<ReviewPage />} />
         <Route path="movimientos" element={<TransactionsPage />} />

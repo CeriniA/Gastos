@@ -77,6 +77,13 @@ export function addMonths(date: IsoDate, months: number): IsoDate {
   return `${pad(targetYear, 4)}-${pad(targetMonth + 1)}-${pad(Math.min(day, lastDay))}`;
 }
 
+/** Adds calendar days; a negative number goes back. */
+export function addDays(date: IsoDate, days: number): IsoDate {
+  const moment = new Date(`${date}T00:00:00.000Z`);
+  moment.setUTCDate(moment.getUTCDate() + days);
+  return moment.toISOString().slice(0, 10);
+}
+
 export function addMonthsToKey(month: MonthKey, months: number): MonthKey {
   return monthKeyOf(addMonths(firstDayOfMonth(month), months));
 }

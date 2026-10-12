@@ -4,14 +4,15 @@ Cada etapa termina en algo que funciona. Si una se complica, lo anterior ya sirv
 
 ## Estado de la base
 
-| Qué                                                                 | Estado                                                                                                                                                            |
-| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run check` (tipos, lint y pruebas) contra las librerías reales | Pasa el 11/10/2026 con todo el código actual, incluidas las pantallas que cerraron la etapa 1: 106 pruebas                                                        |
-| Compilación de backend y frontend (`npm run build`)                 | Render compiló los dos con todo el código actual el 11/10/2026                                                                                                    |
-| Etapa 1 corriendo contra MongoDB Atlas                              | Dada por cerrada por el usuario                                                                                                                                   |
-| Lectura real con Gemini                                             | Usada por el usuario con tickets y capturas de MercadoPago. La clasificación de productos (instrucciones versión 5) dio bien en el primer uso real, el 11/10/2026 |
-| Consumo por producto contra MongoDB y Gemini reales                 | Funciona en Render con datos reales desde el 11/10/2026                                                                                                           |
-| `render.yaml`                                                       | Desplegado en Render el 11/10/2026: backend y sitio en línea. Atlas necesita `0.0.0.0/0` en Network Access                                                        |
+| Qué                                                          | Estado                                                                                                                                                                                       |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasó el 12/10/2026 con la etapa 3 a mano (126 pruebas). Con resúmenes en PDF, devoluciones y cuotas desde el resumen: 146 pruebas pasan en el entorno del asistente; falta correrlo en la PC |
+| Lectura de resúmenes en PDF                                  | Escrita el 12/10/2026 sin ningún resumen real a mano: la lectura del PDF, el tapado de datos y las instrucciones a la IA se ajustan con el primer resumen verdadero                          |
+| Compilación de backend y frontend (`npm run build`)          | Render compiló los dos el 11/10/2026; se repite en cada push                                                                                                                                 |
+| Etapa 1 corriendo contra MongoDB Atlas                       | Dada por cerrada por el usuario                                                                                                                                                              |
+| Lectura real con Gemini                                      | Usada por el usuario con tickets y capturas de MercadoPago. La clasificación de productos (instrucciones versión 5) dio bien en el primer uso real, el 11/10/2026                            |
+| Consumo por producto contra MongoDB y Gemini reales          | Funciona en Render con datos reales desde el 11/10/2026                                                                                                                                      |
+| `render.yaml`                                                | Desplegado en Render el 11/10/2026: backend y sitio en línea. Atlas necesita `0.0.0.0/0` en Network Access                                                                                   |
 
 Las versiones de `package.json` se escribieron sin acceso al registro de npm; la instalación funcionó.
 
@@ -98,6 +99,10 @@ Falta:
 
 Revisión del 11/10/2026. No bloquea el uso; conviene no perderla de vista.
 
+Desde el 12/10/2026 `npm run check` incluye una auditoría (`scripts/audit.mjs`) que rechaza código
+copiado, exports sin uso y números sueltos, y el lint rechaza textos escritos en las pantallas. Lo que
+sigue en esta lista es lo que esos controles no cubren.
+
 - **Las pantallas no tienen pruebas automáticas.** Solo las reglas del backend. Un error de flujo o
   visual lo encuentra el usuario.
 - **Vulnerabilidades de las librerías** (`npm audit` del 11/10/2026: 1 baja, 2 moderadas, ninguna alta).
@@ -121,15 +126,34 @@ Hecho (12/10/2026, carga a mano):
   se recalcula al corregirlo. Pantalla Tarjetas con lo cargado por resumen y la diferencia contra su total.
 - Compras en cuotas (`installment-plans`): un movimiento por mes; las futuras proyectadas y confirmadas
   solas al llegar su fecha.
-- Decidido cómo se guarda una devolución (ver `DECISIONES.md`).
 
 Comprobado con pruebas sobre el backend en memoria. Sin probar todavía con datos reales.
 
+Hecho (12/10/2026, sin probar con un resumen real):
+
+- Resúmenes en PDF: el servidor saca el texto (`unpdf`), tapa los datos personales reconocibles y lo
+  muestra; el usuario tapa lo que quede (con palabras que el teléfono recuerda) y recién entonces se manda
+  el texto a la IA. El PDF no se guarda nunca y la contraseña tampoco.
+- La IA devuelve los movimientos y el cierre, vencimiento, próximo cierre, total y pago mínimo. En la
+  revisión se eligen las tarjetas (pesos y dólares de la misma tarjeta vienen marcadas) y se guardan los
+  cierres junto con las compras; se ve la suma de lo marcado contra el total.
+- Las cuotas que cobra el resumen se fechan el día del cierre.
+
+Hecho (12/10/2026):
+
+- Devoluciones: un egreso marcado que resta del mes, del resumen de la tarjeta y del consumo. Se marcan
+  al cargar o editar, en la revisión de lo leído (la IA las propone) y en la planilla (tipo `devolución`).
+- "Cuota 3 de 6" de una compra no cargada: en la revisión se ofrece crear el plan con las cuotas que faltan,
+  proyectadas. Una cuota que ya está cargada se marca como repetida y no se vuelve a crear.
+- Corregido: una compra en cuotas hecha justo antes del cierre ya no saltea un resumen. Con los cierres de la
+  tarjeta cargados, las cuotas siguientes se fechan a mitad de cada período.
+
 Falta:
 
-- Programar las devoluciones.
-- Resúmenes en PDF leídos por la IA: movimientos, cierre, vencimiento, total; control de la suma contra el
-  total; "cuota 3 de 6" de una compra no cargada ofrece crear el plan.
+- Probarlo con un resumen real y ajustar el tapado y las instrucciones.
+- Intereses, impuestos y comisiones a una categoría "Cargos financieros" fija (hoy la IA sugiere la que
+  encuentra).
+- PDF escaneado (sin texto): hoy se rechaza con aviso.
 - Detección de la misma compra cargada por dos vías (ticket y resumen) y propuesta de unión.
 - Pagar la tarjeta como transferencia desde el banco, ligada a su resumen.
 

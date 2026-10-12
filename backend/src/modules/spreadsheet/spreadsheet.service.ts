@@ -266,6 +266,7 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
               : undefined;
           const transaction: TransactionCreate = {
             type: row.type,
+            refund: row.refund,
             date: row.date,
             amountCents: row.amountCents,
             currency: row.currency,
@@ -313,6 +314,7 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
           const base = {
             date: transaction.date,
             type: transaction.type,
+            refund: transaction.refund,
             currency: transaction.currency,
             account: accountName.get(transaction.accountId) ?? '',
             description: transaction.description,

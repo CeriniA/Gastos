@@ -25,6 +25,7 @@ async function setup() {
       toAmountCents: null,
       paymentDate: null,
       original: null,
+      refund: false,
       items: [],
     };
     return app.transactions.create(input);

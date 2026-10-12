@@ -1,25 +1,12 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MAX_DOCUMENT_FILES, UPLOADABLE_DOCUMENT_KINDS, type UploadableDocumentKind } from '@gastos/shared';
-import { ApiError } from '../../shared/api/client';
-import { errorMessage } from '../../shared/api/errors';
 import { es } from '../../shared/i18n/es';
 import { Button, Card, Field, Notice, PageTitle, Select } from '../../shared/ui/ui';
 import { useAccounts } from '../accounts/api';
 import { useDocumentMutations } from './api';
 import { compressImage } from './compress';
-
-/** Says why an upload was refused, as precisely as the server told us. */
-function uploadFailure(error: unknown): string {
-  if (error instanceof ApiError) {
-    if (error.code === 'DUPLICATE') return es.add.duplicate;
-    const reason = (error.details as { reason?: string } | undefined)?.reason;
-    if (error.code === 'AI_PROVIDER' && reason && reason in es.documents.errors) {
-      return es.documents.errors[reason as keyof typeof es.documents.errors];
-    }
-  }
-  return errorMessage(error);
-}
+import { uploadFailure } from './uploadFailure';
 
 /** The "+" screen: read a photo with the AI, or type a transaction by hand. */
 export function AddPage() {
@@ -185,6 +172,17 @@ export function AddPage() {
             <Notice tone="error">{failure}</Notice>
           </div>
         ) : null}
+      </Card>
+
+      <Card className="mb-4">
+        <h2 className="text-lg font-semibold">{es.add.statementTitle}</h2>
+        <p className="mb-3 mt-1 text-sm text-muted">{es.add.statementText}</p>
+        <Link
+          to="/agregar/resumen"
+          className="flex min-h-11 items-center justify-center rounded-lg border border-line bg-surface px-4 font-semibold"
+        >
+          {es.add.statement}
+        </Link>
       </Card>
 
       <Card>

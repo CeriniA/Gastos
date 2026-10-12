@@ -1,7 +1,7 @@
 import type { CardPeriod } from '@gastos/shared';
 import { createCollectionPort } from '../../core/db/collectionPort';
 import { COLLECTIONS } from '../../core/db/collections';
-import { idString, toObjectId } from '../../core/db/ids';
+import { idString, toObjectId, toObjectIdOrNull } from '../../core/db/ids';
 import type { WriteOptions } from '../../core/db/transaction';
 import { CardPeriodModel, type CardPeriodDoc } from './cardPeriods.model';
 
@@ -52,11 +52,25 @@ export const cardPeriodsRepository = {
     return doc ? toPeriod(doc) : null;
   },
 
-  async create(accountId: string, data: PeriodData, options: WriteOptions = {}): Promise<CardPeriod> {
-    const [doc] = await CardPeriodModel.create([{ ...data, accountId: toObjectId(accountId) }], {
-      session: options.session,
-    });
+  async create(
+    accountId: string,
+    { documentId, ...data }: PeriodData & { documentId: string | null },
+    options: WriteOptions = {},
+  ): Promise<CardPeriod> {
+    const [doc] = await CardPeriodModel.create(
+      [{ ...data, accountId: toObjectId(accountId), documentId: toObjectIdOrNull(documentId) }],
+      { session: options.session },
+    );
     return toPeriod(doc!.toObject() as CardPeriodDoc);
+  },
+
+  /** Unlinks the periods read from a document, which is about to be deleted. */
+  async clearDocument(documentId: string, options: WriteOptions = {}): Promise<void> {
+    await CardPeriodModel.updateMany(
+      { documentId: toObjectId(documentId) },
+      { $set: { documentId: null } },
+      { session: options.session },
+    );
   },
 
   async update(

@@ -133,6 +133,7 @@ const expense: TransactionCreate = {
   toAmountCents: null,
   paymentDate: null,
   original: null,
+  refund: false,
   items: [],
 };
 

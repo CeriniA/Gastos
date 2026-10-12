@@ -50,6 +50,34 @@ export function createCardPeriodsService(repository: CardPeriodsRepository, deps
     if (taken) throw new DuplicateError('CardPeriod', 'closingDate');
   }
 
+  /**
+   * Checks every period before writing any, then stores them and moves each
+   * card's purchases to their new payment dates.
+   */
+  async function insert(
+    inputs: readonly CardPeriodCreate[],
+    documentId: string | null,
+    options: WriteOptions,
+  ): Promise<CardPeriod[]> {
+    const rows = inputs.flatMap(({ accountIds, ...data }) =>
+      [...new Set(accountIds)].map((accountId) => ({ accountId, data })),
+    );
+    const seen = new Set<string>();
+    for (const { accountId, data } of rows) {
+      await assertCard(accountId);
+      await assertClosingFree(accountId, data.closingDate);
+      const key = `${accountId}|${data.closingDate}`;
+      if (seen.has(key)) throw new DuplicateError('CardPeriod', 'closingDate');
+      seen.add(key);
+    }
+    const created: CardPeriod[] = [];
+    for (const { accountId, data } of rows)
+      created.push(await repository.create(accountId, { ...data, documentId }, options));
+    for (const accountId of new Set(rows.map((row) => row.accountId)))
+      await deps.refreshPaymentDates(accountId, [], options);
+    return created;
+  }
+
   return {
     /** Closing and due dates of every card, for the transactions module. */
     async listDates(options: WriteOptions = {}) {
@@ -91,22 +119,22 @@ export function createCardPeriodsService(repository: CardPeriodsRepository, deps
     },
 
     /** The same dates for one or more cards (a card in pesos and in dollars), all or none. */
-    async create(input: CardPeriodCreate): Promise<CardPeriod[]> {
-      const accountIds = [...new Set(input.accountIds)];
-      for (const accountId of accountIds) {
-        await assertCard(accountId);
-        await assertClosingFree(accountId, input.closingDate);
-      }
-      const { accountIds: _accountIds, ...data } = input;
-      return deps.runInTransaction(async (session) => {
-        const created: CardPeriod[] = [];
-        for (const accountId of accountIds) {
-          created.push(await repository.create(accountId, data, { session }));
-          await deps.refreshPaymentDates(accountId, [], { session });
-        }
-        return created;
-      });
+    create(input: CardPeriodCreate): Promise<CardPeriod[]> {
+      return deps.runInTransaction((session) => insert([input], null, { session }));
     },
+
+    /** Dates read from a card statement, inside the transaction that confirms it. */
+    createFromDocument(
+      inputs: readonly CardPeriodCreate[],
+      documentId: string,
+      options: WriteOptions,
+    ): Promise<CardPeriod[]> {
+      return insert(inputs, documentId, options);
+    },
+
+    /** The periods read from a document that is being deleted keep their dates, without the link. */
+    releaseDocument: (documentId: string, options: WriteOptions) =>
+      repository.clearDocument(documentId, options),
 
     async update(id: string, input: CardPeriodUpdate): Promise<CardPeriod> {
       const current = await get(id);

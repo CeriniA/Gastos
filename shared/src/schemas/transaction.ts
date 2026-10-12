@@ -64,6 +64,12 @@ export type Split = z.infer<typeof splitSchema>;
 
 const fields = {
   type: z.enum(TRANSACTION_TYPES),
+  /**
+   * An expense that gives money back (a returned purchase, a credit on the
+   * card): stored with a positive amount, it takes away from its category,
+   * the month's spending and the card's statement instead of adding.
+   */
+  refund: z.boolean(),
   /** Day the purchase or income happened. */
   date: isoDateSchema,
   amountCents: amountCentsSchema,
@@ -92,6 +98,7 @@ const fields = {
 
 export interface TransactionShape {
   type: TransactionType;
+  refund: boolean;
   amountCents: number;
   accountId: string;
   categoryId: string | null;
@@ -107,6 +114,9 @@ export interface TransactionShape {
  */
 export function transactionShapeIssues(tx: TransactionShape): { path: string; message: string }[] {
   const issues: { path: string; message: string }[] = [];
+  if (tx.refund && tx.type !== 'expense') {
+    issues.push({ path: 'refund', message: 'Only an expense can be a refund' });
+  }
   if (tx.type === 'transfer') {
     if (!tx.toAccountId) {
       issues.push({ path: 'toAccountId', message: 'A transfer needs a destination account' });
@@ -144,6 +154,7 @@ export function transactionShapeIssues(tx: TransactionShape): { path: string; me
 export const transactionCreateSchema = z
   .object({
     ...fields,
+    refund: fields.refund.default(false),
     categoryId: fields.categoryId.default(null),
     description: fields.description.default(''),
     note: fields.note.default(''),
@@ -211,6 +222,8 @@ export interface Transaction {
   /** Day the money actually leaves or enters. Drives the monthly balance. */
   paymentDate: string;
   amountCents: number;
+  /** An expense that gives money back: its amount takes away instead of adding. */
+  refund: boolean;
   currency: Currency;
   original: OriginalAmount | null;
   accountId: string;

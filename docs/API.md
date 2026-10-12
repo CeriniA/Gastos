@@ -128,6 +128,7 @@ Cuerpo de alta:
 ```json
 {
   "type": "expense",
+  "refund": false,
   "date": "2026-10-05",
   "amountCents": 1540050,
   "currency": "ARS",
@@ -144,6 +145,9 @@ Cuerpo de alta:
   "items": []
 }
 ```
+
+`refund: true` marca una devolución: solo en un egreso (si no, `VALIDATION`) y nunca en cuotas. Su monto es
+positivo y resta del egreso del mes, del resumen de la tarjeta y del consumo. Si se omite es `false`.
 
 `items` son los productos: `[{ "name", "amountCents", "product", "group", "quantity" }]`, hasta 200.
 Son opcionales y no tienen que sumar el total (un descuento es un renglón con monto negativo). Una
@@ -191,17 +195,20 @@ con el mismo formato que la vista previa.
 
 ## Documentos
 
-Tickets y capturas leídos con IA. La subida responde enseguida; la lectura ocurre en segundo plano.
+Tickets, capturas y resúmenes de tarjeta leídos con IA. La subida responde enseguida; la lectura ocurre en
+segundo plano.
 
-| Método | Ruta                                       | Descripción                                                                                                                                                                     |
-| ------ | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/documents?status=pending\|all`           | `pending` (por defecto): procesando, listos para revisar y con error                                                                                                            |
-| POST   | `/documents`                               | `multipart/form-data`: `kind` (`receipt` o `screenshot`), `accountId` opcional y de 1 a 10 imágenes en `files` (JPG, PNG o WEBP, 5 MB cada una). Responde `202`                 |
-| GET    | `/documents/:id`                           | Detalle con `extraction` (lo leído, con la categoría sugerida ya resuelta) y `duplicateHints`: por cada movimiento, `existing`, `repeated` o `null`                             |
-| GET    | `/documents/:id/files/:index`              | Una de las imágenes. Deja de existir al confirmar                                                                                                                               |
-| POST   | `/documents/:id/retry`                     | Vuelve a leer ya un documento con error, ya leído o esperando a la IA (descarta el resultado anterior y la espera)                                                              |
-| POST   | `/documents/:id/confirm`                   | `{ transactions: [{ transaction, installment }], rules }` (los productos van en `transaction.items`). Crea los movimientos, guarda las reglas y borra las imágenes. Todo o nada |
-| DELETE | `/documents/:id?transactions=keep\|delete` | Sin confirmar: lo descarta. Confirmado: sus movimientos quedan como manuales (`keep`) o van a la papelera (`delete`)                                                            |
+| Método | Ruta                                       | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/documents?status=pending\|all`           | `pending` (por defecto): procesando, listos para revisar y con error                                                                                                                                                                                                                                                                                                                                                                   |
+| POST   | `/documents`                               | `multipart/form-data`: `kind` (`receipt` o `screenshot`), `accountId` opcional y de 1 a 10 imágenes en `files` (JPG, PNG o WEBP, 5 MB cada una). Responde `202`                                                                                                                                                                                                                                                                        |
+| POST   | `/documents/statement/preview`             | `multipart/form-data`: el PDF de un resumen en `file` (hasta 5 MB y 20 páginas) y `password` opcional. Devuelve `{ text, pages, hidden }`: el texto con los datos personales reconocibles tapados. No guarda nada ni llama a la IA                                                                                                                                                                                                     |
+| POST   | `/documents/statement`                     | `{ text, fileName, accountId? }`: el texto que el usuario aprobó (hasta 100.000 caracteres). Crea un documento `card_statement` sin imágenes. Responde `202`                                                                                                                                                                                                                                                                           |
+| GET    | `/documents/:id`                           | Detalle con `extraction` (lo leído, con la categoría sugerida ya resuelta), `text` (el texto de un resumen, hasta confirmarlo) y `duplicateHints`: por cada movimiento, `existing`, `repeated` o `null`                                                                                                                                                                                                                                |
+| GET    | `/documents/:id/files/:index`              | Una de las imágenes. Deja de existir al confirmar                                                                                                                                                                                                                                                                                                                                                                                      |
+| POST   | `/documents/:id/retry`                     | Vuelve a leer ya un documento con error, ya leído o esperando a la IA (descarta el resultado anterior y la espera)                                                                                                                                                                                                                                                                                                                     |
+| POST   | `/documents/:id/confirm`                   | `{ transactions: [{ transaction, installment, continuePlan }], rules, cardPeriods }` (`continuePlan: true` en una cuota que no es la última crea su plan y las cuotas que faltan, proyectadas) (los productos van en `transaction.items`; `cardPeriods`, solo para un resumen, son hasta 2 cierres con la forma de `POST /card-periods`). Crea los cierres, los movimientos y las reglas, y borra las imágenes o el texto. Todo o nada |
+| DELETE | `/documents/:id?transactions=keep\|delete` | Sin confirmar: lo descarta. Confirmado: sus movimientos quedan como manuales (`keep`) o van a la papelera (`delete`); los cierres que se guardaron de él quedan, sin el vínculo                                                                                                                                                                                                                                                        |
 
 Si la IA está sin cupo o no responde (`rate_limited`, `unavailable`), el documento no pasa a `error`: sigue
 en `processing` con `retryAt` (cuándo se vuelve a intentar solo) y `waits` (cuántas veces esperó). Las
@@ -212,7 +219,15 @@ de pendientes.
 Estados: `processing` → `ready` → `confirmed`, o `error` (con `errorCode`: `rate_limited`, `unavailable`,
 `not_configured`, `blocked`, `unreadable`).
 
-Subir un archivo ya confirmado y con movimientos vigentes responde `DUPLICATE`, con el documento existente en
+Resumen de tarjeta: el PDF se lee en memoria y se descarta. Si no se puede usar, la respuesta es `VALIDATION`
+sobre `file` (no es PDF, demasiadas páginas, imagen escaneada sin texto, demasiado texto, no se pudo abrir)
+o sobre `password` (falta o es incorrecta). La extracción de un resumen trae `statement` con `closingDate`,
+`dueDate`, `nextClosingDate`, `nextDueDate`, `totalCents`, `minimumPaymentCents` y `currency`. Las cuotas
+mayores a la primera vienen fechadas el día del cierre. Un cierre que ya existe para esa tarjeta hace fallar
+la confirmación con `DUPLICATE`. En `duplicateHints`, `existing` también marca una cuota ("3 de 6") que ya
+está guardada por el mismo monto, aunque sea en otra fecha.
+
+Subir un archivo (o el mismo texto de un resumen) ya confirmado y con movimientos vigentes responde `DUPLICATE`, con el documento existente en
 `details`. En cualquier otro caso el archivo se lee de nuevo. Sin
 `GEMINI_API_KEY` configurada, la subida responde `AI_PROVIDER` con `details.reason = "not_configured"`.
 

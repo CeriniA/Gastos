@@ -48,6 +48,7 @@ src/
     <nombre>.model.ts
     index.ts           Lo único que el resto de la app puede importar del módulo
   providers/ai/        Interfaz del lector de documentos y sus implementaciones
+  providers/pdf/       Interfaz del lector de texto de PDF y su implementación (unpdf)
   migrations/          Cambios numerados sobre datos guardados
   wiring.ts            Donde se conectan los servicios entre sí (sin base de datos)
   composition.ts       Producción: repositorios reales, transacciones reales, puertos de colección
@@ -107,10 +108,14 @@ funcionan, sin código extra por módulo:
 
 ### La IA como pieza reemplazable
 
-El resto de la app conoce solo la interfaz `AiExtractor`: recibe un archivo y devuelve una extracción
-con el formato de `extractionResultSchema`. Gemini será una implementación. Cambiar de proveedor es
-escribir otra y cambiar una línea en `composition.ts`. Lo que devuelve se valida igual que cualquier
-otra entrada.
+El resto de la app conoce solo la interfaz `AiExtractor`: recibe imágenes, o el texto de un resumen, y
+devuelve una extracción con el formato de `extractionResultSchema`. Gemini es una implementación. Cambiar
+de proveedor es escribir otra y cambiar una línea en `composition.ts`. Lo que devuelve se valida igual que
+cualquier otra entrada.
+
+Los PDF siguen la misma idea con `PdfTextReader` (`providers/pdf/`): da el texto de cada página. El tapado
+de datos personales (`shared/src/redaction.ts`) corre en el servidor antes de mostrar el texto, y las
+palabras que el usuario tapa se aplican en el teléfono; a la IA solo llega el texto aprobado.
 
 ## Frontend
 

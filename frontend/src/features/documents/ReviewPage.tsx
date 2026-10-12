@@ -13,6 +13,7 @@ import {
   formatRate,
   parseAmountToCents,
   parseRate,
+  spendingCents,
   todayIso,
   type Account,
   type Category,
@@ -32,12 +33,24 @@ import { optionLabel, orderedTree } from '../categories/tree';
 import { useLastRate, useReferenceRate } from '../transactions/api';
 import { ItemsEditor, fromItemDrafts, toItemDrafts, type ItemDraft } from '../transactions/ItemsEditor';
 import { DocumentImage } from './DocumentImage';
+import {
+  StatementSection,
+  fromPeriodDrafts,
+  sameCard,
+  toPeriodDrafts,
+  type PeriodDraft,
+  type PeriodErrors,
+} from './StatementSection';
 import { useDocument, useDocumentMutations } from './api';
 
 /** One extracted transaction as the user is editing it. Everything is text until confirmed. */
 interface Draft {
   include: boolean;
   type: TransactionType;
+  /** Expenses only: money given back for a purchase. */
+  refund: boolean;
+  /** An installment of a purchase the app does not have: also create the ones still to come. */
+  continuePlan: boolean;
   amount: string;
   date: string;
   accountId: string;
@@ -105,6 +118,10 @@ function withAccount(
   return { ...draft, accountId };
 }
 
+/** An installment that is not the last one: the ones still to come could be created. */
+const canContinue = (transaction: ReviewTransaction) =>
+  transaction.installment !== null && transaction.installment.number < transaction.installment.total;
+
 function toDraft(
   transaction: ReviewTransaction,
   accountId: string | null,
@@ -113,6 +130,8 @@ function toDraft(
   const draft: Draft = {
     include: true,
     type: transaction.type,
+    refund: transaction.refund,
+    continuePlan: canContinue(transaction),
     amount: readAmount(transaction),
     date: transaction.date ?? '',
     accountId: '',
@@ -426,6 +445,36 @@ function TransactionCard({
             </p>
           ) : null}
 
+          {read.installment &&
+          canContinue(read) &&
+          account?.type === 'credit_card' &&
+          draft.type === 'expense' ? (
+            <div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-5"
+                  checked={draft.continuePlan}
+                  onChange={(event) => onChange({ continuePlan: event.target.checked })}
+                />
+                {es.documents.continuePlan(read.installment.number + 1, read.installment.total)}
+              </label>
+              <p className="mt-1 text-sm text-muted">{es.documents.continuePlanHint}</p>
+            </div>
+          ) : null}
+
+          {draft.type === 'expense' && !read.installment ? (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-5"
+                checked={draft.refund}
+                onChange={(event) => onChange({ refund: event.target.checked })}
+              />
+              {es.transactions.refund}
+            </label>
+          ) : null}
+
           {draft.type === 'transfer' ? null : (
             <ItemsEditor
               items={draft.items}
@@ -453,15 +502,39 @@ function ReviewForm({
   const navigate = useNavigate();
   const { confirm, discard, retry } = useDocumentMutations();
   const read = document.extraction?.transactions ?? [];
+  const statement = document.extraction?.statement ?? null;
+  const statementCurrency = statement?.currency ?? DEFAULT_CURRENCY;
+  // A statement's lines in dollars go to the same card's dollar account, when there is one.
+  const card = sameCard(
+    accounts.find((account) => account.id === document.accountId),
+    accounts,
+  );
+  const startingAccount = (transaction: ReviewTransaction) =>
+    card.find((account) => account.currency === transaction.currency)?.id ?? document.accountId;
   const [drafts, setDrafts] = useState<Draft[]>(() =>
-    read.map((transaction, index) => ({
-      ...toDraft(transaction, document.accountId, accounts),
+    read.map((transaction, index) => {
+      const draft = toDraft(transaction, startingAccount(transaction), accounts);
       // A movement that looks repeated starts unticked: the app proposes, the user decides.
-      include: !document.duplicateHints[index],
-    })),
+      const repeated = Boolean(document.duplicateHints[index]);
+      return { ...draft, include: !repeated, continuePlan: draft.continuePlan && !repeated };
+    }),
+  );
+  const [periods, setPeriods] = useState<PeriodDraft[]>(() =>
+    toPeriodDrafts(
+      statement,
+      card.map((account) => account.id),
+    ),
   );
   const [errors, setErrors] = useState<Record<number, DraftErrors>>({});
+  const [periodErrors, setPeriodErrors] = useState<Record<number, PeriodErrors>>({});
   const [failure, setFailure] = useState<string | null>(null);
+
+  const changePeriod = (index: number, changes: Partial<PeriodDraft>) => {
+    setPeriods((current) =>
+      current.map((period, position) => (position === index ? { ...period, ...changes } : period)),
+    );
+    setPeriodErrors((current) => ({ ...current, [index]: {} }));
+  };
 
   const change = (index: number, changes: Partial<Draft>) => {
     setDrafts((current) =>
@@ -477,6 +550,18 @@ function ReviewForm({
   };
 
   const included = drafts.flatMap((draft, index) => (draft.include ? [index] : []));
+
+  /** What the ticked movements add up to in the statement's currency: purchases minus refunds. */
+  const tickedCents = included.reduce((sum, index) => {
+    const draft = drafts[index]!;
+    const account = accounts.find((candidate) => candidate.id === draft.accountId);
+    const cents = parseAmountToCents(draft.amount);
+    if (!account || account.currency !== statementCurrency || cents === null || draft.type === 'transfer')
+      return sum;
+    return draft.type === 'expense'
+      ? sum + spendingCents({ refund: draft.refund, amountCents: cents })
+      : sum - cents;
+  }, 0);
 
   const submit = async () => {
     setFailure(null);
@@ -521,6 +606,7 @@ function ReviewForm({
       return {
         transaction: {
           type: draft.type,
+          refund: draft.type === 'expense' && draft.refund,
           date: draft.date,
           amountCents: amountCents ?? 0,
           currency: account?.currency ?? DEFAULT_CURRENCY,
@@ -537,6 +623,11 @@ function ReviewForm({
           items,
         },
         installment: source.installment,
+        continuePlan:
+          draft.continuePlan &&
+          canContinue(source) &&
+          draft.type === 'expense' &&
+          account?.type === 'credit_card',
       };
     });
 
@@ -548,8 +639,15 @@ function ReviewForm({
         : [];
     });
 
-    if (Object.keys(found).length === 0) {
-      const parsed = documentConfirmSchema.safeParse({ transactions: entries, rules });
+    const kept = fromPeriodDrafts(periods);
+    const foundInPeriods: Record<number, PeriodErrors> = { ...kept.errors };
+
+    if (Object.keys(found).length === 0 && Object.keys(foundInPeriods).length === 0) {
+      const parsed = documentConfirmSchema.safeParse({
+        transactions: entries,
+        rules,
+        cardPeriods: kept.periods,
+      });
       if (parsed.success) {
         try {
           await confirm.mutateAsync({ id: document.id, input: parsed.data });
@@ -557,6 +655,10 @@ function ReviewForm({
           return;
         } catch (error) {
           // The server names the position of the transaction it rejected.
+          if (error instanceof ApiError && error.code === 'DUPLICATE') {
+            setFailure(es.documents.periodExists);
+            return;
+          }
           const details =
             error instanceof ApiError ? (error.details as ServerRejection | undefined) : undefined;
           const position = details?.index === undefined ? undefined : included[details.index];
@@ -571,6 +673,14 @@ function ReviewForm({
         }
       } else {
         for (const issue of parsed.error.issues) {
+          if (issue.path[0] === 'cardPeriods') {
+            // Paths look like: cardPeriods.<n>.<field>
+            const index = kept.positions[Number(issue.path[1])];
+            const key = String(issue.path[2] ?? 'closingDate') as keyof PeriodDraft;
+            if (index !== undefined)
+              foundInPeriods[index] = { ...foundInPeriods[index], [key]: fieldMessage(issue.message) };
+            continue;
+          }
           // Paths look like: transactions.<n>.transaction.<field>
           const [, position, , key] = issue.path.map(String);
           const index = included[Number(position)];
@@ -580,6 +690,7 @@ function ReviewForm({
       }
     }
     setErrors(found);
+    setPeriodErrors(foundInPeriods);
     setFailure(es.documents.fixErrors);
   };
 
@@ -606,11 +717,28 @@ function ReviewForm({
 
   return (
     <div className="space-y-4">
-      <div className="max-h-[60dvh] space-y-2 overflow-y-auto rounded-lg">
-        {Array.from({ length: document.fileCount }, (_, index) => (
-          <DocumentImage key={index} documentId={document.id} index={index} />
-        ))}
-      </div>
+      {document.text ? (
+        <details className="rounded-lg border border-line bg-surface p-3">
+          <summary className="cursor-pointer font-semibold">{es.documents.sentText}</summary>
+          <pre className="mt-2 max-h-[60dvh] overflow-auto whitespace-pre-wrap text-sm">{document.text}</pre>
+        </details>
+      ) : (
+        <div className="max-h-[60dvh] space-y-2 overflow-y-auto rounded-lg">
+          {Array.from({ length: document.fileCount }, (_, index) => (
+            <DocumentImage key={index} documentId={document.id} index={index} />
+          ))}
+        </div>
+      )}
+
+      {periods.length > 0 ? (
+        <StatementSection
+          drafts={periods}
+          errors={periodErrors}
+          cards={activeAccounts.filter((account) => account.type === 'credit_card')}
+          ticked={{ cents: tickedCents, currency: statementCurrency }}
+          onChange={changePeriod}
+        />
+      ) : null}
 
       {(document.extraction?.warnings ?? []).map((warning) => (
         <Notice key={warning} tone="attention">
@@ -649,7 +777,7 @@ function ReviewForm({
       ))}
 
       {failure ? <Notice tone="error">{failure}</Notice> : null}
-      <p className="text-sm text-muted">{es.add.keepPhoto}</p>
+      <p className="text-sm text-muted">{document.text ? es.statement.keepText : es.add.keepPhoto}</p>
 
       <div className="flex gap-2">
         {read.length > 0 ? (

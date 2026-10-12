@@ -114,3 +114,25 @@ export function formatQuantity(quantity: number): string {
 export function sumCents(values: readonly number[]): number {
   return values.reduce((total, value) => total + value, 0);
 }
+
+/** What a transaction adds to spending: a purchase adds, a refund of one takes it back. */
+export function spendingCents(transaction: { refund: boolean; amountCents: number }): number {
+  return transaction.refund ? -transaction.amountCents : transaction.amountCents;
+}
+
+/**
+ * A receipt line as it counts in consumption: the lines of a refund are
+ * things given back, so their amount and quantity count against.
+ */
+export function givenBack<T extends { amountCents: number; quantity: number | null }>(
+  item: T,
+  refund: boolean,
+): T & { refund: boolean } {
+  if (!refund) return { ...item, refund };
+  return {
+    ...item,
+    refund,
+    amountCents: -item.amountCents,
+    quantity: item.quantity === null ? null : -item.quantity,
+  };
+}

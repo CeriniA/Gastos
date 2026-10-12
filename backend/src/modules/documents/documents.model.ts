@@ -24,6 +24,11 @@ export interface DocumentDoc {
    * Emptied the moment the user confirms.
    */
   files: { mimeType: string; data: Buffer }[];
+  /**
+   * A card statement's text as the user approved it, personal data hidden.
+   * Kept, like the images, only until the user confirms.
+   */
+  text: string | null;
   /** ReviewExtraction: what the AI read, after the user's rules were applied. */
   extraction: unknown;
   promptVersion: number | null;
@@ -55,6 +60,7 @@ const schema = new Schema<DocumentDoc>(
       ],
       default: [],
     },
+    text: { type: String, default: null },
     extraction: { type: Schema.Types.Mixed, default: null },
     promptVersion: { type: Number, default: null },
     attempts: { type: Number, required: true, default: 0 },

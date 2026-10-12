@@ -49,6 +49,7 @@ test('a complete row is parsed into normalised values', () => {
     paymentDate: '2026-11-10',
     toAccount: null,
     toAmountCents: null,
+    refund: false,
   } satisfies ImportRow);
 });
 
@@ -142,4 +143,20 @@ test('categoryPathKey ignores case, accents and spacing, but not the kind', () =
   );
   assert.notEqual(categoryPathKey('expense', ['Otros']), categoryPathKey('income', ['Otros']));
   assert.notEqual(categoryPathKey('expense', ['A', 'B']), categoryPathKey('expense', ['B']));
+});
+
+test('a refund travels in the file as its own type and comes back as a refund', () => {
+  const { row, issues } = parseImportRecord({
+    date: '2026-10-05',
+    type: 'Devolución',
+    amount: '2000',
+    currency: 'ARS',
+    account: 'Visa',
+    category: 'Ropa',
+  });
+  assert.deepEqual(issues, []);
+  assert.equal(row?.type, 'expense');
+  assert.equal(row?.refund, true);
+  assert.equal(toExportRecord(row!).type, 'devolución');
+  assert.equal(parseImportRecord({ ...toExportRecord(row!) }).row?.refund, true);
 });

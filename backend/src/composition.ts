@@ -19,6 +19,7 @@ import { recurringsPort } from './modules/recurrings';
 import { tagsPort, tagsRepository } from './modules/tags';
 import { transactionsPort, transactionsRepository } from './modules/transactions';
 import { createGeminiExtractor } from './providers/ai/gemini';
+import { createUnpdfReader } from './providers/pdf/unpdf';
 import { createOpenExchangeRates } from './providers/rates/openExchangeRates';
 import { wireServices, type Services } from './wiring';
 
@@ -73,6 +74,7 @@ export function createContainer(env: Env): Container {
       today: () => todayIso(env.APP_TIMEZONE),
       now: () => new Date(),
       extractor,
+      pdfReader: createUnpdfReader(),
       rates: createOpenExchangeRates(),
       schedule: (work) => {
         work().catch((error: unknown) => logger.error({ err: error }, 'Background work failed'));

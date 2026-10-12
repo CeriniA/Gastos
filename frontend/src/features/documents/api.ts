@@ -4,6 +4,8 @@ import type {
   DocumentConfirmResult,
   DocumentDetail,
   DocumentSummary,
+  StatementPreview,
+  StatementUpload,
   UploadableDocumentKind,
 } from '@gastos/shared';
 import { api } from '../../shared/api/client';
@@ -56,6 +58,20 @@ export function useDocumentMutations() {
         for (const file of input.files) formData.append('files', file, file.name);
         return api<DocumentSummary>('/documents', { method: 'POST', formData });
       },
+      onSuccess: refresh,
+    }),
+    /** Only reads the PDF's text on the server: nothing is stored yet. */
+    previewStatement: useMutation({
+      mutationFn: ({ file, password }: { file: File; password: string }) => {
+        const formData = new FormData();
+        formData.append('password', password);
+        formData.append('file', file, file.name);
+        return api<StatementPreview>('/documents/statement/preview', { method: 'POST', formData });
+      },
+    }),
+    uploadStatement: useMutation({
+      mutationFn: (input: StatementUpload) =>
+        api<DocumentSummary>('/documents/statement', { method: 'POST', body: input }),
       onSuccess: refresh,
     }),
     retry: useMutation({

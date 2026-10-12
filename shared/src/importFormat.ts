@@ -51,6 +51,10 @@ export const TYPE_LABELS: Record<TransactionType, string> = {
   transfer: 'transferencia',
 };
 
+/** A refund is an expense that takes away; in the file it has a type of its own. */
+const REFUND_LABEL = 'devolución';
+const REFUND_SYNONYMS = new Set(['devolucion', 'reintegro', 'refund']);
+
 const TYPE_SYNONYMS: Record<string, TransactionType> = {
   egreso: 'expense',
   gasto: 'expense',
@@ -151,6 +155,7 @@ export const importRowSchema = z
   .object({
     date: isoDateSchema,
     type: z.enum(TRANSACTION_TYPES),
+    refund: z.boolean(),
     amountCents: z.number().int().positive(),
     currency: z.enum(CURRENCIES),
     account: z.string().trim().min(1).max(TEXT_LIMITS.name),
@@ -220,7 +225,8 @@ export function parseImportRecord(record: ImportRecord): { row: ImportRow | null
   const date = parseFlexibleDate(record.date instanceof Date ? record.date : text('date'));
   if (!date && text('date') !== '') issues.push({ column: 'date', code: 'invalid_date' });
 
-  const type = TYPE_SYNONYMS[nameKey(text('type'))];
+  const refund = REFUND_SYNONYMS.has(nameKey(text('type')));
+  const type = refund ? 'expense' : TYPE_SYNONYMS[nameKey(text('type'))];
   if (!type && text('type') !== '') issues.push({ column: 'type', code: 'invalid_type' });
 
   const amount = parseOptionalAmount(record.amount);
@@ -267,6 +273,7 @@ export function parseImportRecord(record: ImportRecord): { row: ImportRow | null
     row: {
       date,
       type,
+      refund,
       amountCents: amount,
       currency,
       account: text('account'),
@@ -292,7 +299,7 @@ export function parseImportRecord(record: ImportRecord): { row: ImportRow | null
 export function toExportRecord(row: ImportRow): Record<ImportColumnKey, string> {
   return {
     date: row.date,
-    type: TYPE_LABELS[row.type],
+    type: row.refund ? REFUND_LABEL : TYPE_LABELS[row.type],
     amount: centsToDecimalString(row.amountCents),
     currency: row.currency,
     account: row.account,

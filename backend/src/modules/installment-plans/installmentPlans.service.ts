@@ -11,6 +11,7 @@ import {
 } from '@gastos/shared';
 import type { TransactionRunner, WriteOptions } from '../../core/db/transaction';
 import { NotFoundError, fieldError } from '../../core/errors/errors';
+import { datesAfterClosing, installmentDates } from './installmentDates';
 import type { InstallmentPlansRepository } from './installmentPlans.repository';
 
 /** What installment plans need from the rest of the app. */
@@ -26,6 +27,8 @@ export interface InstallmentPlanDependencies {
     options: WriteOptions,
   ): Promise<number>;
   trashTransactions(planId: string, options: WriteOptions): Promise<number>;
+  /** Closing dates of a card's statements, which decide when each installment is charged. */
+  listClosingDates(accountId: string): Promise<IsoDate[]>;
   today(): IsoDate;
   runInTransaction: TransactionRunner;
 }
@@ -39,23 +42,75 @@ export function createInstallmentPlansService(
   repository: InstallmentPlansRepository,
   deps: InstallmentPlanDependencies,
 ) {
+  /** The rules every purchase in installments follows, however it arrives. */
+  async function assertPlannable(purchase: TransactionCreate): Promise<void> {
+    if (purchase.type !== 'expense')
+      throw fieldError('transaction.type', 'Only purchases go in installments');
+    if (purchase.refund) throw fieldError('transaction.refund', 'A refund is not paid in installments');
+    if (purchase.splits.length > 0) {
+      throw fieldError('transaction.splits', 'A purchase in installments cannot be split');
+    }
+    const account = (await deps.listAccounts()).find((candidate) => candidate.id === purchase.accountId);
+    if (account?.type !== 'credit_card') {
+      throw fieldError('transaction.accountId', 'Installments are for credit cards');
+    }
+  }
+
+  const statusOn = (date: IsoDate): TransactionStatus => (date <= deps.today() ? 'confirmed' : 'projected');
+
   return {
     countByAccount: (accountId: string) => repository.countByAccount(accountId),
 
+    /**
+     * A statement charges installment `number` of `total` of a purchase the
+     * app does not have. Creates its plan and the installments still to come,
+     * each for the same amount; returns the plan, for the caller to link the
+     * installment it stores itself. The earlier ones were paid before and are
+     * not created. Runs inside the caller's database transaction.
+     */
+    async continueFromStatement(
+      input: { transaction: TransactionCreate; number: number; total: number },
+      options: WriteOptions,
+    ): Promise<InstallmentPlan> {
+      const charged = input.transaction;
+      await assertPlannable(charged);
+      if (input.number >= input.total)
+        throw fieldError('installment', 'There are no installments left to create');
+
+      const plan = await repository.create(
+        {
+          accountId: charged.accountId,
+          description: charged.description,
+          // Approximate: the statement charges this one `number - 1` months after the purchase.
+          purchaseDate: addMonths(charged.date, 1 - input.number),
+          totalAmountCents: charged.amountCents * input.total,
+          currency: charged.currency,
+          installments: input.total,
+        },
+        options,
+      );
+      // The statement charged this one on its closing day: the rest follow it, one per statement.
+      const entries = datesAfterClosing(charged.date, input.total - input.number).map((date, index) => {
+        return {
+          input: { ...charged, date, paymentDate: null, items: [] },
+          installment: { planId: plan.id, number: input.number + index + 1, total: input.total },
+          status: statusOn(date),
+        };
+      });
+      await deps.createTransactions(entries, options);
+      return plan;
+    },
+
     async create(input: InstallmentPlanCreate): Promise<InstallmentPlanResult> {
       const purchase = input.transaction;
-      if (purchase.type !== 'expense')
-        throw fieldError('transaction.type', 'Only purchases go in installments');
-      if (purchase.splits.length > 0) {
-        throw fieldError('transaction.splits', 'A purchase in installments cannot be split');
-      }
-      const account = (await deps.listAccounts()).find((candidate) => candidate.id === purchase.accountId);
-      if (account?.type !== 'credit_card') {
-        throw fieldError('transaction.accountId', 'Installments are for credit cards');
-      }
+      await assertPlannable(purchase);
 
-      const today = deps.today();
       const amounts = splitInstallments(purchase.amountCents, input.installments);
+      const dates = installmentDates(
+        purchase.date,
+        input.installments,
+        await deps.listClosingDates(purchase.accountId),
+      );
       return deps.runInTransaction(async (session) => {
         const plan: InstallmentPlan = await repository.create(
           {
@@ -69,7 +124,7 @@ export function createInstallmentPlansService(
           { session },
         );
         const entries = amounts.map((amountCents, index) => {
-          const date = addMonths(purchase.date, index);
+          const date = dates[index]!;
           return {
             input: {
               ...purchase,
@@ -81,7 +136,7 @@ export function createInstallmentPlansService(
               items: index === 0 ? purchase.items : [],
             },
             installment: { planId: plan.id, number: index + 1, total: input.installments },
-            status: (date <= today ? 'confirmed' : 'projected') as TransactionStatus,
+            status: statusOn(date),
           };
         });
         await deps.createTransactions(entries, { session });

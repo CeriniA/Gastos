@@ -7,11 +7,15 @@ import {
   PENDING_DOCUMENT_RETENTION_DAYS,
   MAX_DOCUMENT_BYTES,
   MAX_DOCUMENT_FILES,
+  MAX_STATEMENT_PAGES,
+  MAX_STATEMENT_TEXT_LENGTH,
   MAX_UPLOAD_BYTES,
   extractionResultSchema,
   nameKey,
   pathOf,
+  redactPersonalData,
   type Account,
+  type CardPeriodCreate,
   type Category,
   type CategoryRuleInput,
   type DocumentConfirm,
@@ -20,25 +24,41 @@ import {
   type DocumentErrorCode,
   type DocumentStatus,
   type DocumentSummary,
+  type DocumentKind,
   type DocumentUpload,
   type DuplicateHint,
   type Installment,
   type IsoDate,
+  type StatementPreview,
+  type StatementUpload,
   type TransactionCreate,
 } from '@gastos/shared';
 import type { TransactionRunner, WriteOptions } from '../../core/db/transaction';
 import { ConflictError, NotFoundError, fieldError } from '../../core/errors/errors';
 import { extractionFailure, failureReason, type AiExtractor } from '../../providers/ai/aiExtractor';
+import { PdfReadError, type PdfFailure, type PdfTextReader } from '../../providers/pdf/pdfReader';
 import type { DocumentsRepository, StoredFile } from './documents.repository';
 import { detectImageType } from './fileType';
+import { dateInstallmentsOnClosing, tidyStatementText } from './statement';
 import { applyCategorySuggestions } from './suggestions';
 
 const MINUTE_MS = 60_000;
+/** Every PDF file starts with these bytes, whatever its name says. */
+const PDF_SIGNATURE = '%PDF-';
+
+/** The field and the message each reason a PDF could not be read is reported with. */
+const PDF_FAILURE_FIELDS: Record<PdfFailure, { path: string; message: string }> = {
+  password_required: { path: 'password', message: 'The PDF is protected with a password' },
+  wrong_password: { path: 'password', message: 'The PDF password is wrong' },
+  too_many_pages: { path: 'file', message: 'The PDF has too many pages for a statement' },
+  unreadable: { path: 'file', message: 'The PDF could not be read' },
+};
 
 /** What the documents module needs from the rest of the app. */
 export interface DocumentDependencies {
   /** Null when no AI key is configured: uploads are refused with a clear reason. */
   extractor: AiExtractor | null;
+  pdfReader: PdfTextReader;
   listAccounts(): Promise<Account[]>;
   listCategories(options?: WriteOptions): Promise<Category[]>;
   /** Category id per normalised merchant name, from the user's rules. */
@@ -60,6 +80,23 @@ export interface DocumentDependencies {
   countLiveTransactions(documentId: string): Promise<number>;
   releaseTransactions(documentId: string, options: WriteOptions): Promise<void>;
   trashTransactions(documentId: string, options: WriteOptions): Promise<void>;
+  /** Stores the closing and due dates read from a card statement, linked to it. */
+  createCardPeriods(
+    periods: readonly CardPeriodCreate[],
+    documentId: string,
+    options: WriteOptions,
+  ): Promise<unknown>;
+  /** The card periods read from a document stop pointing at it; their dates stay. */
+  releaseCardPeriods(documentId: string, options: WriteOptions): Promise<void>;
+  /** Creates the plan of an installment first seen on a statement, with the installments to come. */
+  continueInstallments(
+    input: { transaction: TransactionCreate; number: number; total: number },
+    options: WriteOptions,
+  ): Promise<{ id: string }>;
+  /** For each candidate, whether a live transaction is already that installment of that amount. */
+  findInstallments(
+    candidates: readonly { number: number; total: number; amountCents: number; currency: string }[],
+  ): Promise<boolean[]>;
   runInTransaction: TransactionRunner;
   today(): IsoDate;
   now(): Date;
@@ -76,7 +113,7 @@ export interface UploadedFile {
 const PENDING: readonly DocumentStatus[] = ['processing', 'ready', 'error'];
 
 function toSummary(detail: DocumentDetail): DocumentSummary {
-  const { extraction: _extraction, promptVersion: _promptVersion, ...summary } = detail;
+  const { extraction: _extraction, promptVersion: _promptVersion, text: _text, ...summary } = detail;
   return summary;
 }
 
@@ -113,22 +150,43 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
           ]
         : [],
     );
-    const stored = await deps.findSameDayAmounts(comparable);
+    // An installment a statement charges may already be stored, projected by
+    // an earlier statement or typed by hand, on another day than the one read.
+    const installments = read.flatMap((transaction, index) =>
+      transaction.installment && transaction.amountCents !== null && transaction.currency
+        ? [
+            {
+              index,
+              ...transaction.installment,
+              amountCents: transaction.amountCents,
+              currency: transaction.currency,
+            },
+          ]
+        : [],
+    );
+    const [stored, storedInstallments] = await Promise.all([
+      deps.findSameDayAmounts(comparable),
+      deps.findInstallments(installments),
+    ]);
     const hints: DuplicateHint[] = read.map(() => null);
+    installments.forEach((candidate, position) => {
+      if (storedInstallments[position]) hints[candidate.index] = 'existing';
+    });
     const seen = new Set<string>();
     comparable.forEach((candidate, position) => {
       const key = `${candidate.date}|${candidate.amountCents}|${candidate.currency}|${candidate.party}`;
       if (stored[position]) hints[candidate.index] = 'existing';
-      else if (seen.has(key)) hints[candidate.index] = 'repeated';
+      else if (seen.has(key)) hints[candidate.index] ??= 'repeated';
       seen.add(key);
     });
     return hints;
   }
 
-  /** The document as the review screen needs it, with fresh duplicate hints. */
+  /** The document as the review screen needs it, with its text and fresh duplicate hints. */
   async function get(id: string): Promise<DocumentDetail> {
     const document = await find(id);
-    return { ...document, duplicateHints: await duplicateHints(document) };
+    const [text, hints] = await Promise.all([repository.findText(id), duplicateHints(document)]);
+    return { ...document, text, duplicateHints: hints };
   }
 
   const detailOf = (error: unknown) =>
@@ -173,16 +231,19 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
       return;
     }
     try {
-      const [files, categories, rules] = await Promise.all([
+      const [files, text, categories, rules] = await Promise.all([
         repository.findFiles(document.id),
+        repository.findText(document.id),
         deps.listCategories(),
         deps.ruleLookup(),
       ]);
-      if (files.length === 0) throw extractionFailure('unreadable', 'The document has no stored images');
+      if (files.length === 0 && !text)
+        throw extractionFailure('unreadable', 'The document has nothing stored to read');
 
       const raw = await deps.extractor.extract({
         kind: document.kind,
         files,
+        text,
         categories: categories
           .filter((category) => !category.archived)
           .map((category) => ({
@@ -199,7 +260,7 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
 
       await repository.update(document.id, {
         status: 'ready',
-        extraction: applyCategorySuggestions(checked.data, categories, rules),
+        extraction: applyCategorySuggestions(dateInstallmentsOnClosing(checked.data), categories, rules),
         promptVersion: deps.extractor.promptVersion,
         errorCode: null,
         errorDetail: null,
@@ -233,6 +294,57 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
   }
 
   const kick = () => deps.schedule(processQueue);
+
+  /** Links stored from a document are cut before it is deleted, so nothing points at it. */
+  async function detach(documentId: string, options: WriteOptions): Promise<void> {
+    await deps.releaseTransactions(documentId, options);
+    await deps.releaseCardPeriods(documentId, options);
+  }
+
+  /** Keeps a new upload, images or text, and starts reading it. */
+  async function store(data: {
+    kind: DocumentKind;
+    fileName: string;
+    sha256: string;
+    accountId: string | null;
+    files: StoredFile[];
+    text: string | null;
+  }): Promise<DocumentSummary> {
+    if (data.accountId) {
+      const account = (await deps.listAccounts()).find((candidate) => candidate.id === data.accountId);
+      if (!account) throw fieldError('accountId', 'Account does not exist');
+      if (account.archived) throw fieldError('accountId', 'Account is archived');
+    }
+
+    const existing = await repository.findBySha256(data.sha256);
+    // The check exists so the same receipt is not counted twice, and only a
+    // confirmed document with transactions that still count can cause that.
+    // Anything else makes way for the new upload, which is read afresh:
+    // - not confirmed yet (waiting for review, or failed): nothing was stored from it;
+    // - confirmed, but all its transactions were deleted: it counts for nothing.
+    if (existing?.status === 'processing') return toSummary(existing); // Already on its way.
+    if (existing) {
+      const counted = existing.status === 'confirmed' ? await deps.countLiveTransactions(existing.id) : 0;
+      if (counted > 0) {
+        throw new ConflictError(
+          'This file was already uploaded',
+          { entity: 'Document', documentId: existing.id, status: existing.status },
+          'DUPLICATE',
+        );
+      }
+      await deps.runInTransaction(async (session) => {
+        await detach(existing.id, { session });
+        await repository.delete(existing.id, { session });
+      });
+    }
+
+    const created = await repository.create({
+      ...data,
+      fileName: data.fileName.slice(0, TEXT_LIMITS.description) || 'document',
+    });
+    kick();
+    return toSummary(created);
+  }
 
   return {
     get,
@@ -279,46 +391,59 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
       const totalBytes = files.reduce((sum, file) => sum + file.content.length, 0);
       if (totalBytes > MAX_DOCUMENT_BYTES) throw fieldError('files', 'Images too large');
 
-      if (input.accountId) {
-        const account = (await deps.listAccounts()).find((candidate) => candidate.id === input.accountId);
-        if (!account) throw fieldError('accountId', 'Account does not exist');
-        if (account.archived) throw fieldError('accountId', 'Account is archived');
-      }
-
       const hash = createHash('sha256');
       for (const file of files) hash.update(file.content);
-      const sha256 = hash.digest('hex');
-      const existing = await repository.findBySha256(sha256);
-      // The check exists so the same receipt is not counted twice, and only a
-      // confirmed document with transactions that still count can cause that.
-      // Anything else makes way for the new upload, which is read afresh:
-      // - not confirmed yet (waiting for review, or failed): nothing was stored from it;
-      // - confirmed, but all its transactions were deleted: it counts for nothing.
-      if (existing?.status === 'processing') return toSummary(existing); // Already on its way.
-      if (existing) {
-        const counted = existing.status === 'confirmed' ? await deps.countLiveTransactions(existing.id) : 0;
-        if (counted > 0) {
-          throw new ConflictError(
-            'This file was already uploaded',
-            { entity: 'Document', documentId: existing.id, status: existing.status },
-            'DUPLICATE',
-          );
-        }
-        await deps.runInTransaction(async (session) => {
-          await deps.releaseTransactions(existing.id, { session });
-          await repository.delete(existing.id, { session });
-        });
-      }
-
-      const created = await repository.create({
+      return store({
         kind: input.kind,
-        fileName: uploads[0]?.originalName.slice(0, TEXT_LIMITS.description) || 'document',
-        sha256,
+        fileName: uploads[0]?.originalName ?? '',
+        sha256: hash.digest('hex'),
         accountId: input.accountId ?? null,
         files,
+        text: null,
       });
-      kick();
-      return toSummary(created);
+    },
+
+    /**
+     * First step of reading a card statement: the PDF's text, with the
+     * personal data that has a recognisable shape already hidden. Nothing is
+     * stored and nothing goes to the AI: the user reads it, hides what is
+     * left (a name, an address) and sends it with uploadStatement.
+     */
+    async previewStatement(content: Buffer | null, password: string | undefined): Promise<StatementPreview> {
+      if (!deps.extractor) throw extractionFailure('not_configured', 'No AI key configured');
+      if (!content) throw fieldError('file', 'Attach the statement PDF');
+      if (content.toString('latin1', 0, PDF_SIGNATURE.length) !== PDF_SIGNATURE)
+        throw fieldError('file', 'Only PDF files are accepted');
+
+      let pages: string[];
+      try {
+        ({ pages } = await deps.pdfReader.read(content, { password, maxPages: MAX_STATEMENT_PAGES }));
+      } catch (error) {
+        if (!(error instanceof PdfReadError)) throw error;
+        if (error.reason === 'unreadable') deps.onError(error, { step: 'statement_preview' });
+        const { path, message } = PDF_FAILURE_FIELDS[error.reason];
+        throw fieldError(path, message);
+      }
+      const text = tidyStatementText(pages);
+      // A scanned statement is a picture inside a PDF: there is no text to read.
+      if (!/\p{L}/u.test(text)) throw fieldError('file', 'The PDF has no text: it is a scanned image');
+      const redacted = redactPersonalData(text);
+      if (redacted.text.length > MAX_STATEMENT_TEXT_LENGTH)
+        throw fieldError('file', 'The PDF has too much text for a statement');
+      return { text: redacted.text, pages: pages.length, hidden: redacted.hidden };
+    },
+
+    /** Second step: the text the user approved is stored and read in the background, like an image. */
+    async uploadStatement(input: StatementUpload): Promise<DocumentSummary> {
+      if (!deps.extractor) throw extractionFailure('not_configured', 'No AI key configured');
+      return store({
+        kind: 'card_statement',
+        fileName: input.fileName,
+        sha256: createHash('sha256').update(input.text).digest('hex'),
+        accountId: input.accountId ?? null,
+        files: [],
+        text: input.text,
+      });
     },
 
     /** One of the stored images, for the review screen. */
@@ -355,23 +480,36 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
     /**
      * Turns the reviewed extraction into transactions. One transaction of the
      * database: the transactions, the remembered rules and the document's new
-     * state are all stored, or none is. The images are deleted here.
+     * state are all stored, or none is. The images or the text are deleted here.
      */
     async confirm(id: string, input: DocumentConfirm): Promise<DocumentConfirmResult> {
       const document = await find(id);
       if (document.status !== 'ready')
         throw new ConflictError('Only a document ready for review can be confirmed');
 
+      if (input.cardPeriods.length > 0 && document.kind !== 'card_statement')
+        throw fieldError('cardPeriods', 'Only a card statement brings closing dates');
+
       return deps.runInTransaction(async (session) => {
         const options = { session };
-        const created = await deps.createTransactions(
-          input.transactions.map((entry) => ({
+        // The dates first: the purchases stored next take their payment date from them.
+        if (input.cardPeriods.length > 0) await deps.createCardPeriods(input.cardPeriods, id, options);
+        const entries = [];
+        for (const entry of input.transactions) {
+          const plan =
+            entry.continuePlan && entry.installment
+              ? await deps.continueInstallments(
+                  { transaction: entry.transaction, ...entry.installment },
+                  options,
+                )
+              : null;
+          entries.push({
             input: entry.transaction,
-            installment: entry.installment ? { planId: null, ...entry.installment } : null,
+            installment: entry.installment ? { planId: plan?.id ?? null, ...entry.installment } : null,
             documentId: id,
-          })),
-          options,
-        );
+          });
+        }
+        const created = await deps.createTransactions(entries, options);
         for (const rule of input.rules) await deps.saveRule(rule, options);
         await repository.update(id, { status: 'confirmed', clearFiles: true }, options);
         return { created };
@@ -390,6 +528,7 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
         if (document.status === 'confirmed') {
           if (transactions === 'delete') await deps.trashTransactions(id, options);
           else await deps.releaseTransactions(id, options);
+          await deps.releaseCardPeriods(id, options);
         }
         await repository.delete(id, options);
       });

@@ -6,3 +6,12 @@
 export function duplicateKey(date: string, amountCents: number, scope: string): string {
   return `${date}|${amountCents}|${scope}`;
 }
+
+/** Identifies an installment ("3 of 6") of a given amount, whatever day it was stored on. */
+export function installmentKey(
+  installment: { number: number; total: number },
+  amountCents: number,
+  currency: string,
+): string {
+  return `${installment.number}/${installment.total}|${amountCents}|${currency}`;
+}

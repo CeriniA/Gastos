@@ -15,6 +15,8 @@ import type { ObjectId } from '../../core/db/ids';
 export interface TransactionDoc {
   _id: ObjectId;
   type: TransactionType;
+  /** An expense that gives money back: it takes away from spending instead of adding. */
+  refund: boolean;
   status: TransactionStatus;
   source: TransactionSource;
   /** Calendar days as "YYYY-MM-DD" strings: they sort and compare correctly as text. */
@@ -62,6 +64,7 @@ const cents = {
 const schema = new Schema<TransactionDoc>(
   {
     type: { type: String, required: true, enum: [...TRANSACTION_TYPES] },
+    refund: { type: Boolean, required: true, default: false },
     status: { type: String, required: true, enum: [...TRANSACTION_STATUSES] },
     source: { type: String, required: true, enum: [...TRANSACTION_SOURCES] },
     date: { type: String, required: true },

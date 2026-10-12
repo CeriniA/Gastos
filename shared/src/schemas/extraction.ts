@@ -32,6 +32,8 @@ export const extractedItemSchema = transactionItemSchema;
 
 export const extractedTransactionSchema = z.object({
   type: z.enum(TRANSACTION_TYPES),
+  /** Money given back for an earlier purchase. Only an expense can be one. */
+  refund: z.boolean(),
   date: isoDateSchema.nullable(),
   amountCents: z.number().int().positive().nullable(),
   /** The currency printed on the document. It may be one the app has no accounts in (BRL, EUR). */
@@ -55,6 +57,7 @@ export const extractedStatementSchema = z.object({
   minimumPaymentCents: z.number().int().nullable(),
   currency: currencyCodeSchema.nullable(),
 });
+export type ExtractedStatement = z.infer<typeof extractedStatementSchema>;
 
 export const extractionResultSchema = z.object({
   documentKind: z.enum(DOCUMENT_KINDS),

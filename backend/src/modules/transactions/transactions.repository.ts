@@ -2,7 +2,9 @@ import type { FilterQuery } from 'mongoose';
 import {
   PRODUCT_GROUPS,
   firstDayOfMonth,
+  givenBack,
   lastDayOfMonth,
+  spendingCents,
   type ConsumptionItem,
   type CurrencyTotals,
   type LastRate,
@@ -16,7 +18,7 @@ import { createCollectionPort } from '../../core/db/collectionPort';
 import { COLLECTIONS } from '../../core/db/collections';
 import { idString, isoString, toObjectId, toObjectIdOrNull } from '../../core/db/ids';
 import type { WriteOptions } from '../../core/db/transaction';
-import { duplicateKey } from './duplicateKey';
+import { duplicateKey, installmentKey } from './duplicateKey';
 import { TransactionModel, type TransactionDoc } from './transactions.model';
 
 /** Everything the service decides about a transaction before it is stored. */
@@ -43,6 +45,8 @@ function toTransaction(doc: TransactionDoc): Transaction {
   return {
     id: doc._id.toString(),
     type: doc.type,
+    // Stored before refunds existed means it is not one.
+    refund: doc.refund ?? false,
     status: doc.status,
     source: doc.source,
     date: doc.date,
@@ -265,6 +269,20 @@ export const transactionsRepository = {
     return keys;
   },
 
+  /** Keys (installmentKey) of the live installments charged for one of these amounts. */
+  async installmentKeys(amounts: readonly number[]): Promise<Set<string>> {
+    if (amounts.length === 0) return new Set();
+    const docs = await TransactionModel.find(
+      { deletedAt: null, installment: { $ne: null }, amountCents: { $in: [...amounts] } },
+      { amountCents: 1, currency: 1, installment: 1 },
+    ).lean<Pick<TransactionDoc, 'amountCents' | 'currency' | 'installment'>[]>();
+    return new Set(
+      docs.flatMap((doc) =>
+        doc.installment ? [installmentKey(doc.installment, doc.amountCents, doc.currency)] : [],
+      ),
+    );
+  },
+
   /** Transactions of a document that still count: not in the trash. */
   countLiveByDocument(documentId: string): Promise<number> {
     return TransactionModel.countDocuments({ documentId: toObjectId(documentId), deletedAt: null });
@@ -313,8 +331,8 @@ export const transactionsRepository = {
 
   /**
    * What each live purchase or credit adds to an account's bill: expenses
-   * positive, incomes (credits, refunds) negative. Projected installments
-   * count, drafts do not.
+   * positive, incomes and refunds negative. Projected installments count,
+   * drafts do not.
    */
   async findCharges(accountId: string): Promise<ChargeRow[]> {
     const docs = await TransactionModel.find(
@@ -324,12 +342,15 @@ export const transactionsRepository = {
         status: { $in: ['confirmed', 'projected'] },
         type: { $in: ['expense', 'income'] },
       },
-      { date: 1, paymentDate: 1, type: 1, amountCents: 1 },
-    ).lean<Pick<TransactionDoc, 'date' | 'paymentDate' | 'type' | 'amountCents'>[]>();
+      { date: 1, paymentDate: 1, type: 1, refund: 1, amountCents: 1 },
+    ).lean<Pick<TransactionDoc, 'date' | 'paymentDate' | 'type' | 'refund' | 'amountCents'>[]>();
     return docs.map((doc) => ({
       date: doc.date,
       paymentDate: doc.paymentDate,
-      signedCents: doc.type === 'expense' ? doc.amountCents : -doc.amountCents,
+      signedCents:
+        doc.type === 'expense'
+          ? spendingCents({ refund: doc.refund ?? false, amountCents: doc.amountCents })
+          : -doc.amountCents,
     }));
   },
 
@@ -363,7 +384,8 @@ export const transactionsRepository = {
 
   /**
    * Every receipt line of the confirmed expenses bought in a date range, each
-   * with the purchase it belongs to. The basis of the consumption report.
+   * with the purchase it belongs to. The basis of the consumption report. The
+   * lines of a refund are things given back: they count against.
    */
   async findItems(range: { from?: string; to?: string }): Promise<ConsumptionItem[]> {
     const date = {
@@ -378,17 +400,17 @@ export const transactionsRepository = {
         'items.0': { $exists: true },
         ...(range.from || range.to ? { date } : {}),
       },
-      { date: 1, description: 1, currency: 1, items: 1 },
+      { date: 1, description: 1, currency: 1, refund: 1, items: 1 },
     )
       .sort({ date: -1, createdAt: -1 })
-      .lean<Pick<TransactionDoc, '_id' | 'date' | 'description' | 'currency' | 'items'>[]>();
+      .lean<Pick<TransactionDoc, '_id' | 'date' | 'description' | 'currency' | 'refund' | 'items'>[]>();
     return docs.flatMap((doc) =>
       doc.items.map((item) => ({
         transactionId: doc._id.toString(),
         date: doc.date,
         description: doc.description ?? '',
         currency: doc.currency,
-        ...toItem(item),
+        ...givenBack(toItem(item), doc.refund ?? false),
       })),
     );
   },
@@ -418,7 +440,13 @@ export const transactionsRepository = {
           paymentDate: { $gte: firstDayOfMonth(month), $lte: lastDayOfMonth(month) },
         },
       },
-      { $group: { _id: { currency: '$currency', type: '$type' }, total: { $sum: '$amountCents' } } },
+      {
+        $group: {
+          _id: { currency: '$currency', type: '$type' },
+          // A refund takes away from the expenses, as spendingCents does.
+          total: { $sum: { $cond: ['$refund', { $multiply: ['$amountCents', -1] }, '$amountCents'] } },
+        },
+      },
     ]);
     const totals = new Map<string, CurrencyTotals>();
     for (const row of rows) {

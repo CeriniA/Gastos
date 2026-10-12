@@ -1,5 +1,7 @@
 import type { Migration } from '../core/db/migrations';
 import { defaultInstitutions } from './2026-10-12-default-institutions';
+import { documentText } from './2026-10-12-document-text';
+import { transactionRefund } from './2026-10-12-transaction-refund';
 
 /**
  * Add migrations here in order. Example:
@@ -11,4 +13,4 @@ import { defaultInstitutions } from './2026-10-12-default-institutions';
  *     },
  *   },
  */
-export const migrations: readonly Migration[] = [defaultInstitutions];
+export const migrations: readonly Migration[] = [defaultInstitutions, documentText, transactionRefund];

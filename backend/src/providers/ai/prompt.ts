@@ -5,7 +5,7 @@ import type { ExtractionInput } from './aiExtractor';
  * Bump when the instructions change, so each document records which wording
  * read it and results can be compared across versions.
  */
-export const PROMPT_VERSION = 5;
+export const PROMPT_VERSION = 7;
 
 /** What each product group covers, so the model files lines consistently. */
 const GROUP_HINTS: Record<ProductGroup, string> = {
@@ -41,9 +41,20 @@ const KIND_HINTS: Record<ExtractionInput['kind'], string> = {
     'Date headers such as "2 de octubre", "Hoy" or "Ayer" apply to the rows below them. ' +
     'Ignore floating buttons, toolbars and small thumbnails of other screenshots that cover part of the image; ' +
     'if they hide part of an amount, return null for it rather than guessing the hidden digits.',
-  card_statement:
-    'The images are pages of a credit card statement. Return one transaction per purchase line.',
+  card_statement: [
+    'The document is the text of a credit card statement ("resumen de tarjeta"), copied from its PDF and given after these instructions. Personal data was replaced by "***"; ignore it.',
+    'Return one transaction for each charge of THIS statement: purchases, installments, subscriptions, fees, interest and taxes (IVA, sellos, percepciones), all as "expense".',
+    'Refunds and credits of a purchase ("devolución", "bonificación", "anulación", or a line with a negative amount) are "expense" with refund true and a positive amount.',
+    'Ignore the previous balance ("saldo anterior"), the payments made to the card ("su pago", "pago en pesos", "pago en dólares"), the totals and subtotals.',
+    'An installment line ("cuota 03/06", "C.03/06", "03 de 06") is the amount charged this month for that installment: return that amount, installmentNumber and installmentTotal, and the date printed on the line.',
+    'Lines in dollars keep the currency "USD"; lines in pesos are "ARS".',
+    'Also return "statement": closingDate ("cierre", "cierre actual"), dueDate ("vencimiento", "vencimiento actual"), nextClosingDate ("próximo cierre"), nextDueDate ("próximo vencimiento"), total (the balance to pay in pesos: "saldo actual", "total a pagar"), minimumPayment ("pago mínimo") and currency (of that total). Dates as "YYYY-MM-DD", amounts in the same format as "amount" below, each null if not printed.',
+  ].join(' '),
 };
+
+/** The extra field a card statement answers with. */
+const STATEMENT_SHAPE =
+  '"statement": { "closingDate": null, "dueDate": null, "nextClosingDate": null, "nextDueDate": null, "total": null, "minimumPayment": null, "currency": null }';
 
 /**
  * The instructions sent with every document. Written for Argentine receipts
@@ -54,10 +65,10 @@ export function buildPrompt(input: ExtractionInput): string {
     (category) => `${category.id} | ${category.kind} | ${category.path}`,
   );
   return [
-    'You extract personal finance transactions from images for a bookkeeping app. The user lives in Argentina and also shops in Brazil, so documents are in Spanish or Portuguese.',
+    'You extract personal finance transactions from documents (images, or the text of a card statement) for a bookkeeping app. The user lives in Argentina and also shops in Brazil, so documents are in Spanish or Portuguese.',
     KIND_HINTS[input.kind],
     '',
-    `Today is ${input.today}. Dates on the images are day-first (DD/MM/YYYY). If the year is missing, use the most recent past date.`,
+    `Today is ${input.today}. Dates in the document are day-first (DD/MM/YYYY). If the year is missing, use the most recent past date.`,
     'Amounts use a comma as decimal separator and dots for thousands ("$ 15.400,50" is 15400.50).',
     'Currency is an ISO 4217 code, decided by the symbol and by the language of the DOCUMENT ITSELF, never by where the shop is:',
     '- "R$" or "reais" means BRL. "U$S", "US$" or "USD" means USD.',
@@ -65,7 +76,8 @@ export function buildPrompt(input: ExtractionInput): string {
     '- "$" alone means BRL only on a document written in Portuguese, such as a Brazilian till receipt ("CUPOM FISCAL", "CNPJ", "VALOR TOTAL").',
     '',
     'For each transaction return:',
-    '- type: "expense" (a purchase or payment made, or money sent to another person), "income" (money received from another person, a refund, a sale) or "transfer" (the user moving their own money: adding balance to a wallet such as "Ingreso de dinero", withdrawing it, paying a credit card bill).',
+    '- type: "expense" (a purchase or payment made, or money sent to another person), "income" (money received from another person, a salary, a sale) or "transfer" (the user moving their own money: adding balance to a wallet such as "Ingreso de dinero", withdrawing it, paying a credit card bill).',
+    '- refund: true only when the money comes back for an earlier purchase ("devolución", "reintegro", "anulación", "contracargo", "bonificación"). A refund has type "expense", a positive amount and the category of what was bought. Otherwise false.',
     '- date: "YYYY-MM-DD", or null if it cannot be read.',
     '- amount: the TOTAL actually paid or received, as a plain decimal string with a dot and no thousands separators ("15400.50"), always positive, or null if it cannot be read. Use the final total, after discounts and taxes.',
     '- currency: the ISO code of the currency the amount is printed in (for example "ARS", "BRL", "USD"), or null if unclear. Do not convert amounts between currencies.',
@@ -97,6 +109,8 @@ export function buildPrompt(input: ExtractionInput): string {
     categories.length > 0 ? categories.join('\n') : '(none)',
     '',
     'Respond with ONLY a JSON object of this exact shape, no markdown and no commentary:',
-    '{ "transactions": [ { "type": "", "date": null, "amount": null, "currency": null, "merchant": "", "description": "", "categoryId": null, "installmentNumber": null, "installmentTotal": null, "items": [ { "name": "", "amount": "", "product": "", "group": null, "quantity": null } ], "uncertain": [] } ], "warnings": [] }',
+    `{ "transactions": [ { "type": "", "refund": false, "date": null, "amount": null, "currency": null, "merchant": "", "description": "", "categoryId": null, "installmentNumber": null, "installmentTotal": null, "items": [ { "name": "", "amount": "", "product": "", "group": null, "quantity": null } ], "uncertain": [] } ], ${
+      input.kind === 'card_statement' ? `${STATEMENT_SHAPE}, ` : ''
+    }"warnings": [] }`,
   ].join('\n');
 }
