@@ -99,7 +99,12 @@ Revisión del 11/10/2026. No bloquea el uso; conviene no perderla de vista.
 
 - **Las pantallas no tienen pruebas automáticas.** Solo las reglas del backend. Un error de flujo o
   visual lo encuentra el usuario.
-- **Vulnerabilidades de las librerías sin revisar.** Nunca se corrió `npm audit`.
+- **Vulnerabilidades de las librerías** (`npm audit` del 11/10/2026: 1 baja, 2 moderadas, ninguna alta).
+  - `esbuild` (dentro de `tsup`): afecta a su servidor de desarrollo en Windows, que este proyecto no
+    usa. Se corrige con `npm audit fix`.
+  - `uuid` (dentro de `exceljs`): sin corrección compatible. **No correr `npm audit fix --force`**:
+    baja `exceljs` a una versión vieja y puede romper la importación y exportación. Volver a mirar
+    cuando `exceljs` publique una versión que lo resuelva.
 - **Sin copia automática de los datos.** El respaldo es manual (ver `ESPECIFICACION.md`, Seguridad).
 - **La sesión se guarda en el navegador** (`localStorage`). Es lo habitual en una app de este tipo; el
   riesgo se acota con el vencimiento a 30 días y con "cerrar sesión en todos los dispositivos".
