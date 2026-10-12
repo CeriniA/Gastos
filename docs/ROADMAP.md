@@ -83,14 +83,15 @@ Falta:
 
 ### Consumo por producto (hecho)
 
-La IA devuelve por producto un nombre genérico ("Yerba"), un grupo de una lista fija y la cantidad
+Los productos se cargan, editan y borran a mano en cualquier movimiento, y se corrigen en la revisión de
+un ticket. La IA devuelve por producto un nombre genérico ("Yerba"), un grupo de una lista fija y la cantidad
 (instrucciones versión 5). La pestaña Informes muestra el consumo del mes por grupo y producto, y un
-buscador de compras por producto. Los tickets confirmados antes de este cambio no tienen grupo: aparecen
-en "Sin clasificar".
+buscador de compras por producto. Los tickets confirmados antes de la versión 5 aparecen en "Sin clasificar"; se les puede
+poner grupo editando el movimiento.
 
 Falta:
 
-- Corregir producto o grupo en la revisión, y recordar la corrección.
+- Recordar una corrección de producto o grupo para el próximo ticket (hoy se corrige a mano cada vez).
 - Comparar el precio de un mismo producto a lo largo del tiempo.
 
 ## Deuda conocida

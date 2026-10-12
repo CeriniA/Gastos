@@ -110,6 +110,8 @@ Cada decisión tomada en el diseño, con su motivo. Una decisión nueva o que ca
 | Los documentos sin revisar vencen a los 30 días                                                                          | Las imágenes ocupan lugar en una base de 512 MB y un pendiente olvidado no le sirve a nadie                                                            |
 | "Cerrar sesión en todos lados" guarda un momento de corte; no hay lista de sesiones                                      | Con un solo usuario alcanza: toda sesión anterior al corte deja de valer                                                                               |
 | La colección `authState` no entra en el respaldo                                                                         | Es estado de seguridad, no datos del usuario: restaurar un respaldo viejo no debe revivir sesiones cerradas                                            |
+| Los productos son parte del movimiento (`items`), en su alta y su edición                                                | Una sola forma de guardarlos, venga del ticket o de la mano; antes la confirmación de un documento los mandaba aparte                                  |
+| Los productos no tienen que sumar el total del movimiento                                                                | Los tickets traen descuentos, recargos y renglones que no son productos; se avisa la diferencia, no se bloquea                                         |
 
 ## Abiertas
 

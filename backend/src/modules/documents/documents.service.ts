@@ -21,7 +21,6 @@ import {
   type Installment,
   type IsoDate,
   type TransactionCreate,
-  type TransactionItem,
 } from '@gastos/shared';
 import type { TransactionRunner, WriteOptions } from '../../core/db/transaction';
 import { ConflictError, NotFoundError, fieldError } from '../../core/errors/errors';
@@ -44,7 +43,6 @@ export interface DocumentDependencies {
       input: TransactionCreate;
       installment: Installment | null;
       documentId: string;
-      items: TransactionItem[];
     }[],
     options: WriteOptions,
   ): Promise<number>;
@@ -326,7 +324,6 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
             input: entry.transaction,
             installment: entry.installment ? { planId: null, ...entry.installment } : null,
             documentId: id,
-            items: entry.items,
           })),
           options,
         );

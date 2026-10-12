@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -26,6 +26,7 @@ import { useAccounts } from '../accounts/api';
 import { useCategories } from '../categories/api';
 import { optionLabel, orderedTree } from '../categories/tree';
 import { useCreateTag, useTags } from '../tags/api';
+import { ItemsEditor, fromItemDrafts, toItemDrafts, type ItemDraft } from './ItemsEditor';
 import { useTransaction, useTransactionMutations } from './api';
 
 interface FormValues {
@@ -86,6 +87,14 @@ export function TransactionFormPage() {
   const [rateText, setRateText] = useState<string | null>(null);
 
   const values = useMemo(() => toFormValues(existing.data), [existing.data]);
+  const [items, setItems] = useState<ItemDraft[]>([]);
+  const [itemsError, setItemsError] = useState<string | undefined>(undefined);
+  /** Only products the user touched are sent, so a corrected rate can still rescale the stored ones. */
+  const [itemsTouched, setItemsTouched] = useState(false);
+  useEffect(() => {
+    setItems(toItemDrafts(existing.data?.items ?? []));
+    setItemsTouched(false);
+  }, [existing.data]);
   const form = useForm<FormValues>({ values });
   const { errors, isSubmitting } = form.formState;
   const splitFields = useFieldArray({ control: form.control, name: 'splits' });
@@ -181,6 +190,13 @@ export function TransactionFormPage() {
       }
     }
 
+    setItemsError(undefined);
+    const readItems = fromItemDrafts(input.type === 'transfer' ? [] : items);
+    if (readItems.error !== null) {
+      setItemsError(readItems.error);
+      return;
+    }
+
     const payload = {
       type: input.type,
       date: input.date,
@@ -195,6 +211,8 @@ export function TransactionFormPage() {
       toAccountId: input.type === 'transfer' ? input.toAccountId || null : null,
       toAmountCents,
       paymentDate: isCard ? input.paymentDate || null : null,
+      // A transfer never has products; otherwise they go when new or when changed.
+      ...(!id || itemsTouched || input.type === 'transfer' ? { items: readItems.items } : {}),
     };
 
     try {
@@ -505,23 +523,18 @@ export function TransactionFormPage() {
                 <TextInput maxLength={1000} {...form.register('note')} />
               </Field>
 
-              {existing.data && existing.data.items.length > 0 ? (
-                <details className="rounded-lg border border-line bg-surface">
-                  <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
-                    {es.transactions.itemsTitle(existing.data.items.length)}
-                  </summary>
-                  <ul className="divide-y divide-line border-t border-line text-sm">
-                    {existing.data.items.map((item, position) => (
-                      <li key={position} className="flex justify-between gap-3 px-3 py-1.5">
-                        <span className="min-w-0 break-words">{item.product || item.name}</span>
-                        <span className="amount shrink-0">
-                          {formatMoney(item.amountCents, existing.data?.currency ?? 'ARS')}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              ) : null}
+              {type === 'transfer' ? null : (
+                <ItemsEditor
+                  items={items}
+                  onChange={(next) => {
+                    setItems(next);
+                    setItemsTouched(true);
+                  }}
+                  currency={account?.currency ?? existing.data?.currency ?? 'ARS'}
+                  totalCents={totalCents > 0 ? totalCents : null}
+                  error={itemsError}
+                />
+              )}
 
               {failure ? <Notice tone="error">{failure}</Notice> : null}
 

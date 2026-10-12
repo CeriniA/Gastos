@@ -46,8 +46,6 @@ interface Origin {
   installment?: Installment | null;
   /** The uploaded document the transaction was read from. */
   documentId?: string;
-  /** Lines of the receipt, kept for reference. */
-  items?: TransactionItem[];
 }
 
 /** One transaction to store in bulk, with what its origin knows about it. */
@@ -55,7 +53,6 @@ export interface BulkEntry {
   input: TransactionCreate;
   installment: Installment | null;
   documentId?: string;
-  items?: TransactionItem[];
 }
 
 type Issue = { path: string; message: string };
@@ -162,17 +159,6 @@ export function createTransactionsService(repository: TransactionsRepository, de
           rate: impliedRate(input.amountCents, input.original.amountCents) || input.original.rate,
         }
       : null;
-    // Products are kept in the transaction's currency, so when a converted
-    // amount changes (a corrected rate) they change in the same proportion.
-    const reconverted =
-      previous?.original && original && !origin.items && previous.amountCents !== input.amountCents;
-    const items = reconverted
-      ? previous.items.map((item) => ({
-          ...item,
-          amountCents: Math.round((item.amountCents * input.amountCents) / previous.amountCents),
-        }))
-      : (origin.items ?? previous?.items ?? []);
-
     return {
       type: input.type,
       status: previous?.status ?? 'confirmed',
@@ -195,13 +181,28 @@ export function createTransactionsService(repository: TransactionsRepository, de
       note: input.note,
       tagIds,
       splits: input.splits,
-      items,
+      items: input.items,
       installment: origin.installment === undefined ? (previous?.installment ?? null) : origin.installment,
       documentId: origin.documentId ?? previous?.documentId ?? null,
       cardPeriodId: previous?.cardPeriodId ?? null,
       recurringId: previous?.recurringId ?? null,
       edited: previous ? previous.edited || previous.source !== 'manual' : false,
     };
+  }
+
+  /**
+   * Products are kept in the transaction's currency. When a converted amount
+   * changes (a corrected rate) and the products were not sent again, they
+   * change in the same proportion.
+   */
+  function reconvertedItems(previous: Transaction, patch: TransactionUpdate): TransactionItem[] {
+    const amountCents = patch.amountCents ?? previous.amountCents;
+    const stillConverted = previous.original && patch.original !== null;
+    if (!stillConverted || amountCents === previous.amountCents) return previous.items;
+    return previous.items.map((item) => ({
+      ...item,
+      amountCents: Math.round((item.amountCents * amountCents) / previous.amountCents),
+    }));
   }
 
   async function get(id: string): Promise<Transaction> {
@@ -243,7 +244,6 @@ export function createTransactionsService(repository: TransactionsRepository, de
             source,
             installment: entry.installment,
             documentId: entry.documentId,
-            items: entry.items,
           });
         } catch (error) {
           if (error instanceof ValidationError) {
@@ -277,6 +277,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
         toAccountId: patch.toAccountId === undefined ? previous.toAccountId : patch.toAccountId,
         toAmountCents: patch.toAmountCents === undefined ? previous.toAmountCents : patch.toAmountCents,
         original: patch.original === undefined ? previous.original : patch.original,
+        items: patch.items ?? reconvertedItems(previous, patch),
         // A moved transaction gets its payment date worked out again unless one is given.
         paymentDate:
           patch.paymentDate !== undefined ? patch.paymentDate : movedInTime ? null : previous.paymentDate,

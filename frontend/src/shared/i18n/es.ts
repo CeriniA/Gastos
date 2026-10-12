@@ -136,7 +136,6 @@ export const es = {
     moveToTrash: 'Mover a la papelera',
     rateHint: (amount: string) =>
       `En el comprobante: ${amount}. Al cambiar el cambio se recalcula el monto, y al cambiar el monto se recalcula el cambio.`,
-    itemsTitle: (count: number) => (count === 1 ? '1 producto' : `${count} productos`),
   },
 
   accounts: {
@@ -289,7 +288,6 @@ export const es = {
     } satisfies Record<'existing' | 'repeated', string>,
     fromRule: 'Categoría según tu regla para este comercio.',
     remember: (merchant: string) => `Usar siempre esta categoría para ${merchant}`,
-    items: (count: number) => (count === 1 ? '1 producto leído' : `${count} productos leídos`),
     confirm: (count: number) => (count === 1 ? 'Confirmar 1 movimiento' : `Confirmar ${count} movimientos`),
     noneIncluded: 'Marcá al menos un movimiento para cargar, o descartá el documento.',
     fixErrors: 'Hay datos para completar en los movimientos marcados.',
@@ -308,6 +306,23 @@ export const es = {
     searchEmpty: 'No hay compras de ese producto.',
     previousMonth: 'Mes anterior',
     nextMonth: 'Mes siguiente',
+  },
+
+  items: {
+    title: (count: number) => (count === 1 ? 'Productos: 1' : `Productos: ${count}`),
+    add: 'Agregar el detalle de productos',
+    addLine: 'Agregar producto',
+    remove: 'Quitar este producto',
+    product: 'Producto',
+    group: 'Grupo',
+    quantity: 'Cantidad',
+    quantityShort: 'Cant.',
+    amount: 'Monto',
+    onReceipt: (text: string) => `En el ticket: ${text}`,
+    sum: (amount: string) => `Suman ${amount}.`,
+    difference: (amount: string) =>
+      `Diferencia con el total: ${amount} (descuentos o renglones que no son productos).`,
+    incomplete: 'Cada producto necesita un nombre y un monto. Un descuento va con signo menos.',
   },
 
   productGroups: {

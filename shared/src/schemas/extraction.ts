@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import { DOCUMENT_KINDS, PRODUCT_GROUPS, TRANSACTION_TYPES } from '../constants';
+import { DOCUMENT_KINDS, TRANSACTION_TYPES } from '../constants';
 import { currencyCodeSchema, isoDateSchema, objectIdSchema } from './common';
+import { MAX_TRANSACTION_ITEMS, transactionItemSchema, type TransactionItem } from './transaction';
 
 /**
  * Contract between the app and whatever AI reads a document.
@@ -24,22 +25,9 @@ export const UNCERTAIN_FIELDS = [
 ] as const;
 export type UncertainField = (typeof UNCERTAIN_FIELDS)[number];
 
-/**
- * One purchased line of a receipt. `name` is what the receipt prints;
- * `product` and `group` are the AI's reading of what it is, so that the same
- * thing bought in different shops adds up. The three extra fields default to
- * "unknown", which is also how lines stored before they existed are read.
- */
-export const extractedItemSchema = z.object({
-  name: z.string().max(200),
-  amountCents: z.number().int(),
-  /** Generic name without brand or size, e.g. "Yerba". Empty when unknown. */
-  product: z.string().max(80).default(''),
-  group: z.enum(PRODUCT_GROUPS).nullable().default(null),
-  /** Units, kilos or litres as printed. Null when the receipt does not say. */
-  quantity: z.number().positive().max(100_000).nullable().default(null),
-});
-export type ExtractedItem = z.infer<typeof extractedItemSchema>;
+/** A line of a receipt as the AI reads it: the same shape a transaction stores. */
+export const extractedItemSchema = transactionItemSchema;
+export type ExtractedItem = TransactionItem;
 
 export const extractedTransactionSchema = z.object({
   type: z.enum(TRANSACTION_TYPES),
@@ -52,7 +40,7 @@ export const extractedTransactionSchema = z.object({
   /** Must be one of the user's existing categories; the model cannot invent one. */
   suggestedCategoryId: objectIdSchema.nullable(),
   installment: z.object({ number: z.number().int().min(1), total: z.number().int().min(1) }).nullable(),
-  items: z.array(extractedItemSchema).max(200),
+  items: z.array(extractedItemSchema).max(MAX_TRANSACTION_ITEMS),
   uncertainFields: z.array(z.enum(UNCERTAIN_FIELDS)).max(UNCERTAIN_FIELDS.length),
 });
 export type ExtractedTransaction = z.infer<typeof extractedTransactionSchema>;

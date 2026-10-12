@@ -158,11 +158,17 @@ mano. Un fijo se espera cada mes, entra en la proyección y avisa si no apareci�
 Balance del mes por moneda; gasto por categoría con apertura del árbol; por cuenta; evolución mensual;
 principales comercios; cuotas y fijos pendientes; buscador con filtros; exportación a Excel.
 
+**Productos de un movimiento.** Todo egreso o ingreso puede llevar el detalle de lo comprado: nombre,
+grupo, cantidad y monto por renglón. Se cargan a mano al crear o editar un movimiento, y en la revisión de
+un ticket se corrige lo que leyó la IA. Son opcionales y no tienen que sumar el total: la pantalla muestra
+la diferencia (descuentos, recargos o renglones que no son productos) pero deja guardar. Un descuento se
+carga con monto negativo.
+
 **Consumo (hecho).** La pestaña Informes muestra qué se compró en el mes, a partir de los productos
 leídos de los tickets: total por moneda, grupos (lácteos, almacén, limpieza…) con su porcentaje y, al
 abrir un grupo, cada producto con cuántas veces se compró y la cantidad. Un buscador muestra todas las
 compras de un producto con fecha, comercio y precio. Solo cuenta compras cargadas desde un ticket con
-detalle; un pago de MercadoPago sin detalle no aporta productos.
+detalle o con productos cargados a mano; un pago de MercadoPago sin detalle no aporta productos.
 
 ## 11. Pantallas
 

@@ -124,6 +124,7 @@ const expense: TransactionCreate = {
   toAmountCents: null,
   paymentDate: null,
   original: null,
+  items: [],
 };
 
 async function issuePaths(work: Promise<unknown>): Promise<string[]> {
@@ -282,4 +283,34 @@ test('trash: delete, restore, and neither twice', async () => {
   await assert.rejects(service.update(created.id, { note: 'x' }), NotFoundError);
   assert.equal((await service.restore(created.id)).deletedAt, null);
   await assert.rejects(service.restore(created.id), NotFoundError);
+});
+
+test('products can be added, changed and removed by hand; transfers have none', async () => {
+  const { service } = setup();
+  const milk = { name: 'Leche', amountCents: 120000, product: 'Leche', group: 'dairy' as const, quantity: 2 };
+  const bread = { name: 'Pan', amountCents: 30000, product: 'Pan', group: 'bakery' as const, quantity: null };
+
+  // They need not add up to the total: a receipt has discounts and lines that are not products.
+  const created = await service.create({ ...expense, items: [milk, bread] });
+  assert.deepEqual(created.items, [milk, bread]);
+
+  const changed = await service.update(created.id, { items: [{ ...milk, amountCents: 110000 }] });
+  assert.deepEqual(changed.items, [{ ...milk, amountCents: 110000 }]);
+  // Editing something else keeps them.
+  assert.equal((await service.update(created.id, { note: 'súper' })).items.length, 1);
+  assert.deepEqual((await service.update(created.id, { items: [] })).items, []);
+
+  await assert.rejects(
+    service.create({
+      ...expense,
+      type: 'transfer',
+      categoryId: null,
+      tagIds: [],
+      toAccountId: id('b'),
+      items: [milk],
+    }),
+    (error: unknown) =>
+      error instanceof ValidationError &&
+      JSON.stringify(error.details).includes('A transfer cannot have products'),
+  );
 });

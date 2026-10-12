@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import {
+  PRODUCT_GROUPS,
   TRANSACTION_SOURCES,
   TRANSACTION_TYPES,
   type Currency,
-  type ProductGroup,
   type TransactionSource,
   type TransactionStatus,
   type TransactionType,
@@ -33,6 +33,27 @@ export const originalAmountSchema = z.object({
 });
 export type OriginalAmount = z.infer<typeof originalAmountSchema>;
 
+/**
+ * One purchased line of a transaction. `name` is what the receipt prints (or
+ * what the user typed); `product` and `group` say what it is, so that the
+ * same thing bought in different shops adds up. The three extra fields
+ * default to "unknown", which is also how lines stored before they existed
+ * are read. The amount may be negative: a discount is a line too.
+ */
+export const transactionItemSchema = z.object({
+  name: z.string().trim().max(200),
+  amountCents: z.number().int(),
+  /** Generic name without brand or size, e.g. "Yerba". Empty when unknown. */
+  product: z.string().trim().max(80).default(''),
+  group: z.enum(PRODUCT_GROUPS).nullable().default(null),
+  /** Units, kilos or litres. Null when unknown. */
+  quantity: z.number().positive().max(100_000).nullable().default(null),
+});
+export type TransactionItem = z.infer<typeof transactionItemSchema>;
+
+/** How many products a transaction can list. */
+export const MAX_TRANSACTION_ITEMS = 200;
+
 export const splitSchema = z.object({ categoryId: objectIdSchema, amountCents: amountCentsSchema });
 export type Split = z.infer<typeof splitSchema>;
 
@@ -60,6 +81,8 @@ const fields = {
   paymentDate: isoDateSchema.nullable(),
   /** Set when the receipt was in a currency other than the account's. */
   original: originalAmountSchema.nullable(),
+  /** What was bought, line by line. Optional, and not required to add up to the amount. */
+  items: z.array(transactionItemSchema).max(MAX_TRANSACTION_ITEMS),
 };
 
 export interface TransactionShape {
@@ -70,6 +93,7 @@ export interface TransactionShape {
   splits: readonly Split[];
   toAccountId: string | null;
   toAmountCents: number | null;
+  items: readonly unknown[];
 }
 
 /**
@@ -89,6 +113,9 @@ export function transactionShapeIssues(tx: TransactionShape): { path: string; me
     }
     if (tx.splits.length > 0) {
       issues.push({ path: 'splits', message: 'A transfer cannot be split' });
+    }
+    if (tx.items.length > 0) {
+      issues.push({ path: 'items', message: 'A transfer cannot have products' });
     }
   } else {
     if (tx.toAccountId) {
@@ -121,6 +148,7 @@ export const transactionCreateSchema = z
     toAmountCents: fields.toAmountCents.default(null),
     paymentDate: fields.paymentDate.default(null),
     original: fields.original.default(null),
+    items: fields.items.default([]),
   })
   .superRefine((value, context) => {
     for (const issue of transactionShapeIssues(value)) {
@@ -167,16 +195,6 @@ export interface Installment {
   planId: string | null;
   number: number;
   total: number;
-}
-
-export interface TransactionItem {
-  /** As printed on the receipt. */
-  name: string;
-  amountCents: number;
-  /** Generic product name ("Yerba"). Empty when unknown. */
-  product: string;
-  group: ProductGroup | null;
-  quantity: number | null;
 }
 
 export interface Transaction {

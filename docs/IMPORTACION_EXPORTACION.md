@@ -59,6 +59,7 @@ banco o efectivo, y eso cambia cómo se calcula la fecha de pago.
 - Un movimiento dividido entre categorías se exporta como una fila por parte.
 - No incluye borradores, proyectados, papelera, reglas, fijos, tasas de cambio ni períodos de tarjeta.
 - La cuota se guarda como dato (`3/6`) sin vincularla a un plan.
+- Los productos de cada movimiento no van en la planilla.
 
 Para una copia exacta, usar el respaldo.
 

@@ -7,7 +7,7 @@ import {
 } from '../constants';
 import { categoryRuleInputSchema } from './categoryRule';
 import { objectIdSchema } from './common';
-import { extractedItemSchema, type ReviewExtraction } from './extraction';
+import type { ReviewExtraction } from './extraction';
 import { transactionCreateSchema } from './transaction';
 
 /** Text fields that travel next to the files in the multipart upload. */
@@ -26,8 +26,8 @@ export type DocumentListQuery = z.infer<typeof documentListQuerySchema>;
 
 /** One transaction as the user left it in the review screen. */
 export const documentConfirmEntrySchema = z.object({
+  /** Carries its products in `items`, already in the account's currency. */
   transaction: transactionCreateSchema,
-  items: z.array(extractedItemSchema).max(200).default([]),
   installment: z
     .object({ number: z.number().int().min(1), total: z.number().int().min(1).max(120) })
     .refine((value) => value.number <= value.total, 'Installment number exceeds the total')

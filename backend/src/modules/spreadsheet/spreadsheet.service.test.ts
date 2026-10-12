@@ -307,6 +307,7 @@ test('the export splits a divided transaction into one row per category and hono
     toAmountCents: null,
     paymentDate: null,
     original: null,
+    items: [],
   };
   await app.transactions.create({
     ...base,

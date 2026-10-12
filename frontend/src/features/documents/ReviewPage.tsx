@@ -28,6 +28,7 @@ import { useAccounts } from '../accounts/api';
 import { useCategories } from '../categories/api';
 import { optionLabel, orderedTree } from '../categories/tree';
 import { useLastRate, useReferenceRate } from '../transactions/api';
+import { ItemsEditor, fromItemDrafts, toItemDrafts, type ItemDraft } from '../transactions/ItemsEditor';
 import { DocumentImage } from './DocumentImage';
 import { useDocument, useDocumentMutations } from './api';
 
@@ -48,6 +49,8 @@ interface Draft {
   rate: string;
   /** The user said the printed amount is already in the account's currency: no conversion. */
   sameCurrency: boolean;
+  /** Products as read, editable; in the receipt's currency until confirmed. */
+  items: ItemDraft[];
 }
 
 type DraftErrors = Partial<Record<keyof Draft, string>>;
@@ -119,6 +122,7 @@ function toDraft(
     remember: false,
     rate: '',
     sameCurrency: false,
+    items: toItemDrafts(transaction.items),
   };
   return accountId ? withAccount(draft, transaction, accounts, accountId) : draft;
 }
@@ -420,31 +424,15 @@ function TransactionCard({
             </p>
           ) : null}
 
-          {read.items.length > 0 ? (
-            <details className="rounded-lg border border-line">
-              <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
-                {es.documents.items(read.items.length)}
-              </summary>
-              <ul className="divide-y divide-line border-t border-line text-sm">
-                {read.items.map((item, position) => (
-                  <li key={position} className="flex justify-between gap-3 px-3 py-1.5">
-                    <span className="min-w-0">
-                      <span className="block break-words">{item.product || item.name}</span>
-                      <span className="block break-words text-muted">
-                        {[
-                          item.group ? es.productGroups[item.group] : es.consumption.ungrouped,
-                          item.product && item.product !== item.name ? item.name : '',
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </span>
-                    </span>
-                    <span className="amount shrink-0">{formatMoney(item.amountCents, itemCurrency)}</span>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          ) : null}
+          {draft.type === 'transfer' ? null : (
+            <ItemsEditor
+              items={draft.items}
+              onChange={(items) => onChange({ items })}
+              currency={itemCurrency}
+              totalCents={foreign ? foreign.amountCents : parseAmountToCents(draft.amount)}
+              error={errors.items}
+            />
+          )}
         </div>
       ) : null}
     </Card>
@@ -521,6 +509,12 @@ function ReviewForm({
         flag(index, 'toAmount', es.fieldMessages.amount);
       if (!draft.date) flag(index, 'date', es.fieldMessages.required);
       if (!account) flag(index, 'accountId', es.fieldMessages.required);
+      const readItems = fromItemDrafts(isTransfer ? [] : draft.items);
+      if (readItems.error !== null) flag(index, 'items', readItems.error);
+      // Products are stored in the same currency as their transaction.
+      const items = (readItems.items ?? []).map((item) =>
+        rate ? { ...item, amountCents: convertCents(item.amountCents, rate) } : item,
+      );
 
       return {
         transaction: {
@@ -538,11 +532,8 @@ function ReviewForm({
           toAmountCents,
           paymentDate: account?.type === 'credit_card' ? draft.paymentDate || null : null,
           original: foreign && rate ? { ...foreign, rate } : null,
+          items,
         },
-        // Products are stored in the same currency as their transaction.
-        items: rate
-          ? source.items.map((item) => ({ ...item, amountCents: convertCents(item.amountCents, rate) }))
-          : source.items,
         installment: source.installment,
       };
     });

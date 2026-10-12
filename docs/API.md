@@ -102,9 +102,15 @@ Cuerpo de alta:
   "toAccountId": null,
   "toAmountCents": null,
   "paymentDate": null,
-  "original": null
+  "original": null,
+  "items": []
 }
 ```
+
+`items` son los productos: `[{ "name", "amountCents", "product", "group", "quantity" }]`, hasta 200.
+Son opcionales y no tienen que sumar el total (un descuento es un renglón con monto negativo). Una
+transferencia no lleva productos. En una edición, mandar `items` los reemplaza todos; no mandarlo los deja
+como están.
 
 `original` se usa cuando el comprobante estaba en otra moneda:
 `{ "amountCents": 5000, "currency": "BRL", "rate": 272.5 }`. `amountCents` y `currency` del movimiento son
@@ -149,15 +155,15 @@ con el mismo formato que la vista previa.
 
 Tickets y capturas leídos con IA. La subida responde enseguida; la lectura ocurre en segundo plano.
 
-| Método | Ruta                                       | Descripción                                                                                                                                                     |
-| ------ | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/documents?status=pending\|all`           | `pending` (por defecto): procesando, listos para revisar y con error                                                                                            |
-| POST   | `/documents`                               | `multipart/form-data`: `kind` (`receipt` o `screenshot`), `accountId` opcional y de 1 a 10 imágenes en `files` (JPG, PNG o WEBP, 5 MB cada una). Responde `202` |
-| GET    | `/documents/:id`                           | Detalle con `extraction` (lo leído, con la categoría sugerida ya resuelta) y `duplicateHints`: por cada movimiento, `existing`, `repeated` o `null`             |
-| GET    | `/documents/:id/files/:index`              | Una de las imágenes. Deja de existir al confirmar                                                                                                               |
-| POST   | `/documents/:id/retry`                     | Vuelve a leer un documento con error o ya leído (descarta el resultado anterior)                                                                                |
-| POST   | `/documents/:id/confirm`                   | `{ transactions: [{ transaction, items, installment }], rules }`. Crea los movimientos, guarda las reglas y borra las imágenes. Todo o nada                     |
-| DELETE | `/documents/:id?transactions=keep\|delete` | Sin confirmar: lo descarta. Confirmado: sus movimientos quedan como manuales (`keep`) o van a la papelera (`delete`)                                            |
+| Método | Ruta                                       | Descripción                                                                                                                                                                     |
+| ------ | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/documents?status=pending\|all`           | `pending` (por defecto): procesando, listos para revisar y con error                                                                                                            |
+| POST   | `/documents`                               | `multipart/form-data`: `kind` (`receipt` o `screenshot`), `accountId` opcional y de 1 a 10 imágenes en `files` (JPG, PNG o WEBP, 5 MB cada una). Responde `202`                 |
+| GET    | `/documents/:id`                           | Detalle con `extraction` (lo leído, con la categoría sugerida ya resuelta) y `duplicateHints`: por cada movimiento, `existing`, `repeated` o `null`                             |
+| GET    | `/documents/:id/files/:index`              | Una de las imágenes. Deja de existir al confirmar                                                                                                                               |
+| POST   | `/documents/:id/retry`                     | Vuelve a leer un documento con error o ya leído (descarta el resultado anterior)                                                                                                |
+| POST   | `/documents/:id/confirm`                   | `{ transactions: [{ transaction, installment }], rules }` (los productos van en `transaction.items`). Crea los movimientos, guarda las reglas y borra las imágenes. Todo o nada |
+| DELETE | `/documents/:id?transactions=keep\|delete` | Sin confirmar: lo descarta. Confirmado: sus movimientos quedan como manuales (`keep`) o van a la papelera (`delete`)                                                            |
 
 Estados: `processing` → `ready` → `confirmed`, o `error` (con `errorCode`: `rate_limited`, `unavailable`,
 `not_configured`, `blocked`, `unreadable`).
@@ -168,7 +174,7 @@ Subir un archivo ya confirmado y con movimientos vigentes responde `DUPLICATE`, 
 
 ## Consumo
 
-Qué se compró, según los productos leídos de los tickets. Solo cuenta egresos confirmados que tienen
+Qué se compró, según los productos de los movimientos (leídos de un ticket o cargados a mano). Solo cuenta egresos confirmados que tienen
 detalle de productos; los que están en la papelera no entran.
 
 | Método | Ruta                                   | Qué hace                                                                                 |

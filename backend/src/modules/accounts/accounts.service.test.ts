@@ -28,6 +28,7 @@ const expense = (accountId: string, tagIds: string[] = []) => ({
   toAmountCents: null,
   paymentDate: null,
   original: null,
+  items: [],
 });
 
 test('account names are unique whatever the case or accents', async () => {

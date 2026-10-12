@@ -279,6 +279,7 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
             toAmountCents: row.toAmountCents,
             paymentDate: row.paymentDate,
             original: null,
+            items: [],
           };
           const installment: Installment | null = row.installment
             ? { planId: null, ...row.installment }

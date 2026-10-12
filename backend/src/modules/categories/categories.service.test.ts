@@ -102,6 +102,7 @@ test('a category in use cannot be deleted, only archived or merged', async () =>
     toAmountCents: null,
     paymentDate: null,
     original: null,
+    items: [],
   });
   assert.equal(await codeOf(app.categories.remove(power.id)), 'IN_USE');
 
@@ -131,6 +132,7 @@ test('merging moves the transactions, including split parts, and deletes the sou
     toAmountCents: null,
     paymentDate: null,
     original: null,
+    items: [],
   };
   const single = await app.transactions.create({
     ...base,
@@ -177,6 +179,7 @@ test('filtering transactions by a category includes its subcategories', async ()
     toAmountCents: null,
     paymentDate: null,
     original: null,
+    items: [],
   };
   await app.transactions.create({ ...base, amountCents: 1000, categoryId: power.id });
   await app.transactions.create({ ...base, amountCents: 2000, categoryId: food.id });
