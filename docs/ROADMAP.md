@@ -69,6 +69,7 @@ Hecho después, a partir del uso real:
 - Editar el cambio de un movimiento ya guardado; el cambio y el monto se recalculan uno al otro.
 - Los documentos sin revisar vencen a los 30 días.
 - Cerrar sesión en todos los dispositivos.
+- Cuando la IA está sin cupo o no responde, el documento espera y se reintenta solo.
 
 Comprobado con pruebas sobre el backend en memoria y una IA simulada. Las pantallas no tienen pruebas.
 
@@ -76,7 +77,6 @@ Falta:
 
 - Seguir ajustando las instrucciones (`backend/src/providers/ai/prompt.ts`) con documentos reales: las
   capturas de MercadoPago con listas superpuestas son el caso más difícil.
-- Esperar y reintentar sola cuando Gemini corta por límite de pedidos al subir muchos documentos.
 - Elegir el modelo: hoy el valor por defecto es `gemini-3.5-flash-lite`; se cambia con `GEMINI_MODEL`.
 - Lista de reglas y de documentos confirmados en Más (la API ya existe).
 - Medir memoria y tiempo en Render gratuito.

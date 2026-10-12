@@ -99,6 +99,16 @@ export function formatDate(date: IsoDate): string {
   return `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`;
 }
 
+/** "14:05": the hour and minute of a moment, in the given time zone. */
+export function formatTime(moment: string | Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone,
+  }).format(new Date(moment));
+}
+
 /** "octubre de 2026" for display. */
 export function formatMonth(month: MonthKey, locale = 'es-AR'): string {
   const date = new Date(`${month}-01T00:00:00Z`);

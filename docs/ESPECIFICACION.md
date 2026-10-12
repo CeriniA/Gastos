@@ -110,7 +110,11 @@ pregunta si ese comercio va siempre ahí y, si se acepta, crea la regla.
 - La **imagen se guarda solo mientras el documento está pendiente** y se borra al confirmar o
   descartar. La app avisa que hay que conservar la foto aparte si se necesita.
 - Un documento que nadie revisó en 30 días se borra solo, con su imagen. Los confirmados no se tocan.
-- Si el proveedor de IA falla o llega al límite, el documento queda pendiente para reintentar.
+- Si la IA llega a su límite gratuito o no responde, el documento queda **esperando a la IA** y se vuelve
+  a intentar solo, con esperas cada vez más largas (de 1 minuto a 8 horas, unas 16 horas en total).
+  Pendientes muestra a qué hora es el próximo intento y permite intentar ya. Recién después de la última
+  espera queda como error, con la foto guardada para reintentar a mano. El servidor gratuito se duerme
+  sin uso: dormido no reintenta, y retoma al volver a abrir la app.
 - A la IA se le pide que no devuelva números de tarjeta ni datos personales.
 - Formatos: JPG, PNG y WEBP, hasta 10 imágenes por documento (un ticket largo en varias fotos). PDF llega
   con los resúmenes de tarjeta (etapa 3); uno con contraseña se rechazará con aviso.

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  DOCUMENT_RETRY_DELAYS_MINUTES,
   MAX_DOCUMENT_FILES,
   type DocumentConfirm,
   type ExtractedTransaction,
@@ -174,7 +175,7 @@ test('uploading a file again reads it again, unless it is already counted', asyn
   );
 
   // Failed: same thing.
-  app.ai.error = extractionFailure('unavailable', 'down');
+  app.ai.error = extractionFailure('unreadable', 'not a receipt');
   await app.documents.processQueue();
   assert.equal((await app.documents.get(second.id)).status, 'error');
   app.ai.error = null;
@@ -290,13 +291,14 @@ test('a confirmation that fails half-way leaves everything as it was', async () 
 
 test('a failed reading is kept with its reason and can be retried', async () => {
   const { app } = await setup();
-  app.ai.error = extractionFailure('rate_limited', 'quota exhausted');
+  app.ai.error = extractionFailure('unreadable', 'not a receipt');
   const uploaded = await app.documents.upload({ kind: 'screenshot' }, [photo('mp')]);
   await app.documents.processQueue();
 
   const failed = await app.documents.get(uploaded.id);
   assert.equal(failed.status, 'error');
-  assert.equal(failed.errorCode, 'rate_limited');
+  assert.equal(failed.errorCode, 'unreadable');
+  assert.equal(failed.retryAt, null);
   assert.equal(failed.fileCount, 1);
   assert.equal(app.errors.length, 1);
   assert.equal((await app.documents.list('pending')).length, 1);
@@ -316,6 +318,56 @@ test('a failed reading is kept with its reason and can be retried', async () => 
   assert.equal(again.transactionCount, null);
   await app.documents.processQueue();
   assert.equal((await app.documents.get(uploaded.id)).status, 'ready');
+});
+
+test('when the AI is out of quota a document waits and is tried again on its own, then gives up', async () => {
+  const { app } = await setup();
+  app.ai.error = extractionFailure('rate_limited', 'quota exhausted');
+  const uploaded = await app.documents.upload({ kind: 'receipt' }, [photo('largo')]);
+  await app.documents.processQueue();
+
+  // Waiting, not failed: same status, the reason, and when it will be tried.
+  let waiting = await app.documents.get(uploaded.id);
+  assert.equal(waiting.status, 'processing');
+  assert.equal(waiting.errorCode, 'rate_limited');
+  assert.equal(waiting.waits, 1);
+  assert.equal(waiting.retryAt, new Date(app.clock.now.getTime() + 60_000).toISOString());
+
+  // Not before its time.
+  const calls = app.ai.calls.length;
+  await app.documents.processQueue();
+  assert.equal(app.ai.calls.length, calls);
+
+  // Each wait is longer than the last; after the last one it shows as failed.
+  for (const minutes of DOCUMENT_RETRY_DELAYS_MINUTES) {
+    waiting = await app.documents.get(uploaded.id);
+    assert.equal(waiting.status, 'processing');
+    app.clock.now = new Date(app.clock.now.getTime() + minutes * 60_000);
+    await app.documents.processQueue();
+  }
+  const failed = await app.documents.get(uploaded.id);
+  assert.equal(failed.status, 'error');
+  assert.equal(failed.errorCode, 'rate_limited');
+  assert.equal(failed.retryAt, null);
+  assert.equal(failed.fileCount, 1); // The image is still there for a manual retry.
+});
+
+test('a waiting document can be tried right away, and a later success clears the wait', async () => {
+  const { app } = await setup();
+  app.ai.error = extractionFailure('unavailable', 'down');
+  const uploaded = await app.documents.upload({ kind: 'receipt' }, [photo('ticket')]);
+  await app.documents.processQueue();
+  assert.equal((await app.documents.get(uploaded.id)).waits, 1);
+
+  app.ai.error = null;
+  app.ai.result = extraction(read());
+  const retried = await app.documents.retry(uploaded.id);
+  assert.equal(retried.retryAt, null);
+  await app.documents.processQueue();
+  const ready = await app.documents.get(uploaded.id);
+  assert.equal(ready.status, 'ready');
+  assert.equal(ready.waits, 0);
+  assert.equal(ready.errorCode, null);
 });
 
 test('an unexpected failure or an invalid extraction never leaves a document stuck', async () => {

@@ -41,6 +41,8 @@ export interface Runtime {
   runInTransaction: TransactionRunner;
   /** Today's calendar day in the app's time zone. */
   today: () => IsoDate;
+  /** The current moment. A function so tests can move the clock. */
+  now: () => Date;
   /** Null when no AI key is configured. */
   extractor: AiExtractor | null;
   /** Public exchange rates, offered as a starting point. Null to do without. */
@@ -134,6 +136,7 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     trashTransactions: transactions.trashByDocument,
     runInTransaction,
     today,
+    now: runtime.now,
     schedule: runtime.schedule,
     onError: runtime.onError,
   });

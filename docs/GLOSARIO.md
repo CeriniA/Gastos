@@ -64,3 +64,4 @@ Cada concepto con su nombre en pantalla y en el código. Usar siempre estos tér
 | Volver a revisar (importación)                                      | `review`                                                     | Filas ya leídas, con cuentas o categorías reasignadas                         |
 | Cerrar sesión en todos los dispositivos                             | `revokeAll` / `logout-all`                                   | Guarda un momento de corte en `authState`                                     |
 | Cambio que resulta de los montos                                    | `impliedRate`                                                | Monto ÷ monto original                                                        |
+| Esperando a la IA                                                   | `retryAt` / `waits`                                          | Documento sin cupo de IA que se reintenta solo                                |

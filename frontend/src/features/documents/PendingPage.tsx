@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PENDING_DOCUMENT_RETENTION_DAYS, type DocumentSummary } from '@gastos/shared';
+import {
+  DEFAULT_TIMEZONE,
+  PENDING_DOCUMENT_RETENTION_DAYS,
+  formatTime,
+  type DocumentSummary,
+} from '@gastos/shared';
 import { errorMessage } from '../../shared/api/errors';
 import { es } from '../../shared/i18n/es';
 import { QueryState } from '../../shared/ui/QueryState';
@@ -49,8 +54,8 @@ export function PendingPage() {
           <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
             {items.map((document) => (
               <li key={document.id} className="p-3">
-                <p className={`font-semibold ${TONE[document.status]}`}>
-                  {es.documents.statuses[document.status]}
+                <p className={`font-semibold ${document.retryAt ? 'text-attention' : TONE[document.status]}`}>
+                  {document.retryAt ? es.documents.waiting : es.documents.statuses[document.status]}
                   {document.status === 'ready' && document.transactionCount !== null
                     ? `, ${es.documents.found(document.transactionCount)}`
                     : ''}
@@ -62,8 +67,13 @@ export function PendingPage() {
                 {document.status === 'error' && document.errorCode ? (
                   <p className="mt-1 text-sm">{es.documents.errors[document.errorCode]}</p>
                 ) : null}
+                {document.retryAt ? (
+                  <p className="mt-1 text-sm">
+                    {es.documents.waitingText(formatTime(document.retryAt, DEFAULT_TIMEZONE), document.waits)}
+                  </p>
+                ) : null}
 
-                {document.status === 'processing' ? null : (
+                {document.status === 'processing' && !document.retryAt ? null : (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {document.status === 'ready' ? (
                       <Link
@@ -78,7 +88,11 @@ export function PendingPage() {
                       disabled={retry.isPending}
                       onClick={() => void run(retry.mutateAsync(document.id))}
                     >
-                      {document.status === 'error' ? es.documents.retry : es.documents.reread}
+                      {document.retryAt
+                        ? es.documents.retryNow
+                        : document.status === 'error'
+                          ? es.documents.retry
+                          : es.documents.reread}
                     </Button>
                     <Button
                       variant="quiet"

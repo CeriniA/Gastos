@@ -66,6 +66,7 @@ export function createContainer(env: Env): Container {
     {
       runInTransaction: withTransaction,
       today: () => todayIso(env.APP_TIMEZONE),
+      now: () => new Date(),
       extractor,
       rates: createOpenExchangeRates(),
       schedule: (work) => {

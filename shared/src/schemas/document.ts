@@ -61,6 +61,13 @@ export interface DocumentSummary {
   fileCount: number;
   accountId: string | null;
   errorCode: DocumentErrorCode | null;
+  /**
+   * Set while the document waits for the AI to have room again (out of quota
+   * or down): when it will be tried on its own. Its status stays processing.
+   */
+  retryAt: string | null;
+  /** Automatic retries so far, after the AI was out of quota or down. */
+  waits: number;
   /** How many transactions the AI found. Null while processing. */
   transactionCount: number | null;
   createdAt: string;

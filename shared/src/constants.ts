@@ -55,6 +55,16 @@ export const DOCUMENT_ERROR_CODES = [
 ] as const;
 export type DocumentErrorCode = (typeof DOCUMENT_ERROR_CODES)[number];
 
+/**
+ * When the AI is out of quota or down, a document waits and is tried again
+ * on its own after these many minutes, one after the other (about 16 hours
+ * in all). Only after the last one does it show as failed.
+ */
+export const DOCUMENT_RETRY_DELAYS_MINUTES = [1, 5, 15, 30, 60, 120, 240, 480] as const;
+
+/** Failures that go away by themselves, so they are retried automatically. */
+export const TRANSIENT_DOCUMENT_ERRORS = ['rate_limited', 'unavailable'] as const;
+
 /** A long receipt can be photographed in several parts. */
 export const MAX_DOCUMENT_FILES = 10;
 /** All the parts of one document together; MongoDB stores at most 16 MB per document. */

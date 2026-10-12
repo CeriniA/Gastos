@@ -22,6 +22,8 @@ export interface DocumentChanges {
   promptVersion?: number | null;
   errorCode?: DocumentErrorCode | null;
   errorDetail?: string | null;
+  retryAt?: string | null;
+  waits?: number;
   /** Adds one to the number of reading attempts. */
   countAttempt?: boolean;
   /** Deletes the stored images. */
@@ -42,6 +44,8 @@ function toDetail(doc: LightDoc): DocumentDetail {
     fileCount: doc.files?.length ?? 0,
     accountId: idString(doc.accountId),
     errorCode: doc.errorCode ?? null,
+    retryAt: doc.retryAt ? doc.retryAt.toISOString() : null,
+    waits: doc.waits ?? 0,
     transactionCount: extraction ? extraction.transactions.length : null,
     extraction,
     duplicateHints: [],
@@ -101,10 +105,17 @@ export const documentsRepository = {
     return docs.map(toDetail);
   },
 
-  /** The document that has waited longest for the AI, if any. */
-  async findNextToProcess(excludeIds: readonly string[]): Promise<DocumentDetail | null> {
+  /**
+   * The document that has waited longest for the AI, if any. One waiting for
+   * the AI to have room again only counts once its time has come.
+   */
+  async findNextToProcess(excludeIds: readonly string[], now: Date): Promise<DocumentDetail | null> {
     const doc = await DocumentModel.findOne(
-      { status: 'processing', _id: { $nin: excludeIds.map(toObjectId) } },
+      {
+        status: 'processing',
+        _id: { $nin: excludeIds.map(toObjectId) },
+        $or: [{ retryAt: null }, { retryAt: { $lte: now } }],
+      },
       WITHOUT_BYTES,
     )
       .sort({ createdAt: 1 })
@@ -122,7 +133,11 @@ export const documentsRepository = {
     changes: DocumentChanges,
     options: WriteOptions = {},
   ): Promise<DocumentDetail | null> {
-    const { countAttempt, clearFiles, ...fields } = changes;
+    const { countAttempt, clearFiles, retryAt, ...rest } = changes;
+    const fields = {
+      ...rest,
+      ...(retryAt === undefined ? {} : { retryAt: retryAt ? new Date(retryAt) : null }),
+    };
     const doc = await DocumentModel.findByIdAndUpdate(
       toObjectId(id),
       {

@@ -40,6 +40,8 @@ interface Store {
 const STAMP = '2026-10-01T00:00:00.000Z';
 
 export function createMemoryBackend(today = '2026-10-10', options: { aiConfigured?: boolean } = {}) {
+  /** The clock the services see. Tests move it forward to make waiting documents due. */
+  const clock = { now: new Date(`${today}T12:00:00.000Z`) };
   const store: Store = { accounts: [], categories: [], tags: [], transactions: [], rules: [], documents: [] };
   /** Switches a test can flip to make a write fail, to check that work is rolled back. */
   const faults = { insertTransactions: false };
@@ -423,6 +425,8 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
         fileCount: data.files.length,
         accountId: data.accountId,
         errorCode: null,
+        retryAt: null,
+        waits: 0,
         transactionCount: null,
         extraction: null,
         duplicateHints: [],
@@ -449,9 +453,10 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .map(withoutBytes);
     },
-    async findNextToProcess(excludeIds) {
+    async findNextToProcess(excludeIds, now) {
       const [next] = store.documents
         .filter((document) => document.status === 'processing' && !excludeIds.includes(document.id))
+        .filter((document) => document.retryAt === null || new Date(document.retryAt) <= now)
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
       return next ? withoutBytes(next) : null;
     },
@@ -484,6 +489,7 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
     {
       runInTransaction,
       today: () => today,
+      now: () => clock.now,
       extractor: options.aiConfigured === false ? null : extractor,
       rates: {
         // A fixed table instead of the network.
@@ -495,5 +501,5 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
       onError: (error, context) => errors.push({ error, context }),
     },
   );
-  return { ...services, store, faults, ai, errors };
+  return { ...services, store, faults, ai, errors, clock };
 }

@@ -9,15 +9,23 @@ import type {
 import { api } from '../../shared/api/client';
 
 const KEY = ['documents'] as const;
-/** How often to ask again while the AI is still reading. */
+/** How often to ask again while the AI is reading. */
 const POLL_MS = 3_000;
+/** How often to ask again while a document only waits for the AI to have room. */
+const WAITING_POLL_MS = 60_000;
+
+/** Quick while something is being read, slow while documents only wait, not at all otherwise. */
+function pollInterval(documents: readonly DocumentSummary[] | undefined): number | false {
+  const processing = (documents ?? []).filter((document) => document.status === 'processing');
+  if (processing.some((document) => document.retryAt === null)) return POLL_MS;
+  return processing.length > 0 ? WAITING_POLL_MS : false;
+}
 
 export function usePendingDocuments() {
   return useQuery({
     queryKey: [...KEY, 'pending'],
     queryFn: () => api<DocumentSummary[]>('/documents', { query: { status: 'pending' } }),
-    refetchInterval: (query) =>
-      query.state.data?.some((document) => document.status === 'processing') ? POLL_MS : false,
+    refetchInterval: (query) => pollInterval(query.state.data),
   });
 }
 
@@ -26,7 +34,7 @@ export function useDocument(id: string | undefined) {
     queryKey: [...KEY, 'detail', id],
     queryFn: () => api<DocumentDetail>(`/documents/${id}`),
     enabled: Boolean(id),
-    refetchInterval: (query) => (query.state.data?.status === 'processing' ? POLL_MS : false),
+    refetchInterval: (query) => (query.state.data ? pollInterval([query.state.data]) : false),
   });
 }
 

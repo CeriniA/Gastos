@@ -161,9 +161,15 @@ Tickets y capturas leídos con IA. La subida responde enseguida; la lectura ocur
 | POST   | `/documents`                               | `multipart/form-data`: `kind` (`receipt` o `screenshot`), `accountId` opcional y de 1 a 10 imágenes en `files` (JPG, PNG o WEBP, 5 MB cada una). Responde `202`                 |
 | GET    | `/documents/:id`                           | Detalle con `extraction` (lo leído, con la categoría sugerida ya resuelta) y `duplicateHints`: por cada movimiento, `existing`, `repeated` o `null`                             |
 | GET    | `/documents/:id/files/:index`              | Una de las imágenes. Deja de existir al confirmar                                                                                                                               |
-| POST   | `/documents/:id/retry`                     | Vuelve a leer un documento con error o ya leído (descarta el resultado anterior)                                                                                                |
+| POST   | `/documents/:id/retry`                     | Vuelve a leer ya un documento con error, ya leído o esperando a la IA (descarta el resultado anterior y la espera)                                                              |
 | POST   | `/documents/:id/confirm`                   | `{ transactions: [{ transaction, installment }], rules }` (los productos van en `transaction.items`). Crea los movimientos, guarda las reglas y borra las imágenes. Todo o nada |
 | DELETE | `/documents/:id?transactions=keep\|delete` | Sin confirmar: lo descarta. Confirmado: sus movimientos quedan como manuales (`keep`) o van a la papelera (`delete`)                                                            |
+
+Si la IA está sin cupo o no responde (`rate_limited`, `unavailable`), el documento no pasa a `error`: sigue
+en `processing` con `retryAt` (cuándo se vuelve a intentar solo) y `waits` (cuántas veces esperó). Las
+esperas son de 1, 5, 15, 30, 60, 120, 240 y 480 minutos (`DOCUMENT_RETRY_DELAYS_MINUTES`); después de la
+última pasa a `error`. Mientras el servidor está despierto revisa cada minuto; también al pedir la lista
+de pendientes.
 
 Estados: `processing` → `ready` → `confirmed`, o `error` (con `errorCode`: `rate_limited`, `unavailable`,
 `not_configured`, `blocked`, `unreadable`).

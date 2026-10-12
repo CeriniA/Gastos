@@ -240,6 +240,10 @@ export const es = {
       discarded: 'Descartado',
     } satisfies Record<DocumentStatus, string>,
     found: (count: number) => (count === 1 ? '1 movimiento' : `${count} movimientos`),
+    waiting: 'Esperando a la IA',
+    waitingText: (time: string, tries: number) =>
+      `La IA llegó a su límite o no respondió. Se vuelve a intentar sola a las ${time} (intento ${tries + 1}). La foto queda guardada.`,
+    retryNow: 'Intentar ahora',
     review: 'Revisar',
     retry: 'Reintentar',
     reread: 'Volver a leer',

@@ -28,6 +28,10 @@ export interface DocumentDoc {
   extraction: unknown;
   promptVersion: number | null;
   attempts: number;
+  /** When a document waiting for the AI to have room again is tried next. */
+  retryAt: Date | null;
+  /** Automatic retries so far. */
+  waits: number;
   errorCode: DocumentErrorCode | null;
   /** Technical detail of the last failure, for the logs. Never shown to the user. */
   errorDetail: string | null;
@@ -54,6 +58,8 @@ const schema = new Schema<DocumentDoc>(
     extraction: { type: Schema.Types.Mixed, default: null },
     promptVersion: { type: Number, default: null },
     attempts: { type: Number, required: true, default: 0 },
+    retryAt: { type: Date, default: null },
+    waits: { type: Number, required: true, default: 0 },
     errorCode: { type: String, enum: [...DOCUMENT_ERROR_CODES], default: null },
     errorDetail: { type: String, default: null },
   },

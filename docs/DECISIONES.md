@@ -112,6 +112,8 @@ Cada decisión tomada en el diseño, con su motivo. Una decisión nueva o que ca
 | La colección `authState` no entra en el respaldo                                                                         | Es estado de seguridad, no datos del usuario: restaurar un respaldo viejo no debe revivir sesiones cerradas                                            |
 | Los productos son parte del movimiento (`items`), en su alta y su edición                                                | Una sola forma de guardarlos, venga del ticket o de la mano; antes la confirmación de un documento los mandaba aparte                                  |
 | Los productos no tienen que sumar el total del movimiento                                                                | Los tickets traen descuentos, recargos y renglones que no son productos; se avisa la diferencia, no se bloquea                                         |
+| Un documento sin cupo de IA espera y se reintenta solo, sin estado nuevo                                                 | Sigue "procesando" con una hora de reintento; no hizo falta cambiar los estados ni migrar datos                                                        |
+| Esperas de 1, 5, 15, 30, 60, 120, 240 y 480 minutos                                                                      | Cubren tanto el límite por minuto como el diario sin insistirle a la IA; unas 16 horas en total                                                        |
 
 ## Abiertas
 

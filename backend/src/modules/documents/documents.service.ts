@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
 import {
+  DOCUMENT_RETRY_DELAYS_MINUTES,
+  TRANSIENT_DOCUMENT_ERRORS,
   PENDING_DOCUMENT_RETENTION_DAYS,
   MAX_DOCUMENT_BYTES,
   MAX_DOCUMENT_FILES,
@@ -56,6 +58,7 @@ export interface DocumentDependencies {
   trashTransactions(documentId: string, options: WriteOptions): Promise<void>;
   runInTransaction: TransactionRunner;
   today(): IsoDate;
+  now(): Date;
   /** Starts background work without waiting for it. */
   schedule(work: () => Promise<void>): void;
   onError(error: unknown, context: object): void;
@@ -124,12 +127,36 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
     return { ...document, duplicateHints: await duplicateHints(document) };
   }
 
+  const detailOf = (error: unknown) => String(error instanceof Error ? error.message : error).slice(0, 500);
+
   async function fail(id: string, errorCode: DocumentErrorCode, error: unknown): Promise<void> {
     deps.onError(error, { documentId: id, errorCode });
     await repository.update(id, {
       status: 'error',
       errorCode,
-      errorDetail: String(error instanceof Error ? error.message : error).slice(0, 500),
+      errorDetail: detailOf(error),
+      retryAt: null,
+      countAttempt: true,
+    });
+  }
+
+  /**
+   * The AI is out of quota or down: the document keeps waiting and is tried
+   * again on its own later, unless it has already waited every delay.
+   */
+  async function waitOrFail(document: DocumentDetail, errorCode: DocumentErrorCode, error: unknown) {
+    const delay = DOCUMENT_RETRY_DELAYS_MINUTES[document.waits];
+    const transient = (TRANSIENT_DOCUMENT_ERRORS as readonly string[]).includes(errorCode);
+    if (!transient || delay === undefined) {
+      await fail(document.id, errorCode, error);
+      return;
+    }
+    deps.onError(error, { documentId: document.id, errorCode, retryInMinutes: delay });
+    await repository.update(document.id, {
+      errorCode,
+      errorDetail: detailOf(error),
+      retryAt: new Date(deps.now().getTime() + delay * 60_000).toISOString(),
+      waits: document.waits + 1,
       countAttempt: true,
     });
   }
@@ -171,10 +198,12 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
         promptVersion: deps.extractor.promptVersion,
         errorCode: null,
         errorDetail: null,
+        retryAt: null,
+        waits: 0,
         countAttempt: true,
       });
     } catch (error) {
-      await fail(document.id, failureReason(error) ?? 'unavailable', error);
+      await waitOrFail(document, failureReason(error) ?? 'unavailable', error);
     }
   }
 
@@ -188,7 +217,7 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
     const seen: string[] = [];
     try {
       for (;;) {
-        const next = await repository.findNextToProcess(seen);
+        const next = await repository.findNextToProcess(seen, deps.now());
         if (!next) break;
         seen.push(next.id);
         await processOne(next);
@@ -203,7 +232,11 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
   return {
     get,
     processQueue,
-    /** Called at startup: picks up documents a restart left half-way. */
+    /**
+     * Picks up documents a restart left half-way and those whose wait is
+     * over. Called at startup, every minute while the server is awake, and
+     * whenever the pending tray is looked at.
+     */
     resume: kick,
 
     /**
@@ -216,7 +249,10 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
     },
 
     async list(status: 'pending' | 'all'): Promise<DocumentSummary[]> {
-      return (await repository.findByStatus(status === 'pending' ? PENDING : null)).map(toSummary);
+      const documents = await repository.findByStatus(status === 'pending' ? PENDING : null);
+      // A free server sleeps; looking at the tray is a good moment to try what was waiting.
+      if (documents.some((document) => document.retryAt !== null)) kick();
+      return documents.map(toSummary);
     },
 
     /**
@@ -294,14 +330,18 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
      */
     async retry(id: string): Promise<DocumentSummary> {
       const document = await find(id);
-      if (document.status !== 'error' && document.status !== 'ready') {
+      const waiting = document.status === 'processing' && document.retryAt !== null;
+      if (document.status !== 'error' && document.status !== 'ready' && !waiting) {
         throw new ConflictError('Only a document waiting for review, or a failed one, can be read again');
       }
+      // Asked by the user: right now, and with the automatic retries counted afresh.
       const updated = await repository.update(id, {
         status: 'processing',
         extraction: null,
         errorCode: null,
         errorDetail: null,
+        retryAt: null,
+        waits: 0,
       });
       kick();
       return toSummary(updated ?? document);

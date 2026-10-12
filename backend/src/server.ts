@@ -7,6 +7,7 @@ import { logger } from './core/logger';
 import { migrations } from './migrations';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
 
 async function main(): Promise<void> {
   await connectDatabase(env.MONGODB_URI);
@@ -30,6 +31,8 @@ async function main(): Promise<void> {
   };
   await cleanUp();
   setInterval(() => void cleanUp(), DAY_MS).unref();
+  // Documents waiting for the AI to have room again are tried when their time comes.
+  setInterval(() => container.documents.resume(), MINUTE_MS).unref();
 
   const server = createApp(container, env).listen(env.PORT, () => {
     logger.info(
