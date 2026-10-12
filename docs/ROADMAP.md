@@ -4,17 +4,66 @@ Cada etapa termina en algo que funciona. Si una se complica, lo anterior ya sirv
 
 ## Estado de la base
 
-| Qué                                                          | Estado                                                                                                                                                                                       |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasó el 12/10/2026 con la etapa 3 a mano (126 pruebas). Con resúmenes en PDF, devoluciones y cuotas desde el resumen: 146 pruebas pasan en el entorno del asistente; falta correrlo en la PC |
-| Lectura de resúmenes en PDF                                  | Escrita el 12/10/2026 sin ningún resumen real a mano: la lectura del PDF, el tapado de datos y las instrucciones a la IA se ajustan con el primer resumen verdadero                          |
-| Compilación de backend y frontend (`npm run build`)          | Render compiló los dos el 11/10/2026; se repite en cada push                                                                                                                                 |
-| Etapa 1 corriendo contra MongoDB Atlas                       | Dada por cerrada por el usuario                                                                                                                                                              |
-| Lectura real con Gemini                                      | Usada por el usuario con tickets y capturas de MercadoPago. La clasificación de productos (instrucciones versión 5) dio bien en el primer uso real, el 11/10/2026                            |
-| Consumo por producto contra MongoDB y Gemini reales          | Funciona en Render con datos reales desde el 11/10/2026                                                                                                                                      |
-| `render.yaml`                                                | Desplegado en Render el 11/10/2026: backend y sitio en línea. Atlas necesita `0.0.0.0/0` en Network Access                                                                                   |
+| Qué                                                          | Estado                                                                                                                                                                                                                   |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasó el 12/10/2026 con la etapa 3 a mano (126 pruebas). Con resúmenes en PDF, devoluciones, cuotas desde el resumen y cuotas según el cierre: 149 pruebas pasan en el entorno del asistente; **falta correrlo en la PC** |
+| Lectura de resúmenes en PDF                                  | Escrita el 12/10/2026 sin ningún resumen real a mano: la lectura del PDF, el tapado de datos y las instrucciones a la IA se ajustan con el primer resumen verdadero                                                      |
+| Compilación de backend y frontend (`npm run build`)          | Render compiló los dos el 11/10/2026; se repite en cada push                                                                                                                                                             |
+| Etapa 1 corriendo contra MongoDB Atlas                       | Dada por cerrada por el usuario                                                                                                                                                                                          |
+| Lectura real con Gemini                                      | Usada por el usuario con tickets y capturas de MercadoPago. La clasificación de productos (instrucciones versión 5) dio bien en el primer uso real, el 11/10/2026                                                        |
+| Consumo por producto contra MongoDB y Gemini reales          | Funciona en Render con datos reales desde el 11/10/2026                                                                                                                                                                  |
+| `render.yaml`                                                | Desplegado en Render el 11/10/2026: backend y sitio en línea. Atlas necesita `0.0.0.0/0` en Network Access                                                                                                               |
 
 Las versiones de `package.json` se escribieron sin acceso al registro de npm; la instalación funcionó.
+
+## Dónde quedamos (12/10/2026)
+
+Para retomar. Se borra o se reescribe al empezar la próxima sesión.
+
+**Hecho hoy, ya copiado a la carpeta del usuario, sin commit:**
+
+1. Resúmenes de tarjeta en PDF: texto con datos tapados, aprobado por el usuario, recién entonces a la IA.
+   Agrega la dependencia `unpdf` (ya instalada con `npm install`).
+2. Devoluciones: egreso marcado que resta del mes, del resumen de la tarjeta y del consumo.
+3. Cuotas desde el resumen: "cuota 3 de 6" de una compra no cargada ofrece crear las que faltan; una cuota
+   ya cargada se marca como repetida.
+4. Corrección: las cuotas cargadas a mano siguen los cierres de la tarjeta y ya no saltean un resumen.
+
+**Primer paso al retomar:**
+
+1. `npm run check`. El último intento falló por los tipos de `unpdf` (ya corregido) y no se volvió a correr
+   con todo lo de hoy. Si falla, pasarle la salida al asistente.
+2. Revisar que `backend/.env` no aparezca en `git status`.
+3. Commit (incluye `package-lock.json`):
+   `feat: card statement PDFs, refunds, remaining installments; installments follow card closings`
+4. Push: Render vuelve a desplegar solo. Al arrancar corre dos migraciones nuevas (`document-text` y
+   `transaction-refund`).
+
+**Pendiente del usuario (no es código):**
+
+- Rotar la clave de Gemini (se pegó en un chat): crear una nueva en Google AI Studio y cambiarla en Render y en
+  `backend/.env`.
+- Bajar un respaldo desde la app (Más → Datos).
+- Que el amigo pruebe un resumen real: qué quedó sin tapar en el texto y si la suma da igual al total.
+
+**Lo próximo que se puede programar:**
+
+- Ajustar el tapado y las instrucciones con el primer resumen real.
+- Intereses, impuestos y comisiones a una categoría fija "Cargos financieros".
+- La misma compra cargada por dos vías (ticket y resumen): detectarla y proponer unirla.
+- Pagar la tarjeta como transferencia ligada a su resumen.
+- Detalles chicos: la pantalla Agregar todavía maneja sus errores a mano en vez de con `useAction`.
+- Etapa 4: informes y movimientos fijos.
+- Uso sin conexión: está en la segunda versión; el usuario decidió no adelantarlo por ahora.
+
+**Cómo se trabaja (recordatorio para el asistente):**
+
+- Leer `AGENTS.md`, `docs/ARQUITECTURA.md` y `docs/ESPECIFICACION.md` antes de programar.
+- Escribir los archivos directo en la carpeta del usuario; no mandar zips.
+- Antes de usar una librería nueva, leer sus tipos instalados en la PC del usuario, no escribirla de memoria.
+- Antes de entregar: formato, `npm run audit:code`, pruebas y tipos, y decir qué se corrió.
+- Un problema que se encuentra se arregla en el momento, no se anota como deuda sin avisar.
+- No leer `backend/.env`.
 
 ## Etapa 1: base usable (este repositorio)
 
