@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
+  PENDING_DOCUMENT_RETENTION_DAYS,
   MAX_DOCUMENT_BYTES,
   MAX_DOCUMENT_FILES,
   MAX_UPLOAD_BYTES,
@@ -206,6 +207,15 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
     processQueue,
     /** Called at startup: picks up documents a restart left half-way. */
     resume: kick,
+
+    /**
+     * Drops uploads nobody reviewed in PENDING_DOCUMENT_RETENTION_DAYS, with
+     * their images. Confirmed documents are never touched.
+     */
+    purgeStale(now: Date = new Date()): Promise<number> {
+      const cutoff = new Date(now.getTime() - PENDING_DOCUMENT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+      return repository.deleteUnconfirmedBefore(cutoff);
+    },
 
     async list(status: 'pending' | 'all'): Promise<DocumentSummary[]> {
       return (await repository.findByStatus(status === 'pending' ? PENDING : null)).map(toSummary);

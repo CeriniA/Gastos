@@ -1,4 +1,5 @@
 import {
+  impliedRate,
   TRASH_RETENTION_DAYS,
   descendantIds,
   transactionShapeIssues,
@@ -154,6 +155,24 @@ export function createTransactionsService(repository: TransactionsRepository, de
 
     if (issues.length > 0 || !account) throw new ValidationError('Invalid transaction', { issues });
 
+    // The rate is never taken as typed: it is whatever links the two amounts.
+    const original = input.original
+      ? {
+          ...input.original,
+          rate: impliedRate(input.amountCents, input.original.amountCents) || input.original.rate,
+        }
+      : null;
+    // Products are kept in the transaction's currency, so when a converted
+    // amount changes (a corrected rate) they change in the same proportion.
+    const reconverted =
+      previous?.original && original && !origin.items && previous.amountCents !== input.amountCents;
+    const items = reconverted
+      ? previous.items.map((item) => ({
+          ...item,
+          amountCents: Math.round((item.amountCents * input.amountCents) / previous.amountCents),
+        }))
+      : (origin.items ?? previous?.items ?? []);
+
     return {
       type: input.type,
       status: previous?.status ?? 'confirmed',
@@ -167,7 +186,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
       }),
       amountCents: input.amountCents,
       currency: input.currency,
-      original: input.original,
+      original,
       accountId: input.accountId,
       toAccountId: input.toAccountId,
       toAmountCents: input.toAmountCents,
@@ -176,7 +195,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
       note: input.note,
       tagIds,
       splits: input.splits,
-      items: origin.items ?? previous?.items ?? [],
+      items,
       installment: origin.installment === undefined ? (previous?.installment ?? null) : origin.installment,
       documentId: origin.documentId ?? previous?.documentId ?? null,
       cardPeriodId: previous?.cardPeriodId ?? null,

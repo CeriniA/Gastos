@@ -64,6 +64,8 @@ Pesos (ARS) y dólares (USD). Cada movimiento se guarda en su moneda y nunca se 
   anotados en el movimiento. La app propone un cambio (el que ya se usó ese día, una cotización pública de
   referencia o el último usado) y el usuario lo confirma o lo corrige. Los productos del
   ticket se convierten con el mismo cambio.
+- El cambio se puede corregir después, al editar el movimiento: cambiar el cambio recalcula el monto, y
+  cambiar el monto recalcula el cambio. Los dos datos nunca quedan en desacuerdo.
 - Vista consolidada (etapa 4): todo en pesos o todo en dólares, usando una **tasa de cambio cargada a
   mano** con fecha de inicio. Cada movimiento se convierte con la tasa vigente en su fecha; cambiar la
   tasa hoy no altera los meses anteriores. Si un período no tiene tasa, la vista avisa y no inventa.
@@ -107,6 +109,7 @@ pregunta si ese comercio va siempre ahí y, si se acepta, crea la regla.
 - Un documento listo para revisar o con error se puede volver a leer sin subirlo otra vez.
 - La **imagen se guarda solo mientras el documento está pendiente** y se borra al confirmar o
   descartar. La app avisa que hay que conservar la foto aparte si se necesita.
+- Un documento que nadie revisó en 30 días se borra solo, con su imagen. Los confirmados no se tocan.
 - Si el proveedor de IA falla o llega al límite, el documento queda pendiente para reintentar.
 - A la IA se le pide que no devuelva números de tarjeta ni datos personales.
 - Formatos: JPG, PNG y WEBP, hasta 10 imágenes por documento (un ticket largo en varias fotos). PDF llega
@@ -253,6 +256,18 @@ MongoDB no impide una referencia rota; lo hace el backend:
 Un usuario y contraseña en variables de entorno, contraseña guardada como hash, sesión con vencimiento
 (30 días), límite de intentos de login, backend accesible solo desde el frontend configurado. La clave
 de la IA vive solo en el backend.
+
+"Cerrar sesión en todos los dispositivos" (en Más) invalida toda sesión abierta hasta ese momento,
+incluida la del dispositivo que lo pide. Sirve si se pierde el celular.
+
+Lo que queda del lado del usuario, porque la app no puede hacerlo por él:
+
+- **Respaldo.** Los datos viven en un solo lugar (MongoDB Atlas, plan gratuito, sin copias automáticas).
+  Hay que bajar el respaldo desde Más cada tanto y guardarlo fuera.
+- **Contraseña de la base.** Atlas acepta conexiones desde cualquier dirección porque Render gratuito
+  no tiene dirección fija; la contraseña de la base es la única barrera y tiene que ser larga y al azar.
+- **Claves.** Una clave que se pegó en un chat, un mail o un repositorio se da por expuesta y se cambia.
+- **Privacidad.** Las fotos de los tickets se envían a Google (Gemini) para leerlas.
 
 ## 18. Segunda versión
 

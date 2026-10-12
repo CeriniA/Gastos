@@ -18,5 +18,6 @@ export function createAuthRouter(service: AuthService): Router {
   const router = Router();
   router.post('/login', loginLimiter, express.json({ limit: '10kb' }), controller.login);
   router.get('/me', requireAuth(service), controller.me);
+  router.post('/logout-all', requireAuth(service), controller.logoutAll);
   return router;
 }

@@ -13,19 +13,23 @@ async function main(): Promise<void> {
   await runMigrations(migrations);
 
   const container = createContainer(env);
+  // Sessions closed with "sign out everywhere" stay closed across restarts.
+  await container.auth.init();
 
-  // The free Render instance sleeps, so the trash is emptied on every start
+  // The free Render instance sleeps, so the clean-up runs on every start
   // as well as once a day while it stays awake.
-  const purgeTrash = async () => {
+  const cleanUp = async () => {
     try {
       const purged = await container.transactions.purgeTrash();
       if (purged > 0) logger.info({ purged }, 'Trash purged');
+      const dropped = await container.documents.purgeStale();
+      if (dropped > 0) logger.info({ dropped }, 'Unreviewed uploads dropped');
     } catch (error) {
-      logger.error({ err: error }, 'Trash purge failed');
+      logger.error({ err: error }, 'Clean-up failed');
     }
   };
-  await purgeTrash();
-  setInterval(() => void purgeTrash(), DAY_MS).unref();
+  await cleanUp();
+  setInterval(() => void cleanUp(), DAY_MS).unref();
 
   const server = createApp(container, env).listen(env.PORT, () => {
     logger.info(

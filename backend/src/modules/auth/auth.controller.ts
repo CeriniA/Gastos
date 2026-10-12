@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { loginSchema } from '@gastos/shared';
-import { ok, parse } from '../../core/http/http';
+import { noContent, ok, parse } from '../../core/http/http';
 import type { AuthService } from './auth.service';
 
 export function createAuthController(service: AuthService) {
@@ -11,5 +11,9 @@ export function createAuthController(service: AuthService) {
   const me: RequestHandler = (_req, res) => {
     ok(res, res.locals.session);
   };
-  return { login, me };
+  const logoutAll: RequestHandler = async (_req, res) => {
+    await service.revokeAll();
+    noContent(res);
+  };
+  return { login, me, logoutAll };
 }

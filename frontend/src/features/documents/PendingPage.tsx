@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { DocumentSummary } from '@gastos/shared';
+import { PENDING_DOCUMENT_RETENTION_DAYS, type DocumentSummary } from '@gastos/shared';
 import { errorMessage } from '../../shared/api/errors';
 import { es } from '../../shared/i18n/es';
 import { QueryState } from '../../shared/ui/QueryState';
@@ -37,6 +37,7 @@ export function PendingPage() {
   return (
     <>
       <PageTitle>{es.documents.pendingTitle}</PageTitle>
+      <p className="mb-4 text-sm text-muted">{es.documents.expiry(PENDING_DOCUMENT_RETENTION_DAYS)}</p>
       {failure ? (
         <div className="mb-4">
           <Notice tone="error">{failure}</Notice>

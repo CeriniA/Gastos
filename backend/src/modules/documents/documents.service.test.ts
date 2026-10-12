@@ -429,10 +429,38 @@ test('a receipt in another currency is stored in the account currency, with what
   assert.deepEqual(await app.transactions.lastRate('BRL'), { rate: 272.5, date: '2026-10-05' });
   assert.deepEqual(await app.transactions.lastRate('EUR'), { rate: null, date: null });
 
-  // Editing something else leaves the original untouched; it can also be cleared.
+  // Editing something else leaves the original untouched.
   const edited = await app.transactions.update(stored!.id, { note: 'compra en Brasil' });
   assert.deepEqual(edited.original, { amountCents: 5000, currency: 'BRL', rate: 272.5 });
+
+  // Correcting the amount corrects the rate with it, and the products follow in proportion.
+  const before = edited.items[0]!.amountCents;
+  const corrected = await app.transactions.update(stored!.id, { amountCents: 1500000 });
+  assert.deepEqual(corrected.original, { amountCents: 5000, currency: 'BRL', rate: 300 });
+  assert.equal(corrected.items[0]?.amountCents, Math.round((before * 1500000) / 1362500));
+  assert.deepEqual(await app.transactions.lastRate('BRL'), { rate: 300, date: '2026-10-05' });
+
   assert.equal((await app.transactions.update(stored!.id, { original: null })).original, null);
+});
+
+test('uploads nobody reviewed are dropped after the retention period; confirmed ones stay', async () => {
+  const { app, bank, power } = await setup();
+  app.ai.result = extraction(read());
+  const kept = await app.documents.upload({ kind: 'receipt' }, [photo('confirmado')]);
+  const forgotten = await app.documents.upload({ kind: 'receipt' }, [photo('olvidado')]);
+  await app.documents.processQueue();
+  await app.documents.confirm(kept.id, confirmation(bank.id, power.id));
+
+  const uploadedAt = new Date(app.store.documents[0]!.createdAt).getTime();
+  const day = 24 * 60 * 60 * 1000;
+  assert.equal(await app.documents.purgeStale(new Date(uploadedAt + 29 * day)), 0);
+  assert.equal(await app.documents.purgeStale(new Date(uploadedAt + 31 * day)), 1);
+  assert.deepEqual(
+    app.store.documents.map((document) => document.id),
+    [kept.id],
+  );
+  assert.equal(await codeOf(app.documents.get(forgotten.id)), 'NOT_FOUND');
+  assert.equal(app.store.transactions.length, 1);
 });
 
 test('a receipt can be uploaded again once all its transactions were deleted', async () => {

@@ -134,6 +134,15 @@ export const documentsRepository = {
     return doc ? toDetail(doc) : null;
   },
 
+  /** Deletes uploads that were never confirmed and are older than the cutoff. */
+  async deleteUnconfirmedBefore(cutoff: Date): Promise<number> {
+    const result = await DocumentModel.deleteMany({
+      status: { $ne: 'confirmed' },
+      createdAt: { $lt: cutoff },
+    });
+    return result.deletedCount;
+  },
+
   async delete(id: string, options: WriteOptions = {}): Promise<void> {
     await DocumentModel.deleteOne({ _id: toObjectId(id) }, { session: options.session });
   },

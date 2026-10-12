@@ -50,6 +50,10 @@ export const es = {
     submit: 'Entrar',
     submitting: 'Entrando…',
     logout: 'Cerrar sesión',
+    logoutAll: 'Cerrar sesión en todos los dispositivos',
+    logoutAllHint: 'Usalo si perdiste el celular o entraste desde una computadora ajena.',
+    logoutAllConfirm:
+      'Se cierra la sesión en todos los dispositivos, también en este. Vas a tener que volver a entrar con tu contraseña.',
   },
 
   types: { expense: 'Egreso', income: 'Ingreso', transfer: 'Transferencia' } satisfies Record<
@@ -130,7 +134,8 @@ export const es = {
     needAccount: 'Antes de cargar movimientos, creá una cuenta en Más → Cuentas.',
     deleteConfirm: 'El movimiento va a la papelera y se borra del todo en 30 días.',
     moveToTrash: 'Mover a la papelera',
-    original: (amount: string, rate: string) => `En el comprobante: ${amount}, a un cambio de ${rate}.`,
+    rateHint: (amount: string) =>
+      `En el comprobante: ${amount}. Al cambiar el cambio se recalcula el monto, y al cambiar el monto se recalcula el cambio.`,
     itemsTitle: (count: number) => (count === 1 ? '1 producto' : `${count} productos`),
   },
 
@@ -225,6 +230,7 @@ export const es = {
   documents: {
     pendingTitle: 'Pendientes',
     empty: 'No hay nada esperando tu revisión.',
+    expiry: (days: number) => `Lo que no revises en ${days} días se descarta solo, con su imagen.`,
     banner: (count: number) =>
       count === 1 ? '1 documento espera tu revisión' : `${count} documentos esperan tu revisión`,
     statuses: {

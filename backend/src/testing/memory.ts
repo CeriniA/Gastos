@@ -467,6 +467,13 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
       store.documents[index] = next;
       return withoutBytes(next);
     },
+    async deleteUnconfirmedBefore(cutoff) {
+      const before = store.documents.length;
+      store.documents = store.documents.filter(
+        (document) => document.status === 'confirmed' || new Date(document.createdAt) >= cutoff,
+      );
+      return before - store.documents.length;
+    },
     async delete(id) {
       store.documents = store.documents.filter((document) => document.id !== id);
     },

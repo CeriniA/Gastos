@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   centsToDecimalString,
   convertCents,
+  impliedRate,
   formatRate,
   formatMoney,
   parseAmountToCents,
@@ -61,4 +62,11 @@ test('exchange rates keep their decimals and conversion rounds to whole cents', 
 test('formatMoney and sumCents', () => {
   assert.match(formatMoney(1540050, 'ARS'), /15\.400,50/);
   assert.equal(sumCents([10, 20, 30]), 60);
+});
+
+test('impliedRate is the rate that links an amount to its original', () => {
+  assert.equal(impliedRate(1362500, 5000), 272.5);
+  assert.equal(impliedRate(1500000, 5000), 300);
+  // Converting back with it gives the same amount, whatever rounding the user applied.
+  assert.equal(convertCents(1999, impliedRate(544400, 1999)), 544400);
 });

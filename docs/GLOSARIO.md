@@ -62,3 +62,5 @@ Cada concepto con su nombre en pantalla y en el código. Usar siempre estos tér
 | Unir (categorías)                                                   | `merge`                                                      | Pasa los movimientos a otra y borra la primera                                |
 | Borrar del todo                                                     | `removeForever`                                              | Solo desde la papelera                                                        |
 | Volver a revisar (importación)                                      | `review`                                                     | Filas ya leídas, con cuentas o categorías reasignadas                         |
+| Cerrar sesión en todos los dispositivos                             | `revokeAll` / `logout-all`                                   | Guarda un momento de corte en `authState`                                     |
+| Cambio que resulta de los montos                                    | `impliedRate`                                                | Monto ÷ monto original                                                        |

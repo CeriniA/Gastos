@@ -87,6 +87,8 @@ export type ProductGroup = (typeof PRODUCT_GROUPS)[number];
 
 export const MAX_CATEGORY_DEPTH = 3;
 export const TRASH_RETENTION_DAYS = 30;
+/** An upload nobody reviewed is dropped after this long, images included. */
+export const PENDING_DOCUMENT_RETENTION_DAYS = 30;
 export const MAX_IMPORT_ROWS = 2000;
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 

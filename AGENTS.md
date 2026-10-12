@@ -43,6 +43,7 @@ MongoDB no tiene claves foráneas; la integridad la garantiza el backend.
 - Lo que tiene historia se archiva, no se borra. Reglas de borrado: `docs/ESPECIFICACION.md`.
 - Toda colección nueva registra su puerto (`createCollectionPort`) con sus referencias en
   `backend/src/composition.ts`. Así entra sola en el respaldo y en el chequeo de integridad.
+  Única excepción: `authState` (ver `docs/DECISIONES.md`).
 - Un cambio en la estructura de datos guardados lleva una migración en `backend/src/migrations/`.
 
 ## Regla del producto

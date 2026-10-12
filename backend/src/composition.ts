@@ -6,7 +6,7 @@ import { withTransaction } from './core/db/transaction';
 import { logger } from './core/logger';
 import { migrations } from './migrations';
 import { accountsPort, accountsRepository } from './modules/accounts';
-import { createAuthService, type AuthService } from './modules/auth';
+import { authStateRepository, createAuthService, type AuthService } from './modules/auth';
 import { createBackupService, type BackupService } from './modules/backup';
 import { cardPeriodsPort } from './modules/card-periods';
 import { categoriesPort, categoriesRepository } from './modules/categories';
@@ -75,12 +75,15 @@ export function createContainer(env: Env): Container {
     },
   );
 
-  const auth = createAuthService({
-    username: env.AUTH_USERNAME,
-    passwordHash: env.AUTH_PASSWORD_HASH,
-    jwtSecret: env.JWT_SECRET,
-    expiresDays: env.JWT_EXPIRES_DAYS,
-  });
+  const auth = createAuthService(
+    {
+      username: env.AUTH_USERNAME,
+      passwordHash: env.AUTH_PASSWORD_HASH,
+      jwtSecret: env.JWT_SECRET,
+      expiresDays: env.JWT_EXPIRES_DAYS,
+    },
+    authStateRepository,
+  );
 
   const backup = createBackupService(
     collectionPorts,

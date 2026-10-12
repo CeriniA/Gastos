@@ -106,6 +106,10 @@ Cada decisión tomada en el diseño, con su motivo. Una decisión nueva o que ca
 | El consumo nunca suma monedas distintas                                                                                  | Igual que el balance                                                                                                                                   |
 | Borrar del todo solo se puede desde la papelera                                                                          | Dos pasos para lo que no tiene vuelta atrás; un movimiento vivo nunca se borra de un toque                                                             |
 | En la importación, apuntar una cuenta o categoría a una existente reescribe las filas y las vuelve a revisar el servidor | El servidor sigue siendo el único que decide qué fila es válida; no hay una segunda copia de las reglas en la pantalla                                 |
+| El cambio guardado es siempre monto ÷ original, calculado en el backend                                                  | Una sola regla en un solo lugar: no puede quedar un cambio que no coincide con los montos, se edite lo que se edite                                    |
+| Los documentos sin revisar vencen a los 30 días                                                                          | Las imágenes ocupan lugar en una base de 512 MB y un pendiente olvidado no le sirve a nadie                                                            |
+| "Cerrar sesión en todos lados" guarda un momento de corte; no hay lista de sesiones                                      | Con un solo usuario alcanza: toda sesión anterior al corte deja de valer                                                                               |
+| La colección `authState` no entra en el respaldo                                                                         | Es estado de seguridad, no datos del usuario: restaurar un respaldo viejo no debe revivir sesiones cerradas                                            |
 
 ## Abiertas
 

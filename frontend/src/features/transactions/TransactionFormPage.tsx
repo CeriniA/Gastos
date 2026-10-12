@@ -5,9 +5,12 @@ import {
   DEFAULT_TIMEZONE,
   TRANSACTION_TYPES,
   centsToDecimalString,
+  convertCents,
   formatMoney,
   formatRate,
+  impliedRate,
   parseAmountToCents,
+  parseRate,
   todayIso,
   transactionCreateSchema,
   transactionUpdateSchema,
@@ -79,6 +82,8 @@ export function TransactionFormPage() {
   const { create, update, remove } = useTransactionMutations();
   const [failure, setFailure] = useState<string | null>(null);
   const [newTag, setNewTag] = useState('');
+  /** The rate while the user types it. Null means: show the one the amounts imply. */
+  const [rateText, setRateText] = useState<string | null>(null);
 
   const values = useMemo(() => toFormValues(existing.data), [existing.data]);
   const form = useForm<FormValues>({ values });
@@ -111,6 +116,8 @@ export function TransactionFormPage() {
       : orderedTree(categories.data ?? [], type).filter(
           (category) => !category.archived || usedCategoryIds.includes(category.id),
         );
+
+  const original = existing.data?.original ?? null;
 
   // What is left to assign, so the parts can be made to add up before saving.
   const totalCents = parseAmountToCents(amountText) ?? 0;
@@ -272,9 +279,35 @@ export function TransactionFormPage() {
                   inputMode="decimal"
                   placeholder="0,00"
                   className="amount text-2xl font-semibold"
-                  {...form.register('amount')}
+                  {...form.register('amount', { onChange: () => setRateText(null) })}
                 />
               </Field>
+
+              {original ? (
+                <Field
+                  label={es.documents.rate(original.currency, existing.data?.currency ?? '')}
+                  hint={es.transactions.rateHint(formatMoney(original.amountCents, original.currency))}
+                >
+                  <TextInput
+                    inputMode="decimal"
+                    className="amount"
+                    value={
+                      rateText ??
+                      (totalCents > 0 ? formatRate(impliedRate(totalCents, original.amountCents)) : '')
+                    }
+                    onChange={(event) => {
+                      setRateText(event.target.value);
+                      const rate = parseRate(event.target.value);
+                      if (rate) {
+                        form.setValue(
+                          'amount',
+                          centsToDecimalString(convertCents(original.amountCents, rate)),
+                        );
+                      }
+                    }}
+                  />
+                </Field>
+              ) : null}
 
               <Field label={es.transactions.fields.date} error={errors.date?.message}>
                 <TextInput type="date" max={todayIso(DEFAULT_TIMEZONE)} {...form.register('date')} />
@@ -471,15 +504,6 @@ export function TransactionFormPage() {
               >
                 <TextInput maxLength={1000} {...form.register('note')} />
               </Field>
-
-              {existing.data?.original ? (
-                <p className="text-sm text-muted">
-                  {es.transactions.original(
-                    formatMoney(existing.data.original.amountCents, existing.data.original.currency),
-                    formatRate(existing.data.original.rate),
-                  )}
-                </p>
-              ) : null}
 
               {existing.data && existing.data.items.length > 0 ? (
                 <details className="rounded-lg border border-line bg-surface">

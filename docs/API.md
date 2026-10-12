@@ -29,11 +29,12 @@ Los esquemas de entrada y los tipos de salida están en `shared/src/schemas/`.
 
 ## Estado y acceso
 
-| Método | Ruta          | Descripción                                                                                 |
-| ------ | ------------- | ------------------------------------------------------------------------------------------- |
-| GET    | `/health`     | **Pública.** `{ status, database }`                                                         |
-| POST   | `/auth/login` | **Pública.** `{ username, password }` → `{ token, expiresAt }`. 10 intentos cada 15 minutos |
-| GET    | `/auth/me`    | Sesión actual                                                                               |
+| Método | Ruta               | Descripción                                                                                 |
+| ------ | ------------------ | ------------------------------------------------------------------------------------------- |
+| GET    | `/health`          | **Pública.** `{ status, database }`                                                         |
+| POST   | `/auth/login`      | **Pública.** `{ username, password }` → `{ token, expiresAt }`. 10 intentos cada 15 minutos |
+| GET    | `/auth/me`         | Sesión actual                                                                               |
+| POST   | `/auth/logout-all` | Cierra la sesión en todos los dispositivos, incluido el que lo pide                         |
 
 ## Cuentas
 
@@ -107,7 +108,9 @@ Cuerpo de alta:
 
 `original` se usa cuando el comprobante estaba en otra moneda:
 `{ "amountCents": 5000, "currency": "BRL", "rate": 272.5 }`. `amountCents` y `currency` del movimiento son
-siempre los de la cuenta.
+siempre los de la cuenta. El `rate` no se guarda como llega: el backend guarda el que resulta de dividir
+el monto por el original, así que al cambiar `amountCents` cambia solo. Si un movimiento convertido
+cambia de monto, sus productos cambian en la misma proporción.
 
 ## Respaldo
 

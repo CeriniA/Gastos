@@ -5,6 +5,7 @@ import {
   TRANSACTION_TYPES,
   centsToDecimalString,
   convertCents,
+  impliedRate,
   documentConfirmSchema,
   formatDate,
   formatMoney,
@@ -515,7 +516,7 @@ function ReviewForm({
         flag(index, 'rate', es.documents.rateMissing);
       else if (!validAmount) flag(index, 'amount', es.fieldMessages.amount);
       // The stored rate is the one that really links both amounts, even if the total was adjusted by hand.
-      const rate = foreign && validAmount ? Number((amountCents / foreign.amountCents).toFixed(6)) : null;
+      const rate = foreign && validAmount ? impliedRate(amountCents, foreign.amountCents) : null;
       if (crossCurrency && (toAmountCents === null || toAmountCents <= 0))
         flag(index, 'toAmount', es.fieldMessages.amount);
       if (!draft.date) flag(index, 'date', es.fieldMessages.required);

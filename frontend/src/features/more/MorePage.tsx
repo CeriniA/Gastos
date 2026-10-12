@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { api } from '../../shared/api/client';
+import { errorMessage } from '../../shared/api/errors';
 import { es } from '../../shared/i18n/es';
-import { Button, PageTitle } from '../../shared/ui/ui';
+import { Button, Notice, PageTitle } from '../../shared/ui/ui';
 import { useAuth } from '../auth/AuthContext';
 
 const LINKS = [
@@ -14,6 +17,18 @@ const LINKS = [
 
 export function MorePage() {
   const { logout } = useAuth();
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const logoutEverywhere = async () => {
+    if (!window.confirm(es.auth.logoutAllConfirm)) return;
+    setFailure(null);
+    try {
+      await api<void>('/auth/logout-all', { method: 'POST' });
+      logout();
+    } catch (error) {
+      setFailure(errorMessage(error));
+    }
+  };
   return (
     <>
       <PageTitle>{es.more.title}</PageTitle>
@@ -29,9 +44,20 @@ export function MorePage() {
           </li>
         ))}
       </ul>
-      <Button variant="secondary" onClick={logout}>
-        {es.auth.logout}
-      </Button>
+      {failure ? (
+        <div className="mb-4">
+          <Notice tone="error">{failure}</Notice>
+        </div>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" onClick={logout}>
+          {es.auth.logout}
+        </Button>
+        <Button variant="danger" onClick={() => void logoutEverywhere()}>
+          {es.auth.logoutAll}
+        </Button>
+      </div>
+      <p className="mt-2 text-sm text-muted">{es.auth.logoutAllHint}</p>
     </>
   );
 }

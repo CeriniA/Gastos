@@ -89,6 +89,14 @@ export function convertCents(cents: number, rate: number): number {
   return Math.round(cents * rate);
 }
 
+/**
+ * The rate that really links an amount to the original it came from. Stored
+ * instead of the rate typed, so it stays true when the total is corrected.
+ */
+export function impliedRate(amountCents: number, originalCents: number): number {
+  return Number((amountCents / originalCents).toFixed(6));
+}
+
 export function sumCents(values: readonly number[]): number {
   return values.reduce((total, value) => total + value, 0);
 }

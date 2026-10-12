@@ -66,6 +66,10 @@ Hecho después, a partir del uso real:
 - Volver a subir un archivo: se lee de nuevo salvo que sus movimientos sigan cargados. "Volver a leer"
   en Pendientes.
 
+- Editar el cambio de un movimiento ya guardado; el cambio y el monto se recalculan uno al otro.
+- Los documentos sin revisar vencen a los 30 días.
+- Cerrar sesión en todos los dispositivos.
+
 Comprobado con pruebas sobre el backend en memoria y una IA simulada. Las pantallas no tienen pruebas.
 
 Falta:
@@ -88,6 +92,18 @@ Falta:
 
 - Corregir producto o grupo en la revisión, y recordar la corrección.
 - Comparar el precio de un mismo producto a lo largo del tiempo.
+
+## Deuda conocida
+
+Revisión del 11/10/2026. No bloquea el uso; conviene no perderla de vista.
+
+- **Las pantallas no tienen pruebas automáticas.** Solo las reglas del backend. Un error de flujo o
+  visual lo encuentra el usuario.
+- **Vulnerabilidades de las librerías sin revisar.** Nunca se corrió `npm audit`.
+- **Sin copia automática de los datos.** El respaldo es manual (ver `ESPECIFICACION.md`, Seguridad).
+- **La sesión se guarda en el navegador** (`localStorage`). Es lo habitual en una app de este tipo; el
+  riesgo se acota con el vencimiento a 30 días y con "cerrar sesión en todos los dispositivos".
+- **Sin aviso de errores.** Si el servidor falla, solo queda en los registros de Render.
 
 ## Etapa 3: tarjetas, cuotas y duplicados
 
