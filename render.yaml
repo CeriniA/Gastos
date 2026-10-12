@@ -31,6 +31,9 @@ services:
         sync: false
       - key: APP_TIMEZONE
         value: America/Argentina/Buenos_Aires
+      # Without it the app works, but photos cannot be read.
+      - key: GEMINI_API_KEY
+        sync: false
 
   - type: web
     name: gastos-web

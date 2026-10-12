@@ -88,6 +88,7 @@ npm run dev:frontend       # http://localhost:5173
 3. Completar las variables que pide:
    - `MONGODB_URI`: la cadena de Atlas apuntando a la base `gastos`.
    - `AUTH_USERNAME` y `AUTH_PASSWORD_HASH`.
+   - `GEMINI_API_KEY`: la clave de Google AI Studio. Sin ella la app funciona, pero no lee fotos.
    - `CORS_ORIGIN`: la dirección del sitio estático (`https://gastos-web.onrender.com` o la que asigne Render).
    - `VITE_API_URL`: la dirección del servicio (`https://gastos-api.onrender.com`), sin `/api/v1`.
 4. Abrir el sitio en Chrome desde el celular y elegir "Agregar a pantalla de inicio".

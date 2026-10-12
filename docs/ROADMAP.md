@@ -4,14 +4,14 @@ Cada etapa termina en algo que funciona. Si una se complica, lo anterior ya sirv
 
 ## Estado de la base
 
-| Qué                                                                 | Estado                                                                                                                     |
-| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `npm run check` (tipos, lint y pruebas) contra las librerías reales | Pasa el 11/10/2026 con todo el código actual, incluidas las pantallas que cerraron la etapa 1: 106 pruebas                 |
-| Compilación de backend y frontend (`npm run build`)                 | Verificada el 10/10/2026 solo con el código de la etapa 1. **Falta repetirla**                                             |
-| Etapa 1 corriendo contra MongoDB Atlas                              | Dada por cerrada por el usuario                                                                                            |
-| Lectura real con Gemini                                             | Usada por el usuario con tickets y capturas de MercadoPago. Las instrucciones versión 4 y 5 **no están evaluadas** todavía |
-| Consumo por producto contra MongoDB y Gemini reales                 | **Sin probar**: solo pruebas sobre el backend en memoria                                                                   |
-| `render.yaml`                                                       | Sin probar contra Render                                                                                                   |
+| Qué                                                                 | Estado                                                                                                                                                            |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run check` (tipos, lint y pruebas) contra las librerías reales | Pasa el 11/10/2026 con todo el código actual, incluidas las pantallas que cerraron la etapa 1: 106 pruebas                                                        |
+| Compilación de backend y frontend (`npm run build`)                 | Render compiló los dos con todo el código actual el 11/10/2026                                                                                                    |
+| Etapa 1 corriendo contra MongoDB Atlas                              | Dada por cerrada por el usuario                                                                                                                                   |
+| Lectura real con Gemini                                             | Usada por el usuario con tickets y capturas de MercadoPago. La clasificación de productos (instrucciones versión 5) dio bien en el primer uso real, el 11/10/2026 |
+| Consumo por producto contra MongoDB y Gemini reales                 | Funciona en Render con datos reales desde el 11/10/2026                                                                                                           |
+| `render.yaml`                                                       | Desplegado en Render el 11/10/2026: backend y sitio en línea. Atlas necesita `0.0.0.0/0` en Network Access                                                        |
 
 Las versiones de `package.json` se escribieron sin acceso al registro de npm; la instalación funcionó.
 

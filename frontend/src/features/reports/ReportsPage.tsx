@@ -39,10 +39,15 @@ function GroupRow({
 }) {
   const share = totalCents === 0 ? 0 : Math.round((group.totalCents / totalCents) * 100);
   return (
-    <details className="border-t border-line first:border-t-0">
-      <summary className="cursor-pointer px-1 py-3">
+    <details className="group border-t border-line first:border-t-0">
+      <summary className="block cursor-pointer list-none px-1 py-3 [&::-webkit-details-marker]:hidden">
         <span className="flex items-baseline justify-between gap-3">
-          <span className="min-w-0 font-medium">{groupLabel(group.group)}</span>
+          <span className="min-w-0 font-medium">
+            <span aria-hidden="true" className="mr-2 inline-block text-muted group-open:rotate-90">
+              ›
+            </span>
+            {groupLabel(group.group)}
+          </span>
           <span className="amount shrink-0 font-semibold">{formatMoney(group.totalCents, currency)}</span>
         </span>
         <span className="mt-1.5 flex items-center gap-2">
