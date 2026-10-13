@@ -86,7 +86,11 @@ export function useDocumentMutations() {
       mutationFn: ({ id, input }: { id: string; input: DocumentConfirm }) =>
         api<DocumentConfirmResult>(`/documents/${id}/confirm`, { method: 'POST', body: input }),
       // New transactions and possibly new rules: everything on screen may be stale.
-      onSuccess: () => client.invalidateQueries(),
+      // Not awaited: the review screen leaves for the list of transactions at once,
+      // before the refreshed document (now confirmed) can send it back to the tray.
+      onSuccess: () => {
+        void client.invalidateQueries();
+      },
     }),
   };
 }

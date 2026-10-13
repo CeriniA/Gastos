@@ -101,7 +101,8 @@ npm run dev:frontend
 ```
 
 No usa `backend/.env` ni la base: arranca con categorías, cuentas y algunos movimientos inventados. El
-usuario y la contraseña están en `backend/memory.env`. La IA no lee nada en la demo.
+usuario y la contraseña están en `backend/memory.env`. La IA y el lector de PDF son de mentira: cualquier
+foto o PDF que subas "lee" la misma respuesta inventada, para poder probar la revisión.
 
 ## Publicar en Render
 

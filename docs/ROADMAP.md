@@ -28,21 +28,26 @@ resumen, cuotas según el cierre y la copia automática en Drive (`c4c16f7`); y 
    (instrucciones versión 8). Sin migración: no cambia nada de lo guardado.
 2. La pantalla Agregar muestra sus errores con `useAction`, como el resto.
 
-**Hecho después, en la carpeta del usuario, sin commit (repaso de la etapa 1):**
+También subido (`020c281`, repaso de la etapa 1): la demo en memoria (`npm run demo`), las pruebas por HTTP
+(`backend/src/app.test.ts`), el arreglo de los movimientos divididos que no se reconocían como repetidos al
+importar, la confirmación al borrar una cuenta y `useAction` en Login, Más y el formulario de movimientos.
 
-1. Demo en memoria (`npm run demo`): la app entera con datos de mentira, sin tocar la base real. Usuario y
-   contraseña en `backend/memory.env`.
-2. Pruebas por HTTP (`backend/src/app.test.ts`): rutas reales de Express, login, forma de los errores,
-   Excel exportado y vuelto a leer, respaldo y restauración.
-3. Pantallas de la etapa 1 recorridas en un navegador. Lo que apareció y se corrigió:
-   - un movimiento dividido, exportado y vuelto a importar, no se reconocía como repetido;
-   - borrar una cuenta no pedía confirmación.
-4. Login, Más y el formulario de movimientos muestran sus errores con `useAction`.
+**Hecho después, en la carpeta del usuario, sin commit (repaso de las etapas 2 y 3):**
+
+1. La demo simula la IA y el lector de PDF (`backend/src/scripts/demoReading.ts`): cada ticket, captura o
+   resumen que se sube "lee" la misma respuesta inventada, con campos dudosos, productos, repetidos, cuotas,
+   devolución, cargos financieros y una línea en dólares.
+2. Con eso se recorrieron en un navegador Agregar, Pendientes, Revisión (ticket, capturas y resumen), Resumen
+   en PDF, Tarjetas e Informes. Lo que apareció y se corrigió:
+   - al confirmar un documento la app volvía a Pendientes en vez de ir a Movimientos;
+   - en un resumen, elegir la tarjeta con "Cuenta para todos" mandaba las líneas en dólares a la tarjeta en
+     pesos (y les borraba el monto) y dejaba los cierres sin tarjeta marcada. Ahora van a la tarjeta en
+     dólares y los cierres quedan marcados para las dos.
 
 **Primer paso al retomar:**
 
 1. `npm run check`: pasó el 13/10/2026 (168 pruebas).
-2. Commit: `test: HTTP and Excel tests, in-memory demo; fix duplicate detection of split rows`
+2. Commit: `fix: review screen after confirming and card chosen for all; demo reads documents`
 3. Push: Render vuelve a desplegar solo. No hay migraciones nuevas.
 
 **Encontrado y sin corregir:** al unir dos categorías que son partes del mismo movimiento dividido, el
@@ -166,8 +171,9 @@ copiado, exports sin uso y números sueltos, y el lint rechaza textos escritos e
 sigue en esta lista es lo que esos controles no cubren.
 
 - **Las pantallas no tienen pruebas automáticas.** Las reglas del backend y sus rutas HTTP sí. Las pantallas
-  de la etapa 1 se recorrieron a mano el 13/10/2026 con `npm run demo`; las de las etapas 2 y 3 (Pendientes,
-  Revisión, Resumen, Tarjetas, Informes) no. Un error visual lo encuentra el usuario.
+  de las etapas 1 a 3 se recorrieron a mano el 13/10/2026 con `npm run demo`: flujo y textos, no el aspecto.
+  Sin recorrer: un ticket en otra moneda (el cambio), el alta de cuotas a mano, Bancos y tarjetas, y las
+  descargas. Un error visual lo encuentra el usuario.
 - **Las consultas a MongoDB no tienen pruebas.** Las pruebas corren sobre repositorios en memoria; lo que
   hace cada repositorio real contra la base solo se comprueba usando la app.
 - **Vulnerabilidades de las librerías** (`npm audit` del 11/10/2026: 1 baja, 2 moderadas, ninguna alta).

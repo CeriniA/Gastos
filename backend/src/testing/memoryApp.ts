@@ -3,7 +3,7 @@ import type { Env } from '../config/env';
 import type { CollectionPort } from '../core/db/collectionPort';
 import { createAuthService } from '../modules/auth';
 import { createBackupService, createDriveBackup } from '../modules/backup';
-import { createMemoryBackend } from './memory';
+import { createMemoryBackend, type MemoryBackendOptions } from './memory';
 
 /**
  * Everything `createApp` needs, over the in-memory backend: the HTTP tests and
@@ -11,8 +11,8 @@ import { createMemoryBackend } from './memory';
  * database. The backup works on the arrays in memory, so a file exported here
  * can only be restored here.
  */
-export function createMemoryContainer(env: Env, today?: string) {
-  const backend = createMemoryBackend(today);
+export function createMemoryContainer(env: Env, today?: string, options?: MemoryBackendOptions) {
+  const backend = createMemoryBackend(today, options);
   const { store } = backend;
 
   const ports: CollectionPort[] = (Object.keys(store) as (keyof typeof store)[]).map((name) => ({

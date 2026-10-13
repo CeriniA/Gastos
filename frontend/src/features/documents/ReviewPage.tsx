@@ -543,9 +543,29 @@ function ReviewForm({
     setErrors((current) => ({ ...current, [index]: {} }));
   };
   const setAccountForAll = (accountId: string) => {
+    // On a statement the choice is a card: its dollar lines go to its dollar
+    // account, and its dates are offered for that card unless some were already ticked.
+    const chosen = statement
+      ? sameCard(
+          accounts.find((account) => account.id === accountId),
+          accounts,
+        )
+      : [];
     setDrafts((current) =>
-      current.map((draft, index) => withAccount(draft, read[index]!, accounts, accountId)),
+      current.map((draft, index) => {
+        const twin = chosen.find((account) => account.currency === read[index]!.currency);
+        return withAccount(draft, read[index]!, accounts, twin?.id ?? accountId);
+      }),
     );
+    if (chosen.length > 0) {
+      setPeriods((current) =>
+        current.map((period) =>
+          period.accountIds.length === 0
+            ? { ...period, accountIds: chosen.map((account) => account.id) }
+            : period,
+        ),
+      );
+    }
     setErrors({});
   };
 

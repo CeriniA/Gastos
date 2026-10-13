@@ -53,7 +53,15 @@ const STAMP = '2026-10-01T00:00:00.000Z';
 /** The only public rate the test backend knows: reais to pesos. */
 const TEST_BRL_ARS_RATE = 300;
 
-export function createMemoryBackend(today = '2026-10-10', options: { aiConfigured?: boolean } = {}) {
+export interface MemoryBackendOptions {
+  aiConfigured?: boolean;
+  /** What the AI answers for each document, instead of the scripted `ai.result`. The demo uses it. */
+  read?: (input: ExtractionInput) => ExtractionResult;
+  /** Reads uploads as soon as they arrive, like the real server. Tests leave it off and decide when. */
+  readInBackground?: boolean;
+}
+
+export function createMemoryBackend(today = '2026-10-10', options: MemoryBackendOptions = {}) {
   /** The clock the services see. Tests move it forward to make waiting documents due. */
   const clock = { now: new Date(`${today}T12:00:00.000Z`) };
   /** The calendar day the services see. Tests move it to make installments come due. */
@@ -86,7 +94,7 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
     async extract(input) {
       ai.calls.push(input);
       if (ai.error) throw ai.error;
-      return ai.result;
+      return options.read ? options.read(input) : ai.result;
     },
   };
   /** A scripted PDF library: tests set the pages the next PDF has, or the error it throws. */
@@ -701,7 +709,9 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
             : null,
       },
       // Tests decide when the background work runs: await app.documents.processQueue().
-      schedule: () => undefined,
+      schedule: (work) => {
+        if (options.readInBackground) work().catch((error: unknown) => errors.push({ error, context: {} }));
+      },
       onError: (error, context) => errors.push({ error, context }),
     },
   );

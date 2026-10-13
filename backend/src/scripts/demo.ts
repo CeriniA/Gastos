@@ -1,4 +1,6 @@
 import {
+  CURRENCIES,
+  DEFAULT_CURRENCY,
   DEFAULT_INSTITUTIONS,
   INSTITUTION_KINDS,
   addDays,
@@ -10,21 +12,30 @@ import {
 import { createApp } from '../app';
 import { env } from '../config/env';
 import { createMemoryContainer } from '../testing/memoryApp';
+import { DEMO_STATEMENT_PAGES, demoReading } from './demoReading';
 import { SEED_ACCOUNTS, SEED_CATEGORIES } from './seedData';
 
 /**
  * The whole app with made-up data kept in memory, to try the screens without
  * touching the real database: nothing is saved, and stopping it forgets it all.
- * The AI reads nothing here. The user and password are in backend/memory.env.
+ * The AI and the PDF reader are pretend ones: every upload "reads" the same
+ * invented answer (demoReading.ts). The user and password are in backend/memory.env.
  * Usage: npm run demo (and, in another terminal, npm run dev:frontend)
  */
 
 const today = todayIso(env.APP_TIMEZONE);
-const { container } = createMemoryContainer(env, today);
+const { container, backend } = createMemoryContainer(env, today, {
+  read: demoReading,
+  readInBackground: true,
+});
+backend.pdf.pages = DEMO_STATEMENT_PAGES;
 const { accounts, categories, institutions, tags, transactions } = container;
 
+const institutionIds = new Map<string, string>();
 for (const kind of INSTITUTION_KINDS) {
-  for (const name of DEFAULT_INSTITUTIONS[kind]) await institutions.create({ name, kind });
+  for (const name of DEFAULT_INSTITUTIONS[kind]) {
+    institutionIds.set(kind, (await institutions.create({ name, kind })).id);
+  }
 }
 const categoryIds = new Map<string, string>();
 for (const kind of Object.keys(SEED_CATEGORIES) as CategoryKind[]) {
@@ -34,6 +45,16 @@ for (const kind of Object.keys(SEED_CATEGORIES) as CategoryKind[]) {
 }
 const accountIds = new Map<string, string>();
 for (const account of SEED_ACCOUNTS) accountIds.set(account.name, (await accounts.create(account)).id);
+// One card with a balance in each currency, to try statements and installments.
+for (const currency of CURRENCIES) {
+  await accounts.create({
+    name: currency === DEFAULT_CURRENCY ? 'Visa' : `Visa ${currency}`,
+    type: 'credit_card',
+    currency,
+    bankId: institutionIds.get('bank'),
+    networkId: institutionIds.get('network'),
+  });
+}
 const tag = await tags.create({ name: 'Demo' });
 
 /** A few recent movements, one per day back from today, so no screen starts empty. */
