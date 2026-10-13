@@ -5,7 +5,7 @@ import type { ExtractionInput } from './aiExtractor';
  * Bump when the instructions change, so each document records which wording
  * read it and results can be compared across versions.
  */
-export const PROMPT_VERSION = 7;
+export const PROMPT_VERSION = 8;
 
 /** What each product group covers, so the model files lines consistently. */
 const GROUP_HINTS: Record<ProductGroup, string> = {
@@ -43,7 +43,7 @@ const KIND_HINTS: Record<ExtractionInput['kind'], string> = {
     'if they hide part of an amount, return null for it rather than guessing the hidden digits.',
   card_statement: [
     'The document is the text of a credit card statement ("resumen de tarjeta"), copied from its PDF and given after these instructions. Personal data was replaced by "***"; ignore it.',
-    'Return one transaction for each charge of THIS statement: purchases, installments, subscriptions, fees, interest and taxes (IVA, sellos, percepciones), all as "expense".',
+    'Return one transaction for each charge of THIS statement: purchases, installments, subscriptions, fees, interest and taxes (IVA, sellos, percepciones), all as "expense"; fees, interest and taxes have financialCharge true.',
     'Refunds and credits of a purchase ("devolución", "bonificación", "anulación", or a line with a negative amount) are "expense" with refund true and a positive amount.',
     'Ignore the previous balance ("saldo anterior"), the payments made to the card ("su pago", "pago en pesos", "pago en dólares"), the totals and subtotals.',
     'An installment line ("cuota 03/06", "C.03/06", "03 de 06") is the amount charged this month for that installment: return that amount, installmentNumber and installmentTotal, and the date printed on the line.',
@@ -78,6 +78,7 @@ export function buildPrompt(input: ExtractionInput): string {
     'For each transaction return:',
     '- type: "expense" (a purchase or payment made, or money sent to another person), "income" (money received from another person, a salary, a sale) or "transfer" (the user moving their own money: adding balance to a wallet such as "Ingreso de dinero", withdrawing it, paying a credit card bill).',
     '- refund: true only when the money comes back for an earlier purchase ("devolución", "reintegro", "anulación", "contracargo", "bonificación"). A refund has type "expense", a positive amount and the category of what was bought. Otherwise false.',
+    '- financialCharge: true only when the line is not something bought but a cost of the card, the account or the State: interest ("intereses", "financiación", "punitorios"), taxes ("IVA", "impuesto de sellos", "percepción", "IIBB", "impuesto PAIS", "DB.RG"), fees and commissions ("comisión", "cargo", "mantenimiento", "renovación anual", "seguro de vida"). It has type "expense". A purchase that merely includes taxes in its price is false. Otherwise false.',
     '- date: "YYYY-MM-DD", or null if it cannot be read.',
     '- amount: the TOTAL actually paid or received, as a plain decimal string with a dot and no thousands separators ("15400.50"), always positive, or null if it cannot be read. Use the final total, after discounts and taxes.',
     '- currency: the ISO code of the currency the amount is printed in (for example "ARS", "BRL", "USD"), or null if unclear. Do not convert amounts between currencies.',
@@ -109,7 +110,7 @@ export function buildPrompt(input: ExtractionInput): string {
     categories.length > 0 ? categories.join('\n') : '(none)',
     '',
     'Respond with ONLY a JSON object of this exact shape, no markdown and no commentary:',
-    `{ "transactions": [ { "type": "", "refund": false, "date": null, "amount": null, "currency": null, "merchant": "", "description": "", "categoryId": null, "installmentNumber": null, "installmentTotal": null, "items": [ { "name": "", "amount": "", "product": "", "group": null, "quantity": null } ], "uncertain": [] } ], ${
+    `{ "transactions": [ { "type": "", "refund": false, "financialCharge": false, "date": null, "amount": null, "currency": null, "merchant": "", "description": "", "categoryId": null, "installmentNumber": null, "installmentTotal": null, "items": [ { "name": "", "amount": "", "product": "", "group": null, "quantity": null } ], "uncertain": [] } ], ${
       input.kind === 'card_statement' ? `${STATEMENT_SHAPE}, ` : ''
     }"warnings": [] }`,
   ].join('\n');

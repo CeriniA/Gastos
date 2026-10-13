@@ -6,7 +6,7 @@ Cada etapa termina en algo que funciona. Si una se complica, lo anterior ya sirv
 
 | Qué                                                          | Estado                                                                                                                                                              |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasa en la PC del usuario el 12/10/2026 con resúmenes en PDF, devoluciones, cuotas desde el resumen y cuotas según el cierre (149 pruebas)                          |
+| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasa en la PC del usuario el 13/10/2026 con la copia en Drive y los cargos financieros (162 pruebas)                                                                |
 | Lectura de resúmenes en PDF                                  | Escrita el 12/10/2026 sin ningún resumen real a mano: la lectura del PDF, el tapado de datos y las instrucciones a la IA se ajustan con el primer resumen verdadero |
 | Compilación de backend y frontend (`npm run build`)          | Render compiló los dos el 11/10/2026; se repite en cada push                                                                                                        |
 | Etapa 1 corriendo contra MongoDB Atlas                       | Dada por cerrada por el usuario                                                                                                                                     |
@@ -16,46 +16,39 @@ Cada etapa termina en algo que funciona. Si una se complica, lo anterior ya sirv
 
 Las versiones de `package.json` se escribieron sin acceso al registro de npm; la instalación funcionó.
 
-## Dónde quedamos (12/10/2026)
+## Dónde quedamos (13/10/2026)
 
 Para retomar. Se borra o se reescribe al empezar la próxima sesión.
 
-**Hecho hoy, ya copiado a la carpeta del usuario, sin commit:**
+**Ya subido (commit y push hechos por el usuario):** resúmenes en PDF, devoluciones, cuotas desde el
+resumen, cuotas según el cierre y la copia automática en Drive (`c4c16f7`).
 
-1. Resúmenes de tarjeta en PDF: texto con datos tapados, aprobado por el usuario, recién entonces a la IA.
-   Agrega la dependencia `unpdf` (ya instalada con `npm install`).
-2. Devoluciones: egreso marcado que resta del mes, del resumen de la tarjeta y del consumo.
-3. Cuotas desde el resumen: "cuota 3 de 6" de una compra no cargada ofrece crear las que faltan; una cuota
-   ya cargada se marca como repetida.
-4. Corrección: las cuotas cargadas a mano siguen los cierres de la tarjeta y ya no saltean un resumen.
+**Hecho hoy, en la carpeta del usuario, sin commit:**
+
+1. Intereses, impuestos y comisiones leídos de un documento se proponen en "Cargos financieros"
+   (instrucciones versión 8). Sin migración: no cambia nada de lo guardado.
+2. La pantalla Agregar muestra sus errores con `useAction`, como el resto.
 
 **Primer paso al retomar:**
 
-1. ~~`npm run check`~~: pasó el 12/10/2026 a la noche.
-2. Revisar que `backend/.env` no aparezca en `git status`.
-3. Commit (incluye `package-lock.json`):
-   `feat: card statement PDFs, refunds, remaining installments; installments follow card closings`
-4. Push: Render vuelve a desplegar solo. Al arrancar corre dos migraciones nuevas (`document-text` y
-   `transaction-refund`).
+1. `npm run check`: pasó el 13/10/2026 (162 pruebas).
+2. Commit: `feat: financial charges go to their own category; Add screen uses useAction`
+3. Push: Render vuelve a desplegar solo.
 
 **Pendiente del usuario (no es código):**
 
-- ~~Rotar la clave de Gemini~~: hecho el 12/10/2026.
 - Bajar un respaldo desde la app (Más → Datos), hasta que la copia en Drive esté andando.
 - Activar la copia en Drive con `docs/RESPALDO_DRIVE.md` (Google Cloud, `npm run drive-auth -w backend`,
   variables en Render) y probar "Copiar ahora".
-- Que el amigo pruebe un resumen real: qué quedó sin tapar en el texto y si la suma da igual al total.
-
-**Acordado el 12/10/2026 a la noche:** respaldo automático en Google Drive (ver `DECISIONES.md`).
-Programado el mismo día; falta que el usuario lo active siguiendo `docs/RESPALDO_DRIVE.md` y lo pruebe.
+- Que el amigo pruebe un resumen real: qué quedó sin tapar en el texto, si la suma da igual al total y si
+  los intereses, impuestos y comisiones salen en "Cargos financieros".
 
 **Lo próximo que se puede programar:**
 
 - Ajustar el tapado y las instrucciones con el primer resumen real.
-- Intereses, impuestos y comisiones a una categoría fija "Cargos financieros".
-- La misma compra cargada por dos vías (ticket y resumen): detectarla y proponer unirla.
+- La misma compra cargada por dos vías (ticket y resumen): detectarla y proponer unirla. Antes hay que
+  definir el margen de días (está abierto en `DECISIONES.md`).
 - Pagar la tarjeta como transferencia ligada a su resumen.
-- Detalles chicos: la pantalla Agregar todavía maneja sus errores a mano en vez de con `useAction`.
 - Etapa 4: informes y movimientos fijos.
 - Uso sin conexión: está en la segunda versión; el usuario decidió no adelantarlo por ahora.
 
@@ -201,11 +194,15 @@ Hecho (12/10/2026):
 - Corregido: una compra en cuotas hecha justo antes del cierre ya no saltea un resumen. Con los cierres de la
   tarjeta cargados, las cuotas siguientes se fechan a mitad de cada período.
 
+Hecho (13/10/2026, sin probar con un resumen real):
+
+- Intereses, impuestos y comisiones se proponen en la categoría "Cargos financieros" (instrucciones
+  versión 8): la IA marca el renglón y el backend pone la categoría. La regla del usuario para ese comercio
+  gana.
+
 Falta:
 
 - Probarlo con un resumen real y ajustar el tapado y las instrucciones.
-- Intereses, impuestos y comisiones a una categoría "Cargos financieros" fija (hoy la IA sugiere la que
-  encuentra).
 - PDF escaneado (sin texto): hoy se rechaza con aviso.
 - Detección de la misma compra cargada por dos vías (ticket y resumen) y propuesta de unión.
 - Pagar la tarjeta como transferencia desde el banco, ligada a su resumen.

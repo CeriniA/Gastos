@@ -1,4 +1,4 @@
-import type { CategoryKind } from '@gastos/shared';
+import { FINANCIAL_CHARGES_CATEGORY, type CategoryKind } from '@gastos/shared';
 
 /**
  * The starting categories and accounts agreed in design. Names are in Spanish
@@ -17,7 +17,7 @@ export const SEED_CATEGORIES: Record<CategoryKind, string[]> = {
     'Educación',
     'Ocio y viajes',
     'Impuestos',
-    'Cargos financieros',
+    FINANCIAL_CHARGES_CATEGORY,
     'Otros egresos',
   ],
   income: ['Sueldo', 'Trabajos independientes', 'Ventas', 'Rendimientos e intereses', 'Otros ingresos'],

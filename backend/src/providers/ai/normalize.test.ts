@@ -47,6 +47,7 @@ test('a clean answer becomes a valid extraction in cents', () => {
     {
       type: 'expense',
       refund: false,
+      financialCharge: false,
       date: '2026-10-05',
       amountCents: 1540050,
       currency: 'ARS',
@@ -208,6 +209,21 @@ test('only an expense is kept as a refund', () => {
   );
   assert.deepEqual(
     result.transactions.map((transaction) => transaction.refund),
+    [true, false, false],
+  );
+});
+
+test('only an expense is kept as a financial charge', () => {
+  const result = normalizeExtraction(
+    answer([
+      { type: 'expense', financialCharge: true, amount: '10', currency: 'ARS' },
+      { type: 'income', financialCharge: true, amount: '10', currency: 'ARS' },
+      { type: 'expense', amount: '10', currency: 'ARS' },
+    ]),
+    context,
+  );
+  assert.deepEqual(
+    result.transactions.map((transaction) => transaction.financialCharge),
     [true, false, false],
   );
 });

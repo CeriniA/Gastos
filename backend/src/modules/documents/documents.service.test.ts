@@ -26,6 +26,7 @@ const photo = (label: string) => ({ originalName: `${label}.jpg`, content: jpeg(
 const read = (overrides: Partial<ExtractedTransaction> = {}): ExtractedTransaction => ({
   type: 'expense',
   refund: false,
+  financialCharge: false,
   date: '2026-10-05',
   amountCents: 1540050,
   currency: 'ARS',
@@ -212,6 +213,32 @@ test("the user's rule for a merchant wins over the AI, and bad suggestions are d
     [null, false],
     [salary.id, false],
   ]);
+});
+
+test('interest, taxes and fees are offered in "Cargos financieros", if the user has it', async () => {
+  const { app, power, food } = await setup();
+  const charges = await app.categories.create({
+    name: 'cargos financieros',
+    kind: 'expense',
+    parentId: null,
+  });
+  await app.categoryRules.save({ merchant: 'Edesur', categoryId: power.id });
+  app.ai.result = extraction(
+    read({ merchant: 'IVA 21%', financialCharge: true, suggestedCategoryId: food.id }),
+    read({ merchant: 'Edesur', financialCharge: true }), // the user's rule still wins
+    read({ merchant: 'Coto', suggestedCategoryId: food.id }),
+  );
+  const suggested = async () => {
+    const uploaded = await app.documents.upload({ kind: 'receipt' }, [photo('resumen')]);
+    await app.documents.processQueue();
+    const { extraction: reviewed } = await app.documents.get(uploaded.id);
+    return reviewed?.transactions.map((transaction) => transaction.suggestedCategoryId);
+  };
+  assert.deepEqual(await suggested(), [charges.id, power.id, food.id]);
+
+  // Without the category nothing is forced: what the AI suggested stands.
+  await app.categories.update(charges.id, { archived: true });
+  assert.deepEqual(await suggested(), [food.id, power.id, food.id]);
 });
 
 test('confirming creates the transactions, remembers rules and deletes the image', async () => {

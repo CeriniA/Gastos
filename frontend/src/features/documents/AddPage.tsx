@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { MAX_DOCUMENT_FILES, UPLOADABLE_DOCUMENT_KINDS, type UploadableDocumentKind } from '@gastos/shared';
 import { es } from '../../shared/i18n/es';
 import { Button, Card, Field, Notice, PageTitle, Select } from '../../shared/ui/ui';
+import { useAction } from '../../shared/ui/useAction';
 import { useAccounts } from '../accounts/api';
 import { useDocumentMutations } from './api';
 import { compressImage } from './compress';
@@ -21,7 +22,7 @@ export function AddPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [sameReceipt, setSameReceipt] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
+  const { failure, setFailure, run } = useAction(uploadFailure);
 
   const choose = (source: 'camera' | 'gallery') => (event: ChangeEvent<HTMLInputElement>) => {
     const chosen = Array.from(event.target.files ?? []);
@@ -44,15 +45,12 @@ export function AddPage() {
     }
     setBusy(true);
     let uploaded = 0;
-    let lastError: unknown = null;
     for (const group of groups) {
-      try {
+      const done = await run(async () => {
         const compressed = await Promise.all(group.map((file) => compressImage(file, kind)));
         await upload.mutateAsync({ kind, accountId, files: compressed });
-        uploaded += 1;
-      } catch (error) {
-        lastError = error;
-      }
+      });
+      if (done) uploaded += 1;
     }
     setBusy(false);
 
@@ -60,12 +58,11 @@ export function AddPage() {
       void navigate('/pendientes');
       return;
     }
+    // When none went through, the reason of the last one is already shown.
     if (uploaded > 0) {
       setFiles([]);
       setFailure(es.add.partial(uploaded, groups.length));
-      return;
     }
-    setFailure(uploadFailure(lastError));
   };
 
   const activeAccounts = (accounts.data ?? []).filter((account) => !account.archived);

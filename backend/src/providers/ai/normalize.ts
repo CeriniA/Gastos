@@ -38,6 +38,7 @@ const rawSchema = z.object({
         .object({
           type: z.string().nullish(),
           refund: z.boolean().nullish(),
+          financialCharge: z.boolean().nullish(),
           date: z.string().nullish(),
           amount: looseAmount,
           currency: z.string().nullish(),
@@ -189,6 +190,7 @@ export function normalizeExtraction(
     transactions.push({
       type,
       refund: type === 'expense' && raw.refund === true,
+      financialCharge: type === 'expense' && raw.financialCharge === true,
       date,
       amountCents,
       currency,

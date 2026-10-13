@@ -75,6 +75,13 @@ export type AccountType = (typeof ACCOUNT_TYPES)[number];
 export const INSTITUTION_KINDS = ['bank', 'network'] as const;
 export type InstitutionKind = (typeof INSTITUTION_KINDS)[number];
 
+/**
+ * The expense category offered for interest, taxes and fees read from a
+ * document. It is found by this name (the user's data, hence Spanish): if the
+ * user renamed or archived it, nothing is forced and the AI's suggestion stands.
+ */
+export const FINANCIAL_CHARGES_CATEGORY = 'Cargos financieros';
+
 /** Loaded once so the lists start useful; the user adds, renames or archives from there. */
 export const DEFAULT_INSTITUTIONS: Record<InstitutionKind, readonly string[]> = {
   bank: [

@@ -34,6 +34,8 @@ export const extractedTransactionSchema = z.object({
   type: z.enum(TRANSACTION_TYPES),
   /** Money given back for an earlier purchase. Only an expense can be one. */
   refund: z.boolean(),
+  /** Interest, a tax or a fee rather than a purchase. Only an expense can be one. */
+  financialCharge: z.boolean(),
   date: isoDateSchema.nullable(),
   amountCents: z.number().int().positive().nullable(),
   /** The currency printed on the document. It may be one the app has no accounts in (BRL, EUR). */
@@ -70,9 +72,10 @@ export type ExtractionResult = z.infer<typeof extractionResultSchema>;
 
 /**
  * What the review screen works with: the extraction after the user's own
- * rules were applied to it.
+ * rules were applied to it. `financialCharge` is spent choosing the category,
+ * so it is not kept.
  */
-export interface ReviewTransaction extends ExtractedTransaction {
+export interface ReviewTransaction extends Omit<ExtractedTransaction, 'financialCharge'> {
   /** True when the category comes from a "this merchant goes here" rule, not from the model. */
   categoryFromRule: boolean;
 }

@@ -21,6 +21,7 @@ const pdfBytes = Buffer.from('%PDF-1.7 statement bytes');
 const line = (overrides: Partial<ExtractedTransaction> = {}): ExtractedTransaction => ({
   type: 'expense',
   refund: false,
+  financialCharge: false,
   date: '2026-10-02',
   amountCents: 250000,
   currency: 'ARS',

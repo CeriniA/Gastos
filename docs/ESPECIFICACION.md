@@ -97,9 +97,13 @@ sobre la marcha.
 **Etiquetas**: marcas libres que cruzan categorías ("Vacaciones enero"). Un movimiento puede tener
 varias o ninguna.
 
-**Asignación de categoría** (etapa 2), por prioridad: regla del usuario para ese comercio; sugerencia
+**Asignación de categoría** (etapa 2), por prioridad: regla del usuario para ese comercio; si la IA marca
+el renglón como interés, impuesto o comisión, la categoría de egresos "Cargos financieros"; sugerencia
 de la IA, que solo puede elegir entre las categorías existentes; sin categoría. Al corregir una, la app
 pregunta si ese comercio va siempre ahí y, si se acepta, crea la regla.
+
+"Cargos financieros" se busca por su nombre. Si el usuario la renombró o la archivó, no se crea ni se
+fuerza nada: queda la sugerencia de la IA.
 
 ## 6. Documentos y lectura con IA (etapa 2)
 
@@ -184,6 +188,8 @@ pregunta si ese comercio va siempre ahí y, si se acepta, crea la regla.
   antes. Se fechan 15 días después del cierre y un mes aparte, para que cada una caiga en su resumen.
 - Si la cuota ya está cargada (mismo número, total y monto, por ejemplo proyectada por el resumen anterior),
   aparece como repetida y sin marcar: no se vuelve a crear.
+- Intereses, impuestos (IVA, sellos, percepciones) y comisiones se proponen en "Cargos financieros" (ver
+  sección 5). Como toda sugerencia, se puede cambiar en la revisión.
 
 **Devoluciones (hecho):**
 
@@ -200,8 +206,8 @@ pregunta si ese comercio va siempre ahí y, si se acepta, crea la regla.
 - Una compra en cuotas genera **un movimiento por mes**, vinculados a un plan. Las futuras quedan como
   proyectadas y pasan a confirmadas cuando llega el resumen que las incluye.
 - Con interés, vale el monto real de cada resumen, no el total dividido.
-- Del resumen se ignoran saldo y pago anteriores; intereses, impuestos y comisiones van a "Cargos
-  financieros"; la suma de lo extraído se controla contra el total del resumen.
+- Del resumen se ignoran saldo y pago anteriores; la suma de lo extraído se controla contra el total del
+  resumen.
 
 ## 9. Movimientos fijos (etapa 4)
 
