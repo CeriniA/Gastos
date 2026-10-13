@@ -6,7 +6,8 @@ Cada etapa termina en algo que funciona. Si una se complica, lo anterior ya sirv
 
 | Qué                                                          | Estado                                                                                                                                                              |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasa en la PC del usuario el 13/10/2026 con la copia en Drive y los cargos financieros (162 pruebas)                                                                |
+| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasa en la PC del usuario el 13/10/2026 con las pruebas por HTTP y de Excel (168 pruebas)                                                                           |
+| Pantallas de la etapa 1 en un navegador                      | Recorridas el 13/10/2026 contra la demo en memoria (`npm run demo`), tamaño celular: flujo y textos. Sin mirar el aspecto ni probar las descargas                   |
 | Lectura de resúmenes en PDF                                  | Escrita el 12/10/2026 sin ningún resumen real a mano: la lectura del PDF, el tapado de datos y las instrucciones a la IA se ajustan con el primer resumen verdadero |
 | Compilación de backend y frontend (`npm run build`)          | Render compiló los dos el 11/10/2026; se repite en cada push                                                                                                        |
 | Etapa 1 corriendo contra MongoDB Atlas                       | Dada por cerrada por el usuario                                                                                                                                     |
@@ -21,19 +22,32 @@ Las versiones de `package.json` se escribieron sin acceso al registro de npm; la
 Para retomar. Se borra o se reescribe al empezar la próxima sesión.
 
 **Ya subido (commit y push hechos por el usuario):** resúmenes en PDF, devoluciones, cuotas desde el
-resumen, cuotas según el cierre y la copia automática en Drive (`c4c16f7`).
-
-**Hecho hoy, en la carpeta del usuario, sin commit:**
+resumen, cuotas según el cierre y la copia automática en Drive (`c4c16f7`); y lo del 13/10/2026 (`270603c`):
 
 1. Intereses, impuestos y comisiones leídos de un documento se proponen en "Cargos financieros"
    (instrucciones versión 8). Sin migración: no cambia nada de lo guardado.
 2. La pantalla Agregar muestra sus errores con `useAction`, como el resto.
 
+**Hecho después, en la carpeta del usuario, sin commit (repaso de la etapa 1):**
+
+1. Demo en memoria (`npm run demo`): la app entera con datos de mentira, sin tocar la base real. Usuario y
+   contraseña en `backend/memory.env`.
+2. Pruebas por HTTP (`backend/src/app.test.ts`): rutas reales de Express, login, forma de los errores,
+   Excel exportado y vuelto a leer, respaldo y restauración.
+3. Pantallas de la etapa 1 recorridas en un navegador. Lo que apareció y se corrigió:
+   - un movimiento dividido, exportado y vuelto a importar, no se reconocía como repetido;
+   - borrar una cuenta no pedía confirmación.
+4. Login, Más y el formulario de movimientos muestran sus errores con `useAction`.
+
 **Primer paso al retomar:**
 
-1. `npm run check`: pasó el 13/10/2026 (162 pruebas).
-2. Commit: `feat: financial charges go to their own category; Add screen uses useAction`
-3. Push: Render vuelve a desplegar solo.
+1. `npm run check`: pasó el 13/10/2026 (168 pruebas).
+2. Commit: `test: HTTP and Excel tests, in-memory demo; fix duplicate detection of split rows`
+3. Push: Render vuelve a desplegar solo. No hay migraciones nuevas.
+
+**Encontrado y sin corregir:** al unir dos categorías que son partes del mismo movimiento dividido, el
+movimiento queda "dividido en 2 categorías" con las dos partes en la misma. Los totales dan bien; se
+arregla editando el movimiento.
 
 **Pendiente del usuario (no es código):**
 
@@ -82,7 +96,10 @@ Hecho:
 
 Las pantallas que cerraron la etapa (papelera, categorías, etiquetas, división, filtros, importación) se
 escribieron el 11/10/2026. Sus reglas de backend tienen pruebas y los tipos de las pantallas pasan
-`npm run check`; **las pantallas no se probaron en un navegador** antes de entregarlas.
+`npm run check`. No se probaron en un navegador antes de entregarlas; se recorrieron el 13/10/2026 con la
+demo en memoria (login, inicio, movimientos con buscador y filtros, alta, edición, división, transferencia
+entre monedas, papelera, cuentas, categorías, etiquetas, chequeo de integridad e importación de un CSV).
+Quedó sin mirar el aspecto (colores, tamaños, cómo entra en la pantalla) y las descargas de archivos.
 
 Falta: nada pendiente de programar. Queda usarla y corregir lo que aparezca.
 
@@ -148,8 +165,11 @@ Desde el 12/10/2026 `npm run check` incluye una auditoría (`scripts/audit.mjs`)
 copiado, exports sin uso y números sueltos, y el lint rechaza textos escritos en las pantallas. Lo que
 sigue en esta lista es lo que esos controles no cubren.
 
-- **Las pantallas no tienen pruebas automáticas.** Solo las reglas del backend. Un error de flujo o
-  visual lo encuentra el usuario.
+- **Las pantallas no tienen pruebas automáticas.** Las reglas del backend y sus rutas HTTP sí. Las pantallas
+  de la etapa 1 se recorrieron a mano el 13/10/2026 con `npm run demo`; las de las etapas 2 y 3 (Pendientes,
+  Revisión, Resumen, Tarjetas, Informes) no. Un error visual lo encuentra el usuario.
+- **Las consultas a MongoDB no tienen pruebas.** Las pruebas corren sobre repositorios en memoria; lo que
+  hace cada repositorio real contra la base solo se comprueba usando la app.
 - **Vulnerabilidades de las librerías** (`npm audit` del 11/10/2026: 1 baja, 2 moderadas, ninguna alta).
   - `esbuild` (dentro de `tsup`): afectaba a su servidor de desarrollo en Windows, que este proyecto
     no usa. Corregido con `npm audit fix` el 11/10/2026.

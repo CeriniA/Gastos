@@ -554,8 +554,10 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
           .filter((transaction) => transaction.deletedAt === null)
           .filter((transaction) => transaction.date >= range.from && transaction.date <= range.to)
           .filter((transaction) => range.accountIds.includes(transaction.accountId))
-          .map((transaction) =>
-            duplicateKey(transaction.date, transaction.amountCents, transaction.accountId),
+          .flatMap((transaction) =>
+            [transaction.amountCents, ...transaction.splits.map((split) => split.amountCents)].map(
+              (amountCents) => duplicateKey(transaction.date, amountCents, transaction.accountId),
+            ),
           ),
       );
     },
@@ -703,5 +705,5 @@ export function createMemoryBackend(today = '2026-10-10', options: { aiConfigure
       onError: (error, context) => errors.push({ error, context }),
     },
   );
-  return { ...services, store, faults, ai, pdf, errors, clock, calendar };
+  return { ...services, store, runInTransaction, faults, ai, pdf, errors, clock, calendar };
 }

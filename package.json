@@ -18,7 +18,8 @@
     "typecheck": "npm run typecheck --workspaces",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "tsx --test \"shared/src/**/*.test.ts\" \"backend/src/**/*.test.ts\"",
+    "demo": "npm run demo -w backend",
+    "test": "tsx --env-file=backend/memory.env --test \"shared/src/**/*.test.ts\" \"backend/src/**/*.test.ts\"",
     "audit:code": "node scripts/audit.mjs",
     "check": "npm run typecheck && npm run lint && npm run audit:code && npm run test"
   },

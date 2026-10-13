@@ -93,6 +93,16 @@ npm run dev:backend        # http://localhost:4000
 npm run dev:frontend       # http://localhost:5173
 ```
 
+**Probar sin tocar los datos reales**
+
+```bash
+npm run demo               # en vez de dev:backend: todo en memoria, se olvida al cerrarlo
+npm run dev:frontend
+```
+
+No usa `backend/.env` ni la base: arranca con categorías, cuentas y algunos movimientos inventados. El
+usuario y la contraseña están en `backend/memory.env`. La IA no lee nada en la demo.
+
 ## Publicar en Render
 
 1. Subir el repositorio a GitHub.
@@ -120,6 +130,7 @@ lo avisa en pantalla.
 | `npm run lint`                                     | Estilo y reglas de arquitectura                                        |
 | `npm run format`                                   | Formatea el código                                                     |
 | `npm run build`                                    | Compila backend y frontend                                             |
+| `npm run demo`                                     | La app con datos de mentira en memoria, sin tocar la base real         |
 | `npm run seed -w backend`                          | Carga categorías y cuentas iniciales                                   |
 | `npm run hash-password -w backend`                 | Genera el hash de la contraseña                                        |
 | `npm run try-extraction -w backend -- "<carpeta>"` | Lee imágenes reales con la IA y muestra el resultado, sin guardar nada |

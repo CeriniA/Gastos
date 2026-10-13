@@ -26,6 +26,7 @@ import { errorMessage, fieldMessage } from '../../shared/api/errors';
 import { es } from '../../shared/i18n/es';
 import { QueryState } from '../../shared/ui/QueryState';
 import { Button, Field, Loading, Notice, PageTitle, Select, TextInput } from '../../shared/ui/ui';
+import { useAction } from '../../shared/ui/useAction';
 import { useAccounts } from '../accounts/api';
 import { useCategories } from '../categories/api';
 import { optionLabel, orderedTree } from '../categories/tree';
@@ -90,7 +91,7 @@ export function TransactionFormPage() {
   const { create, update, remove, createInstallments, removePlan } = useTransactionMutations();
   /** How many installments a new card purchase is paid in. 1 is a single payment. */
   const [installments, setInstallments] = useState('1');
-  const [failure, setFailure] = useState<string | null>(null);
+  const { failure, setFailure, run } = useAction();
   const [newTag, setNewTag] = useState('');
   /** The rate while the user types it. Null means: show the one the amounts imply. */
   const [rateText, setRateText] = useState<string | null>(null);
@@ -265,33 +266,21 @@ export function TransactionFormPage() {
   const addTag = async () => {
     const name = newTag.trim();
     if (!name) return;
-    try {
+    await run(async () => {
       const tag = await createTag.mutateAsync({ name });
       form.setValue('tagIds', [...selectedTags, tag.id]);
       setNewTag('');
-    } catch (error) {
-      setFailure(errorMessage(error));
-    }
+    });
   };
 
   const deletePlan = async (id: string) => {
     if (!window.confirm(es.installments.deleteAllConfirm)) return;
-    try {
-      await removePlan.mutateAsync(id);
-      void navigate('/movimientos');
-    } catch (error) {
-      setFailure(errorMessage(error));
-    }
+    if (await run(removePlan.mutateAsync(id))) void navigate('/movimientos');
   };
 
   const moveToTrash = async () => {
     if (!id || !window.confirm(es.transactions.deleteConfirm)) return;
-    try {
-      await remove.mutateAsync(id);
-      void navigate('/movimientos');
-    } catch (error) {
-      setFailure(errorMessage(error));
-    }
+    if (await run(remove.mutateAsync(id))) void navigate('/movimientos');
   };
 
   if (id && existing.isPending) return <Loading />;

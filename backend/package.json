@@ -8,6 +8,7 @@
     "build": "tsup",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
+    "demo": "tsx --env-file=memory.env src/scripts/demo.ts",
     "seed": "tsx src/scripts/seed.ts",
     "hash-password": "tsx src/scripts/hash-password.ts",
     "try-extraction": "tsx src/scripts/try-extraction.ts",

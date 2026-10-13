@@ -194,7 +194,11 @@ export function AccountsPage() {
                     <Button
                       variant="quiet"
                       className="px-2 text-expense"
-                      onClick={() => void run(remove.mutateAsync(account.id))}
+                      onClick={() => {
+                        if (window.confirm(es.accounts.deleteConfirm(account.name))) {
+                          void run(() => remove.mutateAsync(account.id));
+                        }
+                      }}
                     >
                       {es.common.delete}
                     </Button>

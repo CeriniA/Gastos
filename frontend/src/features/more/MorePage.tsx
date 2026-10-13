@@ -1,9 +1,8 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../shared/api/client';
-import { errorMessage } from '../../shared/api/errors';
 import { es } from '../../shared/i18n/es';
 import { Button, Notice, PageTitle } from '../../shared/ui/ui';
+import { useAction } from '../../shared/ui/useAction';
 import { useAuth } from '../auth/AuthContext';
 
 const LINKS = [
@@ -19,17 +18,11 @@ const LINKS = [
 
 export function MorePage() {
   const { logout } = useAuth();
-  const [failure, setFailure] = useState<string | null>(null);
+  const { failure, run } = useAction();
 
   const logoutEverywhere = async () => {
     if (!window.confirm(es.auth.logoutAllConfirm)) return;
-    setFailure(null);
-    try {
-      await api<void>('/auth/logout-all', { method: 'POST' });
-      logout();
-    } catch (error) {
-      setFailure(errorMessage(error));
-    }
+    if (await run(api<void>('/auth/logout-all', { method: 'POST' }))) logout();
   };
   return (
     <>

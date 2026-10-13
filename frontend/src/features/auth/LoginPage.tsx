@@ -1,29 +1,23 @@
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { loginSchema, type LoginInput } from '@gastos/shared';
-import { errorMessage } from '../../shared/api/errors';
 import { es } from '../../shared/i18n/es';
 import { ServerWaking } from '../../shared/layout/ServerWaking';
 import { Button, Field, Notice, TextInput } from '../../shared/ui/ui';
+import { useAction } from '../../shared/ui/useAction';
 import { useAuth } from './AuthContext';
 
 export function LoginPage() {
   const { login } = useAuth();
-  const [failure, setFailure] = useState<string | null>(null);
+  const { failure, setFailure, run } = useAction();
   const form = useForm<LoginInput>({ defaultValues: { username: '', password: '' } });
 
   const submit = form.handleSubmit(async (values) => {
-    setFailure(null);
     const parsed = loginSchema.safeParse(values);
     if (!parsed.success) {
       setFailure(es.fieldMessages.required ?? null);
       return;
     }
-    try {
-      await login(parsed.data);
-    } catch (error) {
-      setFailure(errorMessage(error));
-    }
+    await run(login(parsed.data));
   });
 
   return (

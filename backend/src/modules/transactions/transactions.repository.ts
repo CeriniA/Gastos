@@ -480,9 +480,16 @@ export const transactionsRepository = {
         date: { $gte: range.from, $lte: range.to },
         accountId: { $in: range.accountIds.map(toObjectId) },
       },
-      { date: 1, amountCents: 1, accountId: 1 },
-    ).lean<Pick<TransactionDoc, 'date' | 'amountCents' | 'accountId'>[]>();
-    return new Set(docs.map((doc) => duplicateKey(doc.date, doc.amountCents, doc.accountId.toString())));
+      { date: 1, amountCents: 1, accountId: 1, splits: 1 },
+    ).lean<Pick<TransactionDoc, 'date' | 'amountCents' | 'accountId' | 'splits'>[]>();
+    // A split transaction is exported as one row per part, so each part counts too.
+    return new Set(
+      docs.flatMap((doc) =>
+        [doc.amountCents, ...(doc.splits ?? []).map((split) => split.amountCents)].map((amountCents) =>
+          duplicateKey(doc.date, amountCents, doc.accountId.toString()),
+        ),
+      ),
+    );
   },
 };
 

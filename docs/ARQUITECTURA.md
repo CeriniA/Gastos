@@ -54,6 +54,7 @@ src/
   wiring.ts            Donde se conectan los servicios entre sí (sin base de datos)
   composition.ts       Producción: repositorios reales, transacciones reales, puertos de colección
   testing/memory.ts    El backend completo en memoria, para pruebas
+  testing/memoryApp.ts Lo que le falta a ese backend para atender por HTTP (login y respaldo en memoria)
   app.ts               Express: middleware y rutas
   server.ts            Arranque
 ```
@@ -165,8 +166,14 @@ Corren con el ejecutor de pruebas de Node (`npm test`), sin base de datos ni red
   (`createMemoryBackend()`). Cubren movimientos, fecha de pago, cuentas, categorías, etiquetas, balance
   mensual, papelera, e importación y exportación de punta a punta con archivos CSV, incluido el
   "todo o nada" cuando una escritura falla.
+- `backend/src/app.test.ts`: la app de Express de verdad (rutas, autenticación, lectura del cuerpo,
+  manejo de errores) sobre el mismo backend en memoria (`testing/memoryApp.ts`), pedida por HTTP como lo
+  hace el frontend. Incluye un Excel exportado y vuelto a leer, y el respaldo con su restauración.
 
-Lo que estas pruebas no cubren es lo que depende de las librerías reales: las consultas de Mongoose, las
-rutas de Express y los archivos de Excel. Eso se prueba contra una base de pruebas (ver `ROADMAP.md`).
+Las variables que necesitan (`backend/memory.env`) son inventadas y no llevan secretos. Con las mismas
+piezas, `npm run demo` levanta la app con datos de mentira para probar las pantallas a mano.
+
+Lo que estas pruebas no cubren son las consultas de Mongoose: lo que hace cada repositorio real contra la
+base (ver `ROADMAP.md`).
 
 Las reglas nuevas llevan prueba.

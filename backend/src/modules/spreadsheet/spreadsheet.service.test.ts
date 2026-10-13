@@ -348,4 +348,8 @@ test('the export splits a divided transaction into one row per category and hono
 
   const everything = await app.spreadsheet.exportTransactions({ format: 'csv' });
   assert.equal(everything.content.toString('utf8').trim().split('\r\n').length, 4);
+
+  // Imported back, the parts of the divided transaction are known too: nothing would be counted twice.
+  const again = await app.spreadsheet.preview({ content: everything.content, fileName: 'movimientos.csv' });
+  assert.deepEqual([again.validRows, again.duplicateRows], [3, 3]);
 });

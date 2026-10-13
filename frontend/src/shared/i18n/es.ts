@@ -164,6 +164,7 @@ export const es = {
     network: 'Tarjeta',
     cardHint:
       'Si la tarjeta tiene saldo en pesos y en dólares, creá dos cuentas (por ejemplo "Visa" y "Visa USD") con el mismo banco y tarjeta: así comparten los cierres.',
+    deleteConfirm: (name: string) => `¿Borrar la cuenta "${name}"?`,
   },
 
   institutions: {
