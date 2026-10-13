@@ -18,6 +18,12 @@ const DEFAULT_PORT = 4000;
 const MIN_JWT_SECRET_LENGTH = 32;
 const DEFAULT_SESSION_DAYS = 30;
 
+/** An optional secret: missing or blank means the feature that needs it is off. */
+const optionalSecret = z
+  .string()
+  .optional()
+  .transform((value) => value?.trim() || undefined);
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(DEFAULT_PORT),
@@ -35,11 +41,16 @@ const envSchema = z.object({
   APP_TIMEZONE: z.string().default(DEFAULT_TIMEZONE),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   /** Empty means AI reading is off: uploads are refused with a clear message. */
-  GEMINI_API_KEY: z
-    .string()
-    .optional()
-    .transform((value) => value?.trim() || undefined),
+  GEMINI_API_KEY: optionalSecret,
   GEMINI_MODEL: z.string().min(1).default('gemini-3.5-flash-lite'),
+  /**
+   * The automatic copy to Google Drive. The OAuth client comes from Google
+   * Cloud; the refresh token from `npm run drive-auth -w backend`. All three,
+   * or the copy is off. See docs/RESPALDO_DRIVE.md.
+   */
+  DRIVE_CLIENT_ID: optionalSecret,
+  DRIVE_CLIENT_SECRET: optionalSecret,
+  DRIVE_REFRESH_TOKEN: optionalSecret,
 });
 
 export type Env = z.infer<typeof envSchema>;

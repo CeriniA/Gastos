@@ -4,15 +4,15 @@ Cada etapa termina en algo que funciona. Si una se complica, lo anterior ya sirv
 
 ## Estado de la base
 
-| Qué                                                          | Estado                                                                                                                                                                                                                   |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasó el 12/10/2026 con la etapa 3 a mano (126 pruebas). Con resúmenes en PDF, devoluciones, cuotas desde el resumen y cuotas según el cierre: 149 pruebas pasan en el entorno del asistente; **falta correrlo en la PC** |
-| Lectura de resúmenes en PDF                                  | Escrita el 12/10/2026 sin ningún resumen real a mano: la lectura del PDF, el tapado de datos y las instrucciones a la IA se ajustan con el primer resumen verdadero                                                      |
-| Compilación de backend y frontend (`npm run build`)          | Render compiló los dos el 11/10/2026; se repite en cada push                                                                                                                                                             |
-| Etapa 1 corriendo contra MongoDB Atlas                       | Dada por cerrada por el usuario                                                                                                                                                                                          |
-| Lectura real con Gemini                                      | Usada por el usuario con tickets y capturas de MercadoPago. La clasificación de productos (instrucciones versión 5) dio bien en el primer uso real, el 11/10/2026                                                        |
-| Consumo por producto contra MongoDB y Gemini reales          | Funciona en Render con datos reales desde el 11/10/2026                                                                                                                                                                  |
-| `render.yaml`                                                | Desplegado en Render el 11/10/2026: backend y sitio en línea. Atlas necesita `0.0.0.0/0` en Network Access                                                                                                               |
+| Qué                                                          | Estado                                                                                                                                                              |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasa en la PC del usuario el 12/10/2026 con resúmenes en PDF, devoluciones, cuotas desde el resumen y cuotas según el cierre (149 pruebas)                          |
+| Lectura de resúmenes en PDF                                  | Escrita el 12/10/2026 sin ningún resumen real a mano: la lectura del PDF, el tapado de datos y las instrucciones a la IA se ajustan con el primer resumen verdadero |
+| Compilación de backend y frontend (`npm run build`)          | Render compiló los dos el 11/10/2026; se repite en cada push                                                                                                        |
+| Etapa 1 corriendo contra MongoDB Atlas                       | Dada por cerrada por el usuario                                                                                                                                     |
+| Lectura real con Gemini                                      | Usada por el usuario con tickets y capturas de MercadoPago. La clasificación de productos (instrucciones versión 5) dio bien en el primer uso real, el 11/10/2026   |
+| Consumo por producto contra MongoDB y Gemini reales          | Funciona en Render con datos reales desde el 11/10/2026                                                                                                             |
+| `render.yaml`                                                | Desplegado en Render el 11/10/2026: backend y sitio en línea. Atlas necesita `0.0.0.0/0` en Network Access                                                          |
 
 Las versiones de `package.json` se escribieron sin acceso al registro de npm; la instalación funcionó.
 
@@ -31,8 +31,7 @@ Para retomar. Se borra o se reescribe al empezar la próxima sesión.
 
 **Primer paso al retomar:**
 
-1. `npm run check`. El último intento falló por los tipos de `unpdf` (ya corregido) y no se volvió a correr
-   con todo lo de hoy. Si falla, pasarle la salida al asistente.
+1. ~~`npm run check`~~: pasó el 12/10/2026 a la noche.
 2. Revisar que `backend/.env` no aparezca en `git status`.
 3. Commit (incluye `package-lock.json`):
    `feat: card statement PDFs, refunds, remaining installments; installments follow card closings`
@@ -41,10 +40,14 @@ Para retomar. Se borra o se reescribe al empezar la próxima sesión.
 
 **Pendiente del usuario (no es código):**
 
-- Rotar la clave de Gemini (se pegó en un chat): crear una nueva en Google AI Studio y cambiarla en Render y en
-  `backend/.env`.
-- Bajar un respaldo desde la app (Más → Datos).
+- ~~Rotar la clave de Gemini~~: hecho el 12/10/2026.
+- Bajar un respaldo desde la app (Más → Datos), hasta que la copia en Drive esté andando.
+- Activar la copia en Drive con `docs/RESPALDO_DRIVE.md` (Google Cloud, `npm run drive-auth -w backend`,
+  variables en Render) y probar "Copiar ahora".
 - Que el amigo pruebe un resumen real: qué quedó sin tapar en el texto y si la suma da igual al total.
+
+**Acordado el 12/10/2026 a la noche:** respaldo automático en Google Drive (ver `DECISIONES.md`).
+Programado el mismo día; falta que el usuario lo active siguiendo `docs/RESPALDO_DRIVE.md` y lo pruebe.
 
 **Lo próximo que se puede programar:**
 
@@ -160,7 +163,8 @@ sigue en esta lista es lo que esos controles no cubren.
   - `uuid` (dentro de `exceljs`): sin corrección compatible. **No correr `npm audit fix --force`**:
     baja `exceljs` a una versión vieja y puede romper la importación y exportación. Volver a mirar
     cuando `exceljs` publique una versión que lo resuelva.
-- **Sin copia automática de los datos.** El respaldo es manual (ver `ESPECIFICACION.md`, Seguridad).
+- **Copia automática en Drive sin probar con Google real.** Programada y probada con un Google simulado; se
+  confirma al activarla.
 - **La sesión se guarda en el navegador** (`localStorage`). Es lo habitual en una app de este tipo; el
   riesgo se acota con el vencimiento a 30 días y con "cerrar sesión en todos los dispositivos".
 - **Sin aviso de errores.** Si el servidor falla, solo queda en los registros de Render.

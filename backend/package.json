@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx src/scripts/seed.ts",
     "hash-password": "tsx src/scripts/hash-password.ts",
-    "try-extraction": "tsx src/scripts/try-extraction.ts"
+    "try-extraction": "tsx src/scripts/try-extraction.ts",
+    "drive-auth": "tsx src/scripts/drive-auth.ts"
   },
   "dependencies": {
     "@gastos/shared": "*",

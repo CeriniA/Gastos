@@ -15,6 +15,7 @@ Qué hace hoy (el detalle, en `docs/ROADMAP.md`):
 - Resúmenes de tarjeta en PDF: el texto, con los datos personales tapados y aprobado por el usuario, va a la
   IA; los cierres se guardan con las compras (sin probar todavía con un resumen real).
 - Devoluciones que restan en su categoría; cuotas leídas de un resumen que crean las que faltan.
+- Copia automática del respaldo en Google Drive, una vez por día (se configura con `docs/RESPALDO_DRIVE.md`).
 - Balance del mes por moneda, respaldo completo, exportación e importación de planillas.
 
 Falta: informes y movimientos fijos.
@@ -100,6 +101,8 @@ npm run dev:frontend       # http://localhost:5173
    - `MONGODB_URI`: la cadena de Atlas apuntando a la base `gastos`.
    - `AUTH_USERNAME` y `AUTH_PASSWORD_HASH`.
    - `GEMINI_API_KEY`: la clave de Google AI Studio. Sin ella la app funciona, pero no lee fotos.
+   - `DRIVE_CLIENT_ID`, `DRIVE_CLIENT_SECRET` y `DRIVE_REFRESH_TOKEN`: la copia automática en Google Drive
+     (`docs/RESPALDO_DRIVE.md`). Sin ellas, el respaldo es solo manual.
    - `CORS_ORIGIN`: la dirección del sitio estático (`https://gastos-web.onrender.com` o la que asigne Render).
    - `VITE_API_URL`: la dirección del servicio (`https://gastos-api.onrender.com`), sin `/api/v1`.
 4. Abrir el sitio en Chrome desde el celular y elegir "Agregar a pantalla de inicio".

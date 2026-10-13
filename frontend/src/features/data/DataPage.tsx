@@ -15,6 +15,7 @@ import { Button, Card, Field, Notice, PageTitle, Select } from '../../shared/ui/
 import { useAccounts } from '../accounts/api';
 import { useCategories } from '../categories/api';
 import { optionLabel, orderedTree } from '../categories/tree';
+import { DriveBackupSection } from './DriveBackupSection';
 import { dataApi } from './api';
 
 type Message = { tone: 'success' | 'error' | 'attention'; text: string };
@@ -193,6 +194,8 @@ export function DataPage() {
             {es.data.backupDownload}
           </Button>
         </Section>
+
+        <DriveBackupSection />
 
         <Section title={es.data.restoreTitle} text={es.data.restoreText}>
           <label className="flex w-full items-center gap-2 text-sm">

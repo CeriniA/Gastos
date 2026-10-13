@@ -11,6 +11,7 @@ import { es } from '../../shared/i18n/es';
 import { QueryState } from '../../shared/ui/QueryState';
 import { Card, Notice } from '../../shared/ui/ui';
 import { useAccounts } from '../accounts/api';
+import { driveBackupNeedsAttention, useDriveBackup } from '../data/api';
 import { usePendingDocuments } from '../documents/api';
 import { useCategories } from '../categories/api';
 import { TransactionRow } from '../transactions/TransactionRow';
@@ -65,6 +66,7 @@ export function HomePage() {
   const categories = useCategories();
   const pending = usePendingDocuments();
   const pendingCount = pending.data?.length ?? 0;
+  const driveBackup = useDriveBackup();
 
   return (
     <>
@@ -76,6 +78,16 @@ export function HomePage() {
           className="mb-4 flex min-h-12 items-center justify-between rounded-lg border border-attention bg-attention-soft px-4 font-semibold"
         >
           {es.documents.banner(pendingCount)}
+          <span aria-hidden="true">›</span>
+        </Link>
+      ) : null}
+
+      {driveBackupNeedsAttention(driveBackup.data) ? (
+        <Link
+          to="/mas/datos"
+          className="mb-4 flex min-h-12 items-center justify-between rounded-lg border border-expense px-4 font-semibold text-expense"
+        >
+          {es.data.drive.attention}
           <span aria-hidden="true">›</span>
         </Link>
       ) : null}

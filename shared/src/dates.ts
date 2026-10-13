@@ -130,3 +130,15 @@ export function formatMonth(month: MonthKey, locale = APP_LOCALE): string {
   const date = new Date(`${month}-01T00:00:00Z`);
   return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date);
 }
+
+const HOUR_MS = 60 * 60 * 1000;
+
+/** Hours from one moment to another (fractional; negative if `to` is earlier). */
+export function hoursBetween(from: string | Date, to: string | Date): number {
+  return (new Date(to).getTime() - new Date(from).getTime()) / HOUR_MS;
+}
+
+/** A moment as the user reads it in a time zone: "12/10/2026 14:30". */
+export function formatMoment(moment: string | Date, timeZone: string): string {
+  return `${formatDate(todayIso(timeZone, new Date(moment)))} ${formatTime(moment, timeZone)}`;
+}

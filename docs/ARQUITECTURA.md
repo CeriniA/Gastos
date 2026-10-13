@@ -49,6 +49,7 @@ src/
     index.ts           Lo único que el resto de la app puede importar del módulo
   providers/ai/        Interfaz del lector de documentos y sus implementaciones
   providers/pdf/       Interfaz del lector de texto de PDF y su implementación (unpdf)
+  providers/drive/     Dónde se guarda la copia automática del respaldo (Google Drive, por HTTPS)
   migrations/          Cambios numerados sobre datos guardados
   wiring.ts            Donde se conectan los servicios entre sí (sin base de datos)
   composition.ts       Producción: repositorios reales, transacciones reales, puertos de colección

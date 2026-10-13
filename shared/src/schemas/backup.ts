@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { APP_ID } from '../constants';
+import { APP_ID, type DriveBackupError } from '../constants';
 
 /**
  * Full backup: an exact copy of every collection, meant only for restoring.
@@ -30,4 +30,14 @@ export interface IntegrityReport {
   ok: boolean;
   checkedAt: string;
   broken: BrokenReference[];
+}
+
+/** The automatic copy to Google Drive, as the data screen shows it. */
+export interface DriveBackupStatus {
+  /** False when the server has no Drive permission configured. */
+  configured: boolean;
+  /** When the copy in Drive was last written, or null if there is none yet. */
+  lastSavedAt: string | null;
+  /** Why the last attempt since the server woke up failed, if it did. */
+  lastError: DriveBackupError | null;
 }

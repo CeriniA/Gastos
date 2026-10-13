@@ -66,7 +66,7 @@ export function createApp(container: Container, env: Env): Express {
   api.use('/consumption', createConsumptionRouter(container.consumption));
   api.use('/documents', createDocumentsRouter(container.documents));
   api.use('/exchange-rates', createExchangeRatesRouter(container.exchangeRates));
-  api.use('/backup', createBackupRouter(container.backup));
+  api.use('/backup', createBackupRouter(container.backup, container.driveBackup));
   api.use('/spreadsheet', createSpreadsheetRouter(container.spreadsheet));
 
   app.use(API_PREFIX, api);

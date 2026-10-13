@@ -162,11 +162,13 @@ cambia de monto, sus productos cambian en la misma proporción.
 
 ## Respaldo
 
-| Método | Ruta                | Descripción                                                       |
-| ------ | ------------------- | ----------------------------------------------------------------- |
-| GET    | `/backup/export`    | Descarga el respaldo completo (JSON)                              |
-| POST   | `/backup/restore`   | Cuerpo: el respaldo. Reemplaza todo o no cambia nada. Hasta 25 MB |
-| GET    | `/backup/integrity` | `{ ok, checkedAt, broken[] }`                                     |
+| Método | Ruta                | Descripción                                                                                                 |
+| ------ | ------------------- | ----------------------------------------------------------------------------------------------------------- |
+| GET    | `/backup/export`    | Descarga el respaldo completo (JSON)                                                                        |
+| POST   | `/backup/restore`   | Cuerpo: el respaldo. Reemplaza todo o no cambia nada. Hasta 25 MB                                           |
+| GET    | `/backup/integrity` | `{ ok, checkedAt, broken[] }`                                                                               |
+| GET    | `/backup/drive`     | Copia en Drive: `{ configured, lastSavedAt, lastError }`                                                    |
+| POST   | `/backup/drive`     | Copia a Drive ahora. Responde el mismo estado; un error va en `lastError` (`not_authorized`, `unavailable`) |
 
 ## Planillas
 

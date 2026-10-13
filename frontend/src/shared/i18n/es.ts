@@ -3,6 +3,7 @@ import type {
   CategoryKind,
   DocumentErrorCode,
   DocumentKind,
+  DriveBackupError,
   DocumentStatus,
   ErrorCode,
   ImportIssueCode,
@@ -485,8 +486,24 @@ export const es = {
     title: 'Respaldo y datos',
     backupTitle: 'Respaldo completo',
     backupText:
-      'Una copia exacta de todo, para restaurar. El plan gratuito no hace copias por vos: bajá una cada tanto.',
+      'Una copia exacta de todo, para restaurar. Además de la copia automática en Drive, podés bajar una cuando quieras.',
     backupDownload: 'Descargar respaldo',
+    drive: {
+      title: 'Copia automática en Google Drive',
+      text: (fileName: string) =>
+        `Una vez por día, cuando usás la app, el respaldo completo se guarda en tu Drive como ${fileName}. Es siempre el mismo archivo; Drive guarda las versiones anteriores por un tiempo.`,
+      off: 'No está activada. Se activa una sola vez siguiendo la guía docs/RESPALDO_DRIVE.md.',
+      lastCopy: (when: string) => `Última copia: ${when}.`,
+      noCopy: 'Todavía no hay ninguna copia en Drive.',
+      copyNow: 'Copiar ahora',
+      copying: 'Copiando…',
+      errors: {
+        not_authorized:
+          'Google rechazó el permiso: puede haberse vencido o revocado. Hay que volver a pedirlo (guía, paso 4).',
+        unavailable: 'No se pudo llegar a Google Drive. Se vuelve a intentar sola en una hora.',
+      } satisfies Record<DriveBackupError, string>,
+      attention: 'La copia en Google Drive no se está haciendo',
+    },
     restoreTitle: 'Restaurar un respaldo',
     restoreText: 'Reemplaza todos los datos actuales por los del archivo. No se puede deshacer.',
     restoreConfirm: 'Entiendo que se reemplazan todos los datos actuales',

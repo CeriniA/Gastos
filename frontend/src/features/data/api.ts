@@ -1,11 +1,15 @@
-import type {
-  ExportFormat,
-  ImportCommit,
-  ImportPreview,
-  ImportResult,
-  ImportReview,
-  IntegrityReport,
-  RestoreResult,
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  DRIVE_BACKUP_STALE_HOURS,
+  hoursBetween,
+  type DriveBackupStatus,
+  type ExportFormat,
+  type ImportCommit,
+  type ImportPreview,
+  type ImportResult,
+  type ImportReview,
+  type IntegrityReport,
+  type RestoreResult,
 } from '@gastos/shared';
 import { api, download } from '../../shared/api/client';
 
@@ -27,3 +31,28 @@ export const dataApi = {
   commitImport: (input: ImportCommit) =>
     api<ImportResult>('/spreadsheet/import/commit', { method: 'POST', body: input }),
 };
+
+const DRIVE_KEY = ['backup', 'drive'] as const;
+
+/** The automatic copy to Google Drive: whether it is on, when it last ran, and why it failed. */
+export function useDriveBackup() {
+  return useQuery({
+    queryKey: DRIVE_KEY,
+    queryFn: () => api<DriveBackupStatus>('/backup/drive'),
+  });
+}
+
+export function useDriveBackupNow() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<DriveBackupStatus>('/backup/drive', { method: 'POST' }),
+    onSuccess: (status) => client.setQueryData(DRIVE_KEY, status),
+  });
+}
+
+/** The copy is on but failing, or has not run for too long while the app is in use. */
+export function driveBackupNeedsAttention(status: DriveBackupStatus | undefined, now = new Date()): boolean {
+  if (!status?.configured) return false;
+  if (status.lastError) return true;
+  return !status.lastSavedAt || hoursBetween(status.lastSavedAt, now) > DRIVE_BACKUP_STALE_HOURS;
+}

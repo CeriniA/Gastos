@@ -324,8 +324,10 @@ incluida la del dispositivo que lo pide. Sirve si se pierde el celular.
 
 Lo que queda del lado del usuario, porque la app no puede hacerlo por él:
 
-- **Respaldo.** Los datos viven en un solo lugar (MongoDB Atlas, plan gratuito, sin copias automáticas).
-  Hay que bajar el respaldo desde Más cada tanto y guardarlo fuera.
+- **Respaldo.** Atlas gratuito no hace copias. La app guarda una copia completa en el Google Drive del
+  usuario una vez por día mientras se usa (un solo archivo, `gastos-respaldo.json`; Drive guarda versiones
+  anteriores). Hay que activarla una vez siguiendo `docs/RESPALDO_DRIVE.md`; si falla o pasan más de 3 días
+  sin copia, la pantalla principal lo avisa. El respaldo manual desde Más sigue disponible.
 - **Contraseña de la base.** Atlas acepta conexiones desde cualquier dirección porque Render gratuito
   no tiene dirección fija; la contraseña de la base es la única barrera y tiene que ser larga y al azar.
 - **Claves.** Una clave que se pegó en un chat, un mail o un repositorio se da por expuesta y se cambia.

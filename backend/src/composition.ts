@@ -7,7 +7,12 @@ import { logger } from './core/logger';
 import { migrations } from './migrations';
 import { accountsPort, accountsRepository } from './modules/accounts';
 import { authStateRepository, createAuthService, type AuthService } from './modules/auth';
-import { createBackupService, type BackupService } from './modules/backup';
+import {
+  createBackupService,
+  createDriveBackup,
+  type BackupService,
+  type DriveBackup,
+} from './modules/backup';
 import { cardPeriodsPort, cardPeriodsRepository } from './modules/card-periods';
 import { categoriesPort, categoriesRepository } from './modules/categories';
 import { categoryRulesPort, categoryRulesRepository } from './modules/category-rules';
@@ -19,6 +24,7 @@ import { recurringsPort } from './modules/recurrings';
 import { tagsPort, tagsRepository } from './modules/tags';
 import { transactionsPort, transactionsRepository } from './modules/transactions';
 import { createGeminiExtractor } from './providers/ai/gemini';
+import { createGoogleDriveStore } from './providers/drive/googleDrive';
 import { createUnpdfReader } from './providers/pdf/unpdf';
 import { createOpenExchangeRates } from './providers/rates/openExchangeRates';
 import { wireServices, type Services } from './wiring';
@@ -26,6 +32,7 @@ import { wireServices, type Services } from './wiring';
 export interface Container extends Services {
   auth: AuthService;
   backup: BackupService;
+  driveBackup: DriveBackup;
 }
 
 /**
@@ -103,5 +110,21 @@ export function createContainer(env: Env): Container {
     withTransaction,
   );
 
-  return { ...services, auth, backup };
+  // The one place that decides where the automatic backup goes.
+  const driveStore =
+    env.DRIVE_CLIENT_ID && env.DRIVE_CLIENT_SECRET && env.DRIVE_REFRESH_TOKEN
+      ? createGoogleDriveStore({
+          clientId: env.DRIVE_CLIENT_ID,
+          clientSecret: env.DRIVE_CLIENT_SECRET,
+          refreshToken: env.DRIVE_REFRESH_TOKEN,
+        })
+      : null;
+  const driveBackup = createDriveBackup({
+    store: driveStore,
+    exportAll: () => backup.exportAll(),
+    now: () => new Date(),
+    onError: (error, context) => logger.warn({ err: error, ...context }, 'Drive backup failed'),
+  });
+
+  return { ...services, auth, backup, driveBackup };
 }

@@ -198,6 +198,19 @@ export const PENDING_DOCUMENT_RETENTION_DAYS = 30;
 export const MAX_IMPORT_ROWS = 2000;
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
+/** The one file in the user's Google Drive that holds the latest backup; each copy replaces it. */
+export const DRIVE_BACKUP_FILE_NAME = 'gastos-respaldo.json';
+/** At most one copy to Drive per day; the server only tries while it is awake. */
+export const DRIVE_BACKUP_INTERVAL_HOURS = 24;
+/**
+ * Without a copy for this long while the app is being used, something is
+ * wrong (a revoked permission, Google down): the home screen says so.
+ */
+export const DRIVE_BACKUP_STALE_HOURS = 72;
+/** Why the last copy to Drive failed. The frontend maps each one to a Spanish message. */
+export const DRIVE_BACKUP_ERRORS = ['not_authorized', 'unavailable'] as const;
+export type DriveBackupError = (typeof DRIVE_BACKUP_ERRORS)[number];
+
 /** Bump when the backup file layout changes; restore refuses newer versions. */
 export const BACKUP_FORMAT_VERSION = 1;
 

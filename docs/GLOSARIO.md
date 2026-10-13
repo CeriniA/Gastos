@@ -74,3 +74,4 @@ Cada concepto con su nombre en pantalla y en el código. Usar siempre estos tér
 | Palabras para tapar siempre                                         | `hiddenWords`                                                | Las escribe el usuario; se guardan solo en su teléfono                        |
 | Texto del resumen                                                   | `text`                                                       | Lo que se aprobó y se manda a la IA; se borra al confirmar                    |
 | Lector de PDF                                                       | `PdfTextReader`                                              |                                                                               |
+| Copia automática en Drive                                           | `driveBackup` / `BackupStore`                                | Un archivo, `gastos-respaldo.json`, una vez por día                           |

@@ -2,8 +2,9 @@ import type { RequestHandler } from 'express';
 import { APP_ID } from '@gastos/shared';
 import { ok, sendFile } from '../../core/http/http';
 import type { BackupService } from './backup.service';
+import type { DriveBackup } from './driveBackup';
 
-export function createBackupController(service: BackupService) {
+export function createBackupController(service: BackupService, drive: DriveBackup) {
   const exportAll: RequestHandler = async (_req, res) => {
     const backup = await service.exportAll();
     sendFile(res, {
@@ -18,5 +19,11 @@ export function createBackupController(service: BackupService) {
   const integrity: RequestHandler = async (_req, res) => {
     ok(res, await service.integrity());
   };
-  return { exportAll, restore, integrity };
+  const driveStatus: RequestHandler = async (_req, res) => {
+    ok(res, await drive.status());
+  };
+  const driveNow: RequestHandler = async (_req, res) => {
+    ok(res, await drive.runNow());
+  };
+  return { exportAll, restore, integrity, driveStatus, driveNow };
 }

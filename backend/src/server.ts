@@ -7,6 +7,7 @@ import { logger } from './core/logger';
 import { migrations } from './migrations';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
 /** Time given to finish open requests on shutdown before forcing the exit. */
 const SHUTDOWN_GRACE_MS = 10_000;
@@ -35,12 +36,20 @@ async function main(): Promise<void> {
   };
   await cleanUp();
   setInterval(() => void cleanUp(), DAY_MS).unref();
+  // The copy to Drive is checked on waking and every hour; it only writes once a day.
+  void container.driveBackup.runIfDue();
+  setInterval(() => void container.driveBackup.runIfDue(), HOUR_MS).unref();
   // Documents waiting for the AI to have room again are tried when their time comes.
   setInterval(() => container.documents.resume(), MINUTE_MS).unref();
 
   const server = createApp(container, env).listen(env.PORT, () => {
     logger.info(
-      { port: env.PORT, env: env.NODE_ENV, ai: env.GEMINI_API_KEY ? env.GEMINI_MODEL : 'off' },
+      {
+        port: env.PORT,
+        env: env.NODE_ENV,
+        ai: env.GEMINI_API_KEY ? env.GEMINI_MODEL : 'off',
+        driveBackup: env.DRIVE_REFRESH_TOKEN ? 'on' : 'off',
+      },
       'Server listening',
     );
     // Documents a restart left half-way are picked up again.

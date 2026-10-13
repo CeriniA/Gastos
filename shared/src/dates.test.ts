@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import {
   formatTime,
   addDays,
+  formatMoment,
+  hoursBetween,
   addMonths,
   addMonthsToKey,
   isIsoDate,
@@ -57,4 +59,12 @@ test('days are added across months and years, and back', () => {
   assert.equal(addDays('2026-10-25', 15), '2026-11-09');
   assert.equal(addDays('2026-12-31', 1), '2027-01-01');
   assert.equal(addDays('2026-03-01', -1), '2026-02-28');
+});
+
+test('hours between two moments, and a moment as the user reads it', () => {
+  assert.equal(hoursBetween('2026-10-12T12:00:00.000Z', '2026-10-13T18:00:00.000Z'), 30);
+  assert.equal(
+    formatMoment('2026-10-12T17:30:00.000Z', 'America/Argentina/Buenos_Aires'),
+    '12/10/2026 14:30',
+  );
 });
