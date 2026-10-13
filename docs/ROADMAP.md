@@ -60,10 +60,9 @@ la pantalla de revisión (a dónde va al confirmar, y la tarjeta elegida con "Cu
 **Subido y funcionando en Render (`bca99dc`):** usuarios, Drive por usuario, pago de tarjeta e informe por
 categoría. El usuario confirmó el 13/10/2026 que funciona; la migración de dueños corrió sin errores.
 
-**Hecho después, sin commit:** política de privacidad (`/privacidad`) y condiciones de uso
-(`/condiciones`), públicas, enlazadas desde el login y desde Más. Falta cargar `VITE_CONTACT_EMAIL` en el
-sitio de Render y poner las dos direcciones en Google Cloud. Commit sugerido:
-`feat: public privacy policy and terms of use`.
+**También subido (`1b15111`):** política de privacidad (`/privacidad`) y condiciones de uso
+(`/condiciones`), públicas, enlazadas desde el login y desde Más. Queda del lado del usuario cargar
+`VITE_CONTACT_EMAIL` en el sitio de Render y poner las dos direcciones en Google Cloud.
 
 **Lo que sigue era el plan de la subida anterior; queda como registro.**
 
