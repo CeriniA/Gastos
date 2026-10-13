@@ -262,19 +262,20 @@ detalle o con productos cargados a mano; un pago de MercadoPago sin detalle no a
 
 Diseño para celular primero. Barra inferior: **Inicio, Movimientos, +, Informes, Más**.
 
-| Pantalla    | Qué muestra                                                                         | Etapa |
-| ----------- | ----------------------------------------------------------------------------------- | ----- |
-| Login       | Usuario y contraseña; aviso si el servidor está despertando                         | 1     |
-| Inicio      | Balance del mes por moneda, últimos movimientos                                     | 1     |
-| Movimientos | Lista por mes con buscador y filtros; tocar uno lo edita                            | 1     |
-| Agregar     | Carga manual (etapa 1); foto o archivo (etapa 2)                                    | 1 y 2 |
-| Más         | Cuentas, tarjetas, categorías, bancos, etiquetas, papelera, respaldo e importación  | 1 y 3 |
-| Contraseña  | En Más: cada usuario cambia la suya                                                 | 1     |
-| Usuarios    | En Más, solo para el administrador: crear, cambiar contraseña, activar o desactivar | 1     |
-| Pendientes  | Bandeja única de todo lo que espera una decisión                                    | 2     |
-| Revisión    | Imagen y datos extraídos                                                            | 2     |
-| Tarjetas    | Compras desde el último cierre, cada resumen con lo cargado, alta de cierres        | 3     |
-| Informes    | Ver sección 10                                                                      | 4     |
+| Pantalla                 | Qué muestra                                                                         | Etapa |
+| ------------------------ | ----------------------------------------------------------------------------------- | ----- |
+| Login                    | Usuario y contraseña; aviso si el servidor está despertando                         | 1     |
+| Inicio                   | Balance del mes por moneda, últimos movimientos                                     | 1     |
+| Movimientos              | Lista por mes con buscador y filtros; tocar uno lo edita                            | 1     |
+| Agregar                  | Carga manual (etapa 1); foto o archivo (etapa 2)                                    | 1 y 2 |
+| Más                      | Cuentas, tarjetas, categorías, bancos, etiquetas, papelera, respaldo e importación  | 1 y 3 |
+| Contraseña               | En Más: cada usuario cambia la suya                                                 | 1     |
+| Usuarios                 | En Más, solo para el administrador: crear, cambiar contraseña, activar o desactivar | 1     |
+| Pendientes               | Bandeja única de todo lo que espera una decisión                                    | 2     |
+| Revisión                 | Imagen y datos extraídos                                                            | 2     |
+| Tarjetas                 | Compras desde el último cierre, cada resumen con lo cargado, alta de cierres        | 3     |
+| Privacidad y condiciones | `/privacidad` y `/condiciones`: páginas públicas, se leen sin iniciar sesión        | 1     |
+| Informes                 | Ver sección 10                                                                      | 4     |
 
 Toda pantalla contempla: cargando, lista vacía con indicación de qué hacer, error con reintento y
 servidor despertando.
@@ -400,7 +401,11 @@ Lo que queda del lado del usuario, porque la app no puede hacerlo por él:
 - **Contraseña de la base.** Atlas acepta conexiones desde cualquier dirección porque Render gratuito
   no tiene dirección fija; la contraseña de la base es la única barrera y tiene que ser larga y al azar.
 - **Claves.** Una clave que se pegó en un chat, un mail o un repositorio se da por expuesta y se cambia.
-- **Privacidad.** Las fotos de los tickets se envían a Google (Gemini) para leerlas.
+- **Privacidad.** Las fotos de los tickets se envían a Google (Gemini) para leerlas. Qué se guarda, a quién
+  se envía y cómo pedir que se borre está en la política de privacidad (`/privacidad`), y las reglas de uso
+  en `/condiciones`. Las dos son públicas, están enlazadas desde el login y desde Más, y son las que se
+  declaran en Google Cloud. Muestran el mail de contacto de `VITE_CONTACT_EMAIL` si está cargado.
+- **Borrar un usuario y sus datos** no tiene pantalla: lo hace a mano quien administra, sobre la base.
 - **Quién administra.** Quien tiene acceso a Render y a la base de datos puede, técnicamente, leer todo. El
   aislamiento entre usuarios es de la app, no contra quien la aloja. Y un administrador que le pone una
   contraseña nueva a un usuario podría entrar como él: el usuario lo nota, porque su contraseña deja de

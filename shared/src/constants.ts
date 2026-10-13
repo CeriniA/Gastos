@@ -51,6 +51,8 @@ export const MAX_RATE = 1_000_000_000;
 /** Longest username and password the login accepts. */
 export const MAX_USERNAME_LENGTH = 100;
 export const MAX_PASSWORD_LENGTH = 200;
+/** How long a session lasts before the user has to sign in again, unless the server is told otherwise. */
+export const SESSION_DAYS = 30;
 /** Shorter passwords are guessed too easily; applies to every password set from now on. */
 export const MIN_PASSWORD_LENGTH = 8;
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DEFAULT_TIMEZONE } from '@gastos/shared';
+import { DEFAULT_TIMEZONE, SESSION_DAYS } from '@gastos/shared';
 
 /**
  * The only file that reads process.env. Everything else imports `env`.
@@ -16,7 +16,6 @@ try {
 const DEFAULT_PORT = 4000;
 /** A shorter secret can be guessed; this is what HS256 tokens need. */
 const MIN_JWT_SECRET_LENGTH = 32;
-const DEFAULT_SESSION_DAYS = 30;
 
 /** An optional secret: missing or blank means the feature that needs it is off. */
 const optionalSecret = z
@@ -31,7 +30,7 @@ const envSchema = z.object({
   JWT_SECRET: z
     .string()
     .min(MIN_JWT_SECRET_LENGTH, `JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters`),
-  JWT_EXPIRES_DAYS: z.coerce.number().int().positive().default(DEFAULT_SESSION_DAYS),
+  JWT_EXPIRES_DAYS: z.coerce.number().int().positive().default(SESSION_DAYS),
   /**
    * The first user, an admin, created when the server starts and nobody
    * exists yet. After that, users and passwords are managed from the app and

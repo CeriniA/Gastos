@@ -5,3 +5,7 @@ dev-dist/
 .env.local
 *.log
 .DS_Store
+# The credential file Google Cloud offers to download: it holds the client secret.
+client_secret*.json
+# Lock files an editor leaves next to an open document.
+~$*

@@ -27,7 +27,16 @@ Es la pantalla que le pregunta a cada usuario "¿Dejás que Gastos use tu Drive?
 
 1. Tocá **Comenzar**. Nombre de la app: `Gastos`. Correo de asistencia: el tuyo.
 2. Público: **Externo**. Correo de contacto: el tuyo. Aceptá y creá.
-3. En **Público** (Audience), tocá **Publicar app** y confirmá, para que quede **En producción**.
+3. En **Información de la marca** (Branding), Google pide tres direcciones. Usá la del sitio de la app
+   (no la del backend):
+   - Página principal: `https://TU-SITIO.onrender.com`
+   - Política de Privacidad: `https://TU-SITIO.onrender.com/privacidad`
+   - Condiciones del Servicio: `https://TU-SITIO.onrender.com/condiciones`
+
+   En **Dominios autorizados** van el del sitio y el del backend, sin `https://`. **No subas un logotipo**:
+   con logotipo Google exige verificar la marca y la publicación se traba.
+
+4. En **Público** (Audience), tocá **Publicar app** y confirmá, para que quede **En producción**.
    Importante: si queda "En prueba", Google corta el permiso a los 7 días y la copia deja de andar, y además
    solo podrían conectarse las cuentas que agregues a mano.
    Con el permiso que usa la app (`drive.file`, solo sus propios archivos) no hace falta que Google la

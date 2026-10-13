@@ -6,7 +6,10 @@ leé `docs/ARQUITECTURA.md` y `docs/ESPECIFICACION.md`. Estas reglas no son opci
 ## Idioma
 
 - Código, nombres de archivos, colecciones, campos y comentarios: **inglés**.
-- Todo texto que ve el usuario: **español**, y vive solo en `frontend/src/shared/i18n/es.ts`.
+- Todo texto que ve el usuario: **español**, y vive solo en `frontend/src/shared/i18n/es.ts`. La política
+  de privacidad y las condiciones de uso, que son largas, viven al lado, en `legal.ts`.
+- `legal.ts` dice lo que la app hace con los datos y tiene que ser cierto: si un cambio toca qué se guarda,
+  a quién se envía o cuándo se borra, se actualiza ese texto y su fecha en el mismo cambio.
 - Documentación en `docs/`: español.
 - Usá los términos de `docs/GLOSARIO.md`. No inventes otra traducción para un concepto que ya tiene nombre.
 

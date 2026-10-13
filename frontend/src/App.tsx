@@ -12,6 +12,7 @@ import { ReviewPage } from './features/documents/ReviewPage';
 import { StatementPage } from './features/documents/StatementPage';
 import { HomePage } from './features/home/HomePage';
 import { InstitutionsPage } from './features/institutions/InstitutionsPage';
+import { LegalPage } from './features/legal/LegalPage';
 import { MorePage } from './features/more/MorePage';
 import { ReportsPage } from './features/reports/ReportsPage';
 import { TagsPage } from './features/tags/TagsPage';
@@ -19,10 +20,23 @@ import { TransactionFormPage } from './features/transactions/TransactionFormPage
 import { TransactionsPage } from './features/transactions/TransactionsPage';
 import { TrashPage } from './features/transactions/TrashPage';
 import { UsersPage } from './features/users/UsersPage';
+import { legal } from './shared/i18n/legal';
 import { AppShell } from './shared/layout/AppShell';
 
 /** Route paths are in Spanish because the user sees them in the address bar. */
 export function App() {
+  return (
+    <Routes>
+      {/* Public: read without signing in, by users and by whoever reviews the app. */}
+      <Route path={legal.privacy.path} element={<LegalPage document={legal.privacy} />} />
+      <Route path={legal.terms.path} element={<LegalPage document={legal.terms} />} />
+      <Route path="*" element={<SignedIn />} />
+    </Routes>
+  );
+}
+
+/** Everything else is the user's own data: it asks who they are first. */
+function SignedIn() {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) return <LoginPage />;
 

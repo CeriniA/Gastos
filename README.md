@@ -126,6 +126,9 @@ cualquier foto o PDF que subas "lee" la misma respuesta inventada, y conectar Dr
      (`docs/RESPALDO_DRIVE.md`). Sin las tres, el respaldo es solo manual.
    - `CORS_ORIGIN`: la dirección del sitio estático (`https://gastos-web.onrender.com` o la que asigne Render).
    - `VITE_API_URL`: la dirección del servicio (`https://gastos-api.onrender.com`), sin `/api/v1`.
+   - `VITE_CONTACT_EMAIL` (opcional): el mail al que pueden escribir los usuarios por sus datos. Se
+     muestra en la política de privacidad (`/privacidad`) y en las condiciones de uso (`/condiciones`),
+     que son páginas públicas.
 4. Abrir el sitio en Chrome desde el celular y elegir "Agregar a pantalla de inicio".
 
 El servicio gratuito se duerme tras 15 minutos sin uso y tarda cerca de un minuto en despertar. La app

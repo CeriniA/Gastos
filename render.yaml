@@ -55,6 +55,9 @@ services:
         value: 22
       - key: VITE_API_URL
         sync: false
+      # Shown on the privacy policy and the terms, which are public pages.
+      - key: VITE_CONTACT_EMAIL
+        sync: false
     routes:
       # Every path is served by the single-page app.
       - type: rewrite

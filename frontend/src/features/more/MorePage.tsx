@@ -4,6 +4,7 @@ import { es } from '../../shared/i18n/es';
 import { Button, Notice, PageTitle } from '../../shared/ui/ui';
 import { useAction } from '../../shared/ui/useAction';
 import { useAuth } from '../auth/AuthContext';
+import { LegalLinks } from '../legal/LegalPage';
 
 const LINKS = [
   { to: '/pendientes', label: es.more.pending },
@@ -58,6 +59,9 @@ export function MorePage() {
         </Button>
       </div>
       <p className="mt-2 text-sm text-muted">{es.auth.logoutAllHint}</p>
+      <div className="mt-6">
+        <LegalLinks />
+      </div>
     </>
   );
 }

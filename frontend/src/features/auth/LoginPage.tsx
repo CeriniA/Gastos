@@ -5,6 +5,7 @@ import { es } from '../../shared/i18n/es';
 import { ServerWaking } from '../../shared/layout/ServerWaking';
 import { Button, Field, Notice, TextInput } from '../../shared/ui/ui';
 import { useAction } from '../../shared/ui/useAction';
+import { LegalLinks } from '../legal/LegalPage';
 import { useAuth } from './AuthContext';
 
 export function LoginPage() {
@@ -39,6 +40,9 @@ export function LoginPage() {
           {form.formState.isSubmitting ? es.auth.submitting : es.auth.submit}
         </Button>
       </form>
+      <div className="mt-6 text-center">
+        <LegalLinks />
+      </div>
     </main>
   );
 }
