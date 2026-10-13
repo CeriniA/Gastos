@@ -3,9 +3,9 @@ import cors from 'cors';
 import express, { Router, type Express } from 'express';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
-import { API_PREFIX } from '@gastos/shared';
-import type { Container } from './composition';
+import { API_PREFIX, DATA_SCREEN_PATH } from '@gastos/shared';
 import type { Env } from './config/env';
+import type { Container } from './container';
 import { isDatabaseUp } from './core/db/connection';
 import { ok } from './core/http/http';
 import { logger } from './core/logger';
@@ -13,7 +13,7 @@ import { requireAuth } from './core/middleware/auth';
 import { errorHandler, notFoundHandler } from './core/middleware/errorHandler';
 import { createAccountsRouter } from './modules/accounts';
 import { createAuthRouter } from './modules/auth';
-import { createBackupRouter } from './modules/backup';
+import { DRIVE_CALLBACK_ROUTE, createBackupRouter, createDriveCallback } from './modules/backup';
 import { createCardPeriodsRouter } from './modules/card-periods';
 import { createCategoriesRouter } from './modules/categories';
 import { createCategoryRulesRouter } from './modules/category-rules';
@@ -22,9 +22,11 @@ import { createDocumentsRouter } from './modules/documents';
 import { createExchangeRatesRouter } from './modules/exchange-rates';
 import { createInstallmentPlansRouter } from './modules/installment-plans';
 import { createInstitutionsRouter } from './modules/institutions';
+import { createReportsRouter } from './modules/reports';
 import { createSpreadsheetRouter } from './modules/spreadsheet';
 import { createTagsRouter } from './modules/tags';
 import { createTransactionsRouter } from './modules/transactions';
+import { createUsersRouter } from './modules/users';
 
 export function createApp(container: Container, env: Env): Express {
   const app = express();
@@ -48,13 +50,20 @@ export function createApp(container: Container, env: Env): Express {
     ok(res, { status: 'ok', database: isDatabaseUp() ? 'up' : 'down' });
   });
   api.use('/auth', createAuthRouter(container.auth));
+  // Google sends the browser here after a user answers: a page load, with no token.
+  api.get(
+    DRIVE_CALLBACK_ROUTE,
+    createDriveCallback(container.driveBackup, `${env.CORS_ORIGIN[0]}${DATA_SCREEN_PATH}`),
+  );
 
-  // Everything below needs a valid token.
+  // Everything below needs a valid token. Each controller then runs as the
+  // user of that token (`asUser`), so the data it reaches is theirs.
   api.use(requireAuth(container.auth));
 
   // Request bodies are parsed after authentication. Routes that accept large
   // bodies (backup restore, import) declare their own parser and limit.
   const json = express.json({ limit: '200kb' });
+  api.use('/users', json, createUsersRouter(container.users));
   api.use('/accounts', json, createAccountsRouter(container.accounts));
   api.use('/card-periods', json, createCardPeriodsRouter(container.cardPeriods));
   api.use('/installment-plans', json, createInstallmentPlansRouter(container.installmentPlans));
@@ -64,6 +73,7 @@ export function createApp(container: Container, env: Env): Express {
   api.use('/transactions', json, createTransactionsRouter(container.transactions));
   api.use('/category-rules', json, createCategoryRulesRouter(container.categoryRules));
   api.use('/consumption', createConsumptionRouter(container.consumption));
+  api.use('/reports', createReportsRouter(container.reports));
   api.use('/documents', createDocumentsRouter(container.documents));
   api.use('/exchange-rates', createExchangeRatesRouter(container.exchangeRates));
   api.use('/backup', createBackupRouter(container.backup, container.driveBackup));

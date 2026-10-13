@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AccountsPage } from './features/accounts/AccountsPage';
 import { useAuth } from './features/auth/AuthContext';
 import { LoginPage } from './features/auth/LoginPage';
+import { PasswordPage } from './features/auth/PasswordPage';
 import { CardsPage } from './features/cards/CardsPage';
 import { CategoriesPage } from './features/categories/CategoriesPage';
 import { DataPage } from './features/data/DataPage';
@@ -17,6 +18,7 @@ import { TagsPage } from './features/tags/TagsPage';
 import { TransactionFormPage } from './features/transactions/TransactionFormPage';
 import { TransactionsPage } from './features/transactions/TransactionsPage';
 import { TrashPage } from './features/transactions/TrashPage';
+import { UsersPage } from './features/users/UsersPage';
 import { AppShell } from './shared/layout/AppShell';
 
 /** Route paths are in Spanish because the user sees them in the address bar. */
@@ -44,6 +46,8 @@ export function App() {
         <Route path="mas/etiquetas" element={<TagsPage />} />
         <Route path="mas/papelera" element={<TrashPage />} />
         <Route path="mas/datos" element={<DataPage />} />
+        <Route path="mas/contrasena" element={<PasswordPage />} />
+        <Route path="mas/usuarios" element={<UsersPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

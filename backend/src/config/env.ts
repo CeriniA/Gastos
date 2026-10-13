@@ -32,6 +32,11 @@ const envSchema = z.object({
     .string()
     .min(MIN_JWT_SECRET_LENGTH, `JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters`),
   JWT_EXPIRES_DAYS: z.coerce.number().int().positive().default(DEFAULT_SESSION_DAYS),
+  /**
+   * The first user, an admin, created when the server starts and nobody
+   * exists yet. After that, users and passwords are managed from the app and
+   * these two are no longer read.
+   */
   AUTH_USERNAME: z.string().min(1),
   AUTH_PASSWORD_HASH: z.string().regex(/^\$2[aby]\$/, 'AUTH_PASSWORD_HASH must be a bcrypt hash'),
   CORS_ORIGIN: z
@@ -45,12 +50,16 @@ const envSchema = z.object({
   GEMINI_MODEL: z.string().min(1).default('gemini-3.5-flash-lite'),
   /**
    * The automatic copy to Google Drive. The OAuth client comes from Google
-   * Cloud; the refresh token from `npm run drive-auth -w backend`. All three,
-   * or the copy is off. See docs/RESPALDO_DRIVE.md.
+   * Cloud and is the app's; each user then connects their own Drive from the
+   * app. All three, or nobody can. See docs/RESPALDO_DRIVE.md.
    */
   DRIVE_CLIENT_ID: optionalSecret,
   DRIVE_CLIENT_SECRET: optionalSecret,
-  DRIVE_REFRESH_TOKEN: optionalSecret,
+  /** This server's own public address, where Google sends users back. No trailing slash. */
+  PUBLIC_API_URL: z
+    .string()
+    .optional()
+    .transform((value) => value?.trim().replace(/\/$/, '') || undefined),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { idParamsSchema, institutionCreateSchema, institutionUpdateSchema } from '@gastos/shared';
-import { noContent, ok, parse } from '../../core/http/http';
+import { asUser, noContent, ok, parse } from '../../core/http/http';
 import type { InstitutionsService } from './institutions.service';
 
 export function createInstitutionsController(service: InstitutionsService) {
@@ -18,5 +18,5 @@ export function createInstitutionsController(service: InstitutionsService) {
     await service.remove(parse(idParamsSchema, req.params).id);
     noContent(res);
   };
-  return { list, create, update, remove };
+  return asUser({ list, create, update, remove });
 }

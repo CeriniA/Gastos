@@ -1,5 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { COLLECTIONS } from '../../core/db/collections';
+import { ownedByUser, uniquePerUser } from '../../core/db/ownerPlugin';
 import type { ObjectId } from '../../core/db/ids';
 
 /** Stage 4: manual ARS/USD rates by start date, used only when a report shows both currencies together. */
@@ -18,10 +19,13 @@ const MIN_RATE = 0.0001;
 
 const schema = new Schema<ExchangeRateDoc>(
   {
-    validFrom: { type: String, required: true, unique: true },
+    validFrom: { type: String, required: true },
     arsPerUsd: { type: Number, required: true, min: MIN_RATE },
   },
   { timestamps: true },
 );
+
+uniquePerUser(schema, { validFrom: 1 });
+schema.plugin(ownedByUser);
 
 export const ExchangeRateModel = model<ExchangeRateDoc>('ExchangeRate', schema, COLLECTIONS.exchangeRates);

@@ -12,14 +12,19 @@ import type { DbSession, TransactionRunner } from '../../core/db/transaction';
 import { AppError } from '../../core/errors/errors';
 
 export interface BackupHooks {
-  /** Runs once the restored data is committed, e.g. to apply pending migrations. */
-  afterRestore(): Promise<void>;
+  /**
+   * Runs once the restored data is committed, with the migrations the backup
+   * had already been through, so the ones it is missing can be applied to it.
+   */
+  afterRestore(appliedMigrations: readonly string[]): Promise<void>;
 }
 
 /**
- * Full backup and restore. Works through the ports each module exposes, so it
- * never imports another module's model and automatically covers new modules
- * once their port is registered in the composition root.
+ * Full backup and restore of the running user's data. Works through the ports
+ * each module exposes, so it never imports another module's model and
+ * automatically covers new modules once their port is registered in the
+ * composition root. The ports themselves keep to the running user: a backup
+ * holds one user's data, and a restore replaces only theirs.
  */
 export function createBackupService(
   ports: readonly CollectionPort[],
@@ -66,6 +71,8 @@ export function createBackupService(
       const restored = await runInTransaction(async (session) => {
         const counts: Record<string, number> = {};
         for (const port of ports) {
+          // What belongs to the app, not to the user, is read from the file and never replaced.
+          if (port.shared) continue;
           counts[port.name] = await port.replaceAll(file.collections[port.name] ?? [], session);
         }
         const broken = await findBroken(session);
@@ -76,7 +83,11 @@ export function createBackupService(
         }
         return counts;
       });
-      await hooks.afterRestore();
+      const applied = ports
+        .filter((port) => port.shared)
+        .flatMap((port) => file.collections[port.name] ?? [])
+        .map((entry) => String((entry as { _id?: unknown })._id));
+      await hooks.afterRestore(applied);
       return { restored };
     },
 

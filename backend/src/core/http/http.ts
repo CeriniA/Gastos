@@ -1,7 +1,9 @@
-import type { Response } from 'express';
+import type { RequestHandler, Response } from 'express';
 import type { z } from 'zod';
 import type { ApiSuccessBody } from '@gastos/shared';
+import { runAsUser } from '../context/owner';
 import { ValidationError } from '../errors/errors';
+import { sessionOf } from '../middleware/auth';
 
 /**
  * Validates request data against a shared schema. Controllers call this for
@@ -16,6 +18,24 @@ export function parse<S extends z.ZodTypeAny>(schema: S, data: unknown): z.outpu
     });
   }
   return result.data;
+}
+
+/**
+ * Makes every handler of a controller run on behalf of the signed-in user, so
+ * all the data it reaches is theirs (core/context/owner.ts). Every controller
+ * of user data returns its handlers through this.
+ *
+ * It is done here, at the last step, and not in a middleware: reading a
+ * request's body or its files happens between the two, and the owner would not
+ * survive it.
+ */
+export function asUser<T extends Record<string, RequestHandler>>(handlers: T): T {
+  const scoped = Object.entries(handlers).map(([name, handler]) => {
+    const asOwner: RequestHandler = (req, res, next) =>
+      runAsUser(sessionOf(res).userId, () => handler(req, res, next));
+    return [name, asOwner];
+  });
+  return Object.fromEntries(scoped) as T;
 }
 
 /** Every successful JSON response has the same envelope: { data }. */

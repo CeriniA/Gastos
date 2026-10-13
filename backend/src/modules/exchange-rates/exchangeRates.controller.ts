@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { referenceRateQuerySchema } from '@gastos/shared';
-import { ok, parse } from '../../core/http/http';
+import { asUser, ok, parse } from '../../core/http/http';
 import type { ExchangeRatesService } from './exchangeRates.service';
 
 export function createExchangeRatesController(service: ExchangeRatesService) {
@@ -8,5 +8,5 @@ export function createExchangeRatesController(service: ExchangeRatesService) {
     const { from, to } = parse(referenceRateQuerySchema, req.query);
     ok(res, await service.reference(from, to));
   };
-  return { reference };
+  return asUser({ reference });
 }

@@ -1,6 +1,7 @@
 import { Schema, model } from 'mongoose';
 import { CATEGORY_KINDS, CURRENCIES, type CategoryKind, type Currency } from '@gastos/shared';
 import { COLLECTIONS } from '../../core/db/collections';
+import { ownedByUser, uniquePerUser } from '../../core/db/ownerPlugin';
 import type { ObjectId } from '../../core/db/ids';
 
 /** Stage 4: an income or expense the user marked as fixed, expected every month. */
@@ -24,7 +25,7 @@ const LAST_DAY_OF_MONTH = 31;
 const schema = new Schema<RecurringDoc>(
   {
     name: { type: String, required: true, trim: true },
-    nameKey: { type: String, required: true, unique: true },
+    nameKey: { type: String, required: true },
     type: { type: String, required: true, enum: [...CATEGORY_KINDS] },
     expectedAmountCents: { type: Number, required: true, min: 1 },
     currency: { type: String, required: true, enum: [...CURRENCIES] },
@@ -35,5 +36,8 @@ const schema = new Schema<RecurringDoc>(
   },
   { timestamps: true },
 );
+
+uniquePerUser(schema, { nameKey: 1 });
+schema.plugin(ownedByUser);
 
 export const RecurringModel = model<RecurringDoc>('Recurring', schema, COLLECTIONS.recurrings);

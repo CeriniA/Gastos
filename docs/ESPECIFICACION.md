@@ -7,8 +7,12 @@ Cada sección indica en qué etapa se construye (`ROADMAP.md`). Lo marcado **eta
 
 ## 1. Propósito y alcance
 
-App web personal, de un solo usuario, para registrar ingresos, egresos y transferencias, y ver el
-resultado de cada mes. Se usa sobre todo desde el celular (Android), instalada como app.
+App web personal para registrar ingresos, egresos y transferencias, y ver el resultado de cada mes. Se usa
+sobre todo desde el celular (Android), instalada como app.
+
+Una misma instalación la usan varias personas, cada una con su usuario. **Cada usuario tiene sus propios
+datos y no ve los de nadie más** (sección 17). Todo lo que sigue en este documento ("las cuentas", "los
+movimientos", "el respaldo") se refiere a los del usuario que está usando la app.
 
 Formas de cargar un movimiento:
 
@@ -92,6 +96,8 @@ sobre la marcha.
 - Dos categorías hermanas no pueden llamarse igual.
 - Mover una categoría mueve su rama; no puede quedar dentro de sí misma ni pasar de tres niveles.
 - Renombrar, mover o unir no obliga a recargar nada: los movimientos siguen a la categoría.
+- Al unir dos categorías, un movimiento dividido que tenía una parte en cada una queda con una sola parte
+  por la suma; si no le queda otra parte, deja de estar dividido.
 - Una categoría archivada deja de ofrecerse, pero los movimientos viejos la conservan.
 
 **Etiquetas**: marcas libres que cruzan categorías ("Vacaciones enero"). Un movimiento puede tener
@@ -200,6 +206,19 @@ fuerza nada: queda la sugerencia de la IA.
   o el resumen dice "devolución", "reintegro", "anulación", "bonificación") y en la planilla, con el tipo
   `devolución`. Una devolución no va en cuotas.
 
+**Pago del resumen (hecho):**
+
+- En Más → Tarjetas, cada resumen tiene "Registrar un pago": de qué cuenta sale la plata, la fecha y el
+  monto, que arranca en lo que falta pagar. Crea una **transferencia** desde esa cuenta a la tarjeta, ligada
+  al resumen. No es un egreso: las compras ya cuentan.
+- Se puede pagar en partes. El resumen muestra lo pagado y lo que falta, contra el total que dice el banco
+  o, si no se cargó, contra lo que la app sumó.
+- Si la plata sale de una cuenta en otra moneda (dólares de la tarjeta pagados con pesos) se piden los dos
+  montos: lo que sale de la cuenta y lo que cubre del resumen.
+- Una tarjeta se paga desde efectivo, banco o billetera, no desde otra tarjeta.
+- El pago es un movimiento más: se edita o se manda a la papelera, y ahí deja de contar. Si se borra el
+  cierre, sus pagos quedan como transferencias sueltas.
+
 **Lo que sigue:**
 
 - El cierre decide en qué resumen cae una compra y, por lo tanto, su fecha de pago.
@@ -220,13 +239,20 @@ mano. Un fijo se espera cada mes, entra en la proyección y avisa si no apareci�
 Balance del mes por moneda; gasto por categoría con apertura del árbol; por cuenta; evolución mensual;
 principales comercios; cuotas y fijos pendientes; buscador con filtros; exportación a Excel.
 
+**Por categoría (hecho).** La pestaña Informes abre en "Por categoría": para el mes elegido y por cada
+moneda, los ingresos y los egresos con su total y cada categoría principal con su monto y su porcentaje, de
+mayor a menor. Una categoría con subcategorías se abre y muestra cada una, más lo cargado directo en ella.
+Usa las mismas reglas que el balance del Inicio, así que los totales coinciden: cuenta por fecha de pago,
+las devoluciones restan, un movimiento dividido reparte cada parte en su categoría, y las transferencias y
+la papelera no entran. Lo que no tiene categoría aparece como "Sin categoría".
+
 **Productos de un movimiento.** Todo egreso o ingreso puede llevar el detalle de lo comprado: nombre,
 grupo, cantidad y monto por renglón. Se cargan a mano al crear o editar un movimiento, y en la revisión de
 un ticket se corrige lo que leyó la IA. Son opcionales y no tienen que sumar el total: la pantalla muestra
 la diferencia (descuentos, recargos o renglones que no son productos) pero deja guardar. Un descuento se
 carga con monto negativo.
 
-**Consumo (hecho).** La pestaña Informes muestra qué se compró en el mes, a partir de los productos
+**Consumo (hecho).** La otra pestaña de Informes muestra qué se compró en el mes, a partir de los productos
 leídos de los tickets: total por moneda, grupos (lácteos, almacén, limpieza…) con su porcentaje y, al
 abrir un grupo, cada producto con cuántas veces se compró y la cantidad. Un buscador muestra todas las
 compras de un producto con fecha, comercio y precio. Solo cuenta compras cargadas desde un ticket con
@@ -236,17 +262,19 @@ detalle o con productos cargados a mano; un pago de MercadoPago sin detalle no a
 
 Diseño para celular primero. Barra inferior: **Inicio, Movimientos, +, Informes, Más**.
 
-| Pantalla    | Qué muestra                                                                        | Etapa |
-| ----------- | ---------------------------------------------------------------------------------- | ----- |
-| Login       | Usuario y contraseña; aviso si el servidor está despertando                        | 1     |
-| Inicio      | Balance del mes por moneda, últimos movimientos                                    | 1     |
-| Movimientos | Lista por mes con buscador y filtros; tocar uno lo edita                           | 1     |
-| Agregar     | Carga manual (etapa 1); foto o archivo (etapa 2)                                   | 1 y 2 |
-| Más         | Cuentas, tarjetas, categorías, bancos, etiquetas, papelera, respaldo e importación | 1 y 3 |
-| Pendientes  | Bandeja única de todo lo que espera una decisión                                   | 2     |
-| Revisión    | Imagen y datos extraídos                                                           | 2     |
-| Tarjetas    | Compras desde el último cierre, cada resumen con lo cargado, alta de cierres       | 3     |
-| Informes    | Ver sección 10                                                                     | 4     |
+| Pantalla    | Qué muestra                                                                         | Etapa |
+| ----------- | ----------------------------------------------------------------------------------- | ----- |
+| Login       | Usuario y contraseña; aviso si el servidor está despertando                         | 1     |
+| Inicio      | Balance del mes por moneda, últimos movimientos                                     | 1     |
+| Movimientos | Lista por mes con buscador y filtros; tocar uno lo edita                            | 1     |
+| Agregar     | Carga manual (etapa 1); foto o archivo (etapa 2)                                    | 1 y 2 |
+| Más         | Cuentas, tarjetas, categorías, bancos, etiquetas, papelera, respaldo e importación  | 1 y 3 |
+| Contraseña  | En Más: cada usuario cambia la suya                                                 | 1     |
+| Usuarios    | En Más, solo para el administrador: crear, cambiar contraseña, activar o desactivar | 1     |
+| Pendientes  | Bandeja única de todo lo que espera una decisión                                    | 2     |
+| Revisión    | Imagen y datos extraídos                                                            | 2     |
+| Tarjetas    | Compras desde el último cierre, cada resumen con lo cargado, alta de cierres        | 3     |
+| Informes    | Ver sección 10                                                                      | 4     |
 
 Toda pantalla contempla: cargando, lista vacía con indicación de qué hacer, error con reintento y
 servidor despertando.
@@ -268,6 +296,11 @@ MongoDB. Los nombres están en inglés; ver `GLOSARIO.md`.
 | `recurrings`       | Movimientos fijos                           | `accounts`, `categories`                                                                       | 4     |
 | `exchangeRates`    | Tasas de cambio por fecha                   |                                                                                                | 4     |
 | `migrations`       | Migraciones ya aplicadas                    |                                                                                                | 1     |
+| `users`            | Quién puede entrar, y su permiso de Drive   |                                                                                                | 1     |
+
+Todas las colecciones, salvo `migrations` y `users`, guardan datos de un usuario: cada documento lleva su
+dueño (`userId`) y lo que no puede repetirse (el nombre de una cuenta, una regla por comercio) es único
+dentro de los datos de cada usuario. `users` no entra en ningún respaldo.
 
 Los modelos de las etapas 2 a 4 ya existen para que el respaldo tenga un formato estable; sus servicios
 y pantallas se escriben en su etapa.
@@ -286,6 +319,7 @@ Los ítems y las divisiones van **dentro** del movimiento: no existen sin él y 
 | Cuota o plan (etapa 3)            | Pregunta: solo esa cuota o el plan; las confirmadas piden confirmación aparte |
 | Período de tarjeta (etapa 3)      | Sus movimientos quedan sin período y se recalcula la fecha de pago            |
 | Fijo (etapa 4)                    | Los movimientos quedan, solo pierden la marca                                 |
+| Usuario                           | No se borra: se desactiva. No puede entrar y sus datos quedan                 |
 
 ## 14. Edición
 
@@ -305,7 +339,9 @@ Todas se aplican en el backend; el frontend las repite para avisar antes.
 - Transferencia: origen y destino distintos; entre monedas, los dos montos.
 - División: las partes suman el total.
 - Cuota: el número no supera el total.
-- Nombres únicos: cuenta, etiqueta y categoría entre hermanas (sin distinguir mayúsculas ni acentos).
+- Nombres únicos dentro de los datos de cada usuario: cuenta, etiqueta y categoría entre hermanas (sin
+  distinguir mayúsculas ni acentos). El nombre de usuario es único en toda la app.
+- Contraseña nueva: al menos 8 caracteres.
 - Archivo: tipo y tamaño permitidos (5 MB), huella no repetida.
 
 ## 16. Integridad
@@ -321,23 +357,54 @@ MongoDB no impide una referencia rota; lo hace el backend:
 
 ## 17. Seguridad
 
-Un usuario y contraseña en variables de entorno, contraseña guardada como hash, sesión con vencimiento
-(30 días), límite de intentos de login, backend accesible solo desde el frontend configurado. La clave
-de la IA vive solo en el backend.
+**Usuarios.** Cada persona entra con su nombre de usuario y su contraseña. Hay dos tipos:
 
-"Cerrar sesión en todos los dispositivos" (en Más) invalida toda sesión abierta hasta ese momento,
-incluida la del dispositivo que lo pide. Sirve si se pierde el celular.
+- **Usuario**: usa la app con sus propios datos.
+- **Administrador**: además crea usuarios, les pone una contraseña nueva y los activa o desactiva, desde
+  Más → Usuarios. **No ve los datos de nadie**: no hay pantalla ni ruta para eso.
+
+No hay registro abierto: solo un administrador crea usuarios. Un usuario nuevo arranca con las categorías,
+cuentas y bancos iniciales. El primer administrador sale de las variables `AUTH_USERNAME` y
+`AUTH_PASSWORD_HASH` la primera vez que arranca el servidor; después esas variables no se leen más.
+
+Un usuario no se borra: se desactiva. Deja de poder entrar, se cierran sus sesiones y sus datos quedan.
+Nadie se desactiva a sí mismo.
+
+**Aislamiento.** Cada dato pertenece a un usuario y solo él lo ve, lo cambia, lo exporta o lo respalda.
+Pedir un dato ajeno por su id responde "no existe". El respaldo, la restauración, la exportación, la
+lectura con IA y la copia en Drive trabajan solo sobre los datos de quien los pide.
+
+**Contraseñas y sesiones.** Las contraseñas se guardan como hash (bcrypt) en la base; nunca salen en una
+respuesta ni en un respaldo. Una contraseña nueva tiene al menos 8 caracteres. La sesión es un token (JWT)
+que vence a los 30 días. Hay límite de intentos de login, el backend acepta pedidos solo desde el frontend
+configurado, y la clave de la IA vive solo en el backend.
+
+Las sesiones de un usuario se cierran todas juntas, incluida la del dispositivo que lo pide, cuando:
+
+- toca "Cerrar sesión en todos los dispositivos" (en Más; sirve si pierde el celular);
+- cambia su contraseña (Más → Cambiar mi contraseña), o el administrador le pone una nueva;
+- el administrador lo desactiva.
+
+Cerrar las sesiones de un usuario no toca las de los demás.
 
 Lo que queda del lado del usuario, porque la app no puede hacerlo por él:
 
-- **Respaldo.** Atlas gratuito no hace copias. La app guarda una copia completa en el Google Drive del
-  usuario una vez por día mientras se usa (un solo archivo, `gastos-respaldo.json`; Drive guarda versiones
-  anteriores). Hay que activarla una vez siguiendo `docs/RESPALDO_DRIVE.md`; si falla o pasan más de 3 días
-  sin copia, la pantalla principal lo avisa. El respaldo manual desde Más sigue disponible.
+- **Respaldo.** Atlas gratuito no hace copias. La app guarda una copia completa de los datos de cada
+  usuario en **su propio** Google Drive una vez por día mientras se usa (un solo archivo,
+  `gastos-respaldo.json`; Drive guarda versiones anteriores). El administrador configura Google una sola
+  vez (`docs/RESPALDO_DRIVE.md`) y después cada usuario conecta su Drive con un botón en Más → Respaldo y
+  datos; puede desconectarlo cuando quiera. Si la copia falla o pasan más de 3 días sin copia, la pantalla
+  principal se lo avisa a ese usuario. El permiso de cada uno se guarda cifrado y no lo ve nadie más. El
+  respaldo manual desde Más sigue disponible. Restaurar un respaldo reemplaza los datos de quien lo
+  restaura, no los de los demás; uno que tiene datos que hoy son de otro usuario se rechaza.
 - **Contraseña de la base.** Atlas acepta conexiones desde cualquier dirección porque Render gratuito
   no tiene dirección fija; la contraseña de la base es la única barrera y tiene que ser larga y al azar.
 - **Claves.** Una clave que se pegó en un chat, un mail o un repositorio se da por expuesta y se cambia.
 - **Privacidad.** Las fotos de los tickets se envían a Google (Gemini) para leerlas.
+- **Quién administra.** Quien tiene acceso a Render y a la base de datos puede, técnicamente, leer todo. El
+  aislamiento entre usuarios es de la app, no contra quien la aloja. Y un administrador que le pone una
+  contraseña nueva a un usuario podría entrar como él: el usuario lo nota, porque su contraseña deja de
+  andar y se le cierran las sesiones.
 
 ## 18. Segunda versión
 

@@ -7,7 +7,7 @@ import {
   transactionListQuerySchema,
   transactionUpdateSchema,
 } from '@gastos/shared';
-import { noContent, ok, parse } from '../../core/http/http';
+import { asUser, noContent, ok, parse } from '../../core/http/http';
 import type { TransactionsService } from './transactions.service';
 
 export function createTransactionsController(service: TransactionsService) {
@@ -44,5 +44,5 @@ export function createTransactionsController(service: TransactionsService) {
   const emptyTrash: RequestHandler = async (_req, res) => {
     ok(res, { deleted: await service.emptyTrash() });
   };
-  return { list, summary, lastRate, get, create, update, remove, restore, removeForever, emptyTrash };
+  return asUser({ list, summary, lastRate, get, create, update, remove, restore, removeForever, emptyTrash });
 }

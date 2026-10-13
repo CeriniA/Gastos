@@ -5,7 +5,7 @@ import {
   categoryUpdateSchema,
   idParamsSchema,
 } from '@gastos/shared';
-import { noContent, ok, parse } from '../../core/http/http';
+import { asUser, noContent, ok, parse } from '../../core/http/http';
 import type { CategoriesService } from './categories.service';
 
 export function createCategoriesController(service: CategoriesService) {
@@ -27,5 +27,5 @@ export function createCategoriesController(service: CategoriesService) {
     const { id } = parse(idParamsSchema, req.params);
     ok(res, await service.merge(id, parse(categoryMergeSchema, req.body).targetId));
   };
-  return { list, create, update, remove, merge };
+  return asUser({ list, create, update, remove, merge });
 }

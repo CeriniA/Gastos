@@ -14,33 +14,44 @@ const SHUTDOWN_GRACE_MS = 10_000;
 
 async function main(): Promise<void> {
   await connectDatabase(env.MONGODB_URI);
-  await runMigrations(migrations);
 
   const container = createContainer(env);
-  // Sessions closed with "sign out everywhere" stay closed across restarts.
-  await container.auth.init();
+  // Somebody has to be able to sign in: the first time, the admin of the configuration.
+  const firstUser = await container.users.ensureFirst({
+    username: env.AUTH_USERNAME,
+    passwordHash: env.AUTH_PASSWORD_HASH,
+  });
+  await runMigrations(migrations, container.forEachUser);
+  if (firstUser) await container.welcome(firstUser);
+
+  /** The server's own chores have no request behind them: they run for each user in turn. */
+  const forEveryUser = (chore: string, work: () => Promise<void>) =>
+    container
+      .forEachUser(work)
+      .catch((error: unknown) => logger.error({ err: error, chore }, 'Chore failed'));
 
   // The free Render instance sleeps, so the clean-up runs on every start
   // as well as once a day while it stays awake.
-  const cleanUp = async () => {
-    try {
+  const cleanUp = () =>
+    forEveryUser('clean-up', async () => {
       const purged = await container.transactions.purgeTrash();
-      if (purged > 0) logger.info({ purged }, 'Trash purged');
       const due = await container.transactions.confirmDue();
-      if (due > 0) logger.info({ due }, 'Installments due confirmed');
       const dropped = await container.documents.purgeStale();
-      if (dropped > 0) logger.info({ dropped }, 'Unreviewed uploads dropped');
-    } catch (error) {
-      logger.error({ err: error }, 'Clean-up failed');
-    }
-  };
+      if (purged + due + dropped > 0) logger.info({ purged, due, dropped }, 'Clean-up done');
+    });
+  // The copy to Drive is checked on waking and every hour; it only writes once a day.
+  const backUp = () =>
+    forEveryUser('drive-backup', async () => {
+      await container.driveBackup.runIfDue();
+    });
+  // Documents a restart left half-way, or waiting for the AI to have room again, are picked up.
+  const resumeDocuments = () => forEveryUser('documents', async () => container.documents.resume());
+
   await cleanUp();
   setInterval(() => void cleanUp(), DAY_MS).unref();
-  // The copy to Drive is checked on waking and every hour; it only writes once a day.
-  void container.driveBackup.runIfDue();
-  setInterval(() => void container.driveBackup.runIfDue(), HOUR_MS).unref();
-  // Documents waiting for the AI to have room again are tried when their time comes.
-  setInterval(() => container.documents.resume(), MINUTE_MS).unref();
+  void backUp();
+  setInterval(() => void backUp(), HOUR_MS).unref();
+  setInterval(() => void resumeDocuments(), MINUTE_MS).unref();
 
   const server = createApp(container, env).listen(env.PORT, () => {
     logger.info(
@@ -48,12 +59,11 @@ async function main(): Promise<void> {
         port: env.PORT,
         env: env.NODE_ENV,
         ai: env.GEMINI_API_KEY ? env.GEMINI_MODEL : 'off',
-        driveBackup: env.DRIVE_REFRESH_TOKEN ? 'on' : 'off',
+        driveBackup: env.DRIVE_CLIENT_ID && env.PUBLIC_API_URL ? 'on' : 'off',
       },
       'Server listening',
     );
-    // Documents a restart left half-way are picked up again.
-    container.documents.resume();
+    void resumeDocuments();
   });
 
   const shutdown = (signal: string) => {

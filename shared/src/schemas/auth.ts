@@ -1,10 +1,21 @@
 import { z } from 'zod';
-import { MAX_PASSWORD_LENGTH, MAX_USERNAME_LENGTH } from '../constants';
+import {
+  MAX_PASSWORD_LENGTH,
+  MAX_USERNAME_LENGTH,
+  MIN_PASSWORD_LENGTH,
+  USER_ROLES,
+  type UserRole,
+} from '../constants';
 
-export const loginSchema = z.object({
-  username: z.string().trim().min(1).max(MAX_USERNAME_LENGTH),
-  password: z.string().min(1).max(MAX_PASSWORD_LENGTH),
-});
+const usernameSchema = z.string().trim().min(1).max(MAX_USERNAME_LENGTH);
+/** A password being set. One being checked (login) may be older than the minimum length. */
+const newPasswordSchema = z
+  .string()
+  .min(MIN_PASSWORD_LENGTH, 'Password is too short')
+  .max(MAX_PASSWORD_LENGTH);
+const typedPasswordSchema = z.string().min(1).max(MAX_PASSWORD_LENGTH);
+
+export const loginSchema = z.object({ username: usernameSchema, password: typedPasswordSchema });
 export type LoginInput = z.infer<typeof loginSchema>;
 
 export interface LoginResult {
@@ -12,7 +23,41 @@ export interface LoginResult {
   expiresAt: string;
 }
 
+/** Who a valid token belongs to. */
 export interface SessionInfo {
+  userId: string;
   username: string;
+  role: UserRole;
   expiresAt: string;
 }
+
+/** A user as the admin screen shows it. The password never leaves the server. */
+export interface User {
+  id: string;
+  username: string;
+  role: UserRole;
+  /** An inactive user cannot sign in; their data stays. */
+  active: boolean;
+  createdAt: string;
+}
+
+export const userCreateSchema = z.object({
+  username: usernameSchema,
+  password: newPasswordSchema,
+  role: z.enum(USER_ROLES).default('user'),
+});
+export type UserCreate = z.infer<typeof userCreateSchema>;
+
+/** What an admin can change on a user: a new password, or whether they can sign in. */
+export const userUpdateSchema = z
+  .object({ password: newPasswordSchema, active: z.boolean() })
+  .partial()
+  .refine((changes) => Object.keys(changes).length > 0, { message: 'Nothing to change' });
+export type UserUpdate = z.infer<typeof userUpdateSchema>;
+
+/** A user changing their own password proves they know the current one. */
+export const passwordChangeSchema = z.object({
+  currentPassword: typedPasswordSchema,
+  newPassword: newPasswordSchema,
+});
+export type PasswordChange = z.infer<typeof passwordChangeSchema>;

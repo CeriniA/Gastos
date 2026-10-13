@@ -32,10 +32,12 @@ export interface IntegrityReport {
   broken: BrokenReference[];
 }
 
-/** The automatic copy to Google Drive, as the data screen shows it. */
+/** The user's automatic copy to their Google Drive, as the data screen shows it. */
 export interface DriveBackupStatus {
-  /** False when the server has no Drive permission configured. */
-  configured: boolean;
+  /** False when the server has no Google credentials: nobody can connect a Drive. */
+  available: boolean;
+  /** True once this user gave the app permission to write in their Drive. */
+  connected: boolean;
   /** When the copy in Drive was last written, or null if there is none yet. */
   lastSavedAt: string | null;
   /** Why the last attempt since the server woke up failed, if it did. */

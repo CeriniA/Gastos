@@ -1,17 +1,20 @@
-import type {
-  AccountType,
-  CategoryKind,
-  DocumentErrorCode,
-  DocumentKind,
-  DriveBackupError,
-  DocumentStatus,
-  ErrorCode,
-  ImportIssueCode,
-  InstitutionKind,
-  ProductGroup,
-  TransactionType,
-  UncertainField,
-  UploadableDocumentKind,
+import {
+  MIN_PASSWORD_LENGTH,
+  type AccountType,
+  type CategoryKind,
+  type DocumentErrorCode,
+  type DocumentKind,
+  type DriveBackupError,
+  type DriveConnectResult,
+  type DocumentStatus,
+  type ErrorCode,
+  type ImportIssueCode,
+  type InstitutionKind,
+  type ProductGroup,
+  type TransactionType,
+  type UncertainField,
+  type UploadableDocumentKind,
+  type UserRole,
 } from '@gastos/shared';
 
 /**
@@ -64,6 +67,38 @@ export const es = {
     logoutAllHint: 'Usalo si perdiste el celular o entraste desde una computadora ajena.',
     logoutAllConfirm:
       'Se cierra la sesión en todos los dispositivos, también en este. Vas a tener que volver a entrar con tu contraseña.',
+    signedInAs: (username: string) => `Entraste como ${username}.`,
+  },
+
+  password: {
+    title: 'Cambiar mi contraseña',
+    text: 'Al cambiarla se cierra la sesión en todos tus dispositivos, también en este, y volvés a entrar con la nueva.',
+    current: 'Contraseña actual',
+    next: 'Contraseña nueva',
+    hint: (length: number) => `Al menos ${length} caracteres.`,
+    submit: 'Cambiar contraseña',
+  },
+
+  users: {
+    title: 'Usuarios',
+    text: 'Cada usuario entra con su nombre y su contraseña y ve solo sus propios datos: cuentas, movimientos, categorías y respaldo. Vos tampoco ves los de ellos.',
+    roles: { admin: 'Administrador', user: 'Usuario' } satisfies Record<UserRole, string>,
+    you: 'vos',
+    inactive: 'Desactivado',
+    newTitle: 'Nuevo usuario',
+    newText:
+      'Empieza con las categorías y cuentas iniciales. Pasale el nombre y la contraseña; después la cambia desde Más.',
+    username: 'Nombre de usuario',
+    password: 'Contraseña',
+    role: 'Tipo',
+    resetPassword: 'Cambiar contraseña',
+    newPassword: (username: string) => `Contraseña nueva para ${username}`,
+    resetDone: (username: string) =>
+      `Contraseña de ${username} cambiada. Se cerraron sus sesiones: pasale la nueva.`,
+    deactivate: 'Desactivar',
+    activate: 'Activar',
+    deactivateConfirm: (username: string) =>
+      `${username} deja de poder entrar y se cierran sus sesiones. Sus datos no se borran; lo podés volver a activar.`,
   },
 
   types: { expense: 'Egreso', income: 'Ingreso', transfer: 'Transferencia' } satisfies Record<
@@ -203,7 +238,20 @@ export const es = {
     minimum: 'Pago mínimo',
     alsoFor: 'Aplicar también a',
     datesRequired: 'Completá el cierre y el vencimiento.',
-    deleteConfirm: 'Se borra este cierre y sus compras vuelven a contar en su propia fecha. ¿Seguir?',
+    deleteConfirm:
+      'Se borra este cierre y sus compras vuelven a contar en su propia fecha. Los pagos que le registraste quedan como transferencias. ¿Seguir?',
+    paid: (amount: string) => `Pagado: ${amount}.`,
+    remaining: (amount: string) => `Falta pagar ${amount}.`,
+    paidInFull: 'Está pago.',
+    pay: 'Registrar un pago',
+    payText:
+      'Es una transferencia desde tu cuenta a la tarjeta. No cuenta como gasto: las compras ya están contadas.',
+    payFrom: 'Desde la cuenta',
+    payDate: 'Fecha del pago',
+    payAmount: (currency: string) => `Monto que sale de la cuenta (${currency})`,
+    payReaches: (currency: string) => `Monto que cubre del resumen (${currency})`,
+    paySubmit: 'Registrar pago',
+    noOtherAccounts: 'Para registrar un pago necesitás otra cuenta desde la que salga la plata.',
   },
 
   installments: {
@@ -431,6 +479,16 @@ export const es = {
     quantity: (amount: string) => `cantidad ${amount}`,
     searchPlaceholder: 'Buscar un producto (leche, café…)',
     searchEmpty: 'No hay compras de ese producto.',
+  },
+
+  reports: {
+    title: 'Informes',
+    tabs: { categories: 'Por categoría', consumption: 'Consumo' },
+    totalIn: (kind: string, currency: string) => `${kind} en ${currency}`,
+    directly: (category: string) => `Directo en ${category}`,
+    empty: 'Este mes no hay ingresos ni egresos pagados.',
+    scope:
+      'Cuenta cada movimiento en el mes en que se paga, igual que el balance del Inicio. Las devoluciones restan y las transferencias no entran.',
     previousMonth: 'Mes anterior',
     nextMonth: 'Mes siguiente',
   },
@@ -481,6 +539,8 @@ export const es = {
     trash: 'Papelera',
     pending: 'Pendientes de revisión',
     data: 'Respaldo, importación y exportación',
+    password: 'Cambiar mi contraseña',
+    users: 'Usuarios',
   },
 
   data: {
@@ -493,21 +553,35 @@ export const es = {
       title: 'Copia automática en Google Drive',
       text: (fileName: string) =>
         `Una vez por día, cuando usás la app, el respaldo completo se guarda en tu Drive como ${fileName}. Es siempre el mismo archivo; Drive guarda las versiones anteriores por un tiempo.`,
-      off: 'No está activada. Se activa una sola vez siguiendo la guía docs/RESPALDO_DRIVE.md.',
+      unavailable:
+        'Esta instalación todavía no tiene Google Drive configurado. Lo configura una sola vez quien administra la app, siguiendo docs/RESPALDO_DRIVE.md.',
+      notConnected:
+        'Todavía no conectaste tu Drive. Vas a la página de Google, elegís tu cuenta y aceptás; la app solo puede ver y tocar el archivo que ella misma crea.',
+      connect: 'Conectar mi Google Drive',
+      connecting: 'Abriendo Google…',
+      disconnect: 'Desconectar',
+      disconnectConfirm:
+        'La app deja de copiar tu respaldo a Drive. Las copias que ya están en tu Drive quedan ahí.',
+      results: {
+        connected: 'Drive conectado. Ya se guardó la primera copia.',
+        refused: 'No diste el permiso en Google, así que no se conectó nada.',
+        failed: 'No se pudo conectar con Google Drive. Probá de nuevo.',
+      } satisfies Record<DriveConnectResult, string>,
       lastCopy: (when: string) => `Última copia: ${when}.`,
       noCopy: 'Todavía no hay ninguna copia en Drive.',
       copyNow: 'Copiar ahora',
       copying: 'Copiando…',
       errors: {
         not_authorized:
-          'Google rechazó el permiso: puede haberse vencido o revocado. Hay que volver a pedirlo (guía, paso 4).',
+          'Google rechazó el permiso: puede haberse vencido o revocado. Desconectá y volvé a conectar tu Drive.',
         unavailable: 'No se pudo llegar a Google Drive. Se vuelve a intentar sola en una hora.',
       } satisfies Record<DriveBackupError, string>,
       attention: 'La copia en Google Drive no se está haciendo',
     },
     restoreTitle: 'Restaurar un respaldo',
-    restoreText: 'Reemplaza todos los datos actuales por los del archivo. No se puede deshacer.',
-    restoreConfirm: 'Entiendo que se reemplazan todos los datos actuales',
+    restoreText:
+      'Reemplaza todos tus datos actuales por los del archivo. Los de otros usuarios no se tocan. No se puede deshacer.',
+    restoreConfirm: 'Entiendo que se reemplazan todos mis datos actuales',
     restoreAction: 'Restaurar',
     restoreDone: (count: number) => `Respaldo restaurado: ${count} registros.`,
     integrityTitle: 'Chequeo de integridad',
@@ -558,9 +632,11 @@ export const es = {
     IN_USE: 'Está en uso y no se puede borrar. Podés archivarlo.',
     UNAUTHORIZED: 'La sesión venció. Volvé a entrar.',
     INVALID_CREDENTIALS: 'Usuario o contraseña incorrectos.',
+    FORBIDDEN: 'Eso solo lo puede hacer un administrador.',
     RATE_LIMITED: 'Demasiados intentos. Probá de nuevo en unos minutos.',
     PAYLOAD_TOO_LARGE: 'El archivo es demasiado grande.',
-    INVALID_BACKUP: 'El archivo no es un respaldo de esta app, o es de una versión más nueva.',
+    INVALID_BACKUP:
+      'El archivo no es un respaldo de esta app, es de una versión más nueva, o tiene datos que hoy son de otro usuario.',
     INTEGRITY: 'El respaldo tiene datos que apuntan a cosas que no incluye. No se restauró nada.',
     AI_PROVIDER: 'El servicio de lectura no respondió. Probá de nuevo.',
     INTERNAL: 'Algo falló en el servidor. Probá de nuevo.',
@@ -603,6 +679,8 @@ export const es = {
     'Only an expense can be a refund': 'Solo un egreso puede ser una devolución.',
     'A refund is not paid in installments': 'Una devolución no va en cuotas.',
     'There are no installments left to create': 'Esa es la última cuota: no quedan cuotas por crear.',
+    'Password is too short': `La contraseña tiene que tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+    'Wrong password': 'Esa no es tu contraseña actual.',
   } as Record<string, string>,
 
   importIssues: {

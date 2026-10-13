@@ -1,61 +1,58 @@
 import {
+  API_PREFIX,
   CURRENCIES,
   DEFAULT_CURRENCY,
-  DEFAULT_INSTITUTIONS,
-  INSTITUTION_KINDS,
   addDays,
   parseAmountToCents,
   todayIso,
   transactionCreateSchema,
-  type CategoryKind,
 } from '@gastos/shared';
 import { createApp } from '../app';
 import { env } from '../config/env';
+import { runAsUser } from '../core/context/owner';
+import { DRIVE_CALLBACK_ROUTE } from '../modules/backup';
+import type { BackupStoreProvider } from '../providers/drive/googleDrive';
 import { createMemoryContainer } from '../testing/memoryApp';
 import { DEMO_STATEMENT_PAGES, demoReading } from './demoReading';
-import { SEED_ACCOUNTS, SEED_CATEGORIES } from './seedData';
 
 /**
  * The whole app with made-up data kept in memory, to try the screens without
  * touching the real database: nothing is saved, and stopping it forgets it all.
- * The AI and the PDF reader are pretend ones: every upload "reads" the same
- * invented answer (demoReading.ts). The user and password are in backend/memory.env.
+ * The AI, the PDF reader and Google Drive are pretend ones: every upload
+ * "reads" the same invented answer (demoReading.ts) and connecting a Drive
+ * succeeds at once. The first user (an admin) and their password are in
+ * backend/memory.env; more users can be created from the app.
  * Usage: npm run demo (and, in another terminal, npm run dev:frontend)
  */
+
+/** A Google that says yes: its consent page is our own callback, and copies stay in memory. */
+function pretendDrive(): BackupStoreProvider {
+  const callback = `http://localhost:${env.PORT}${API_PREFIX}${DRIVE_CALLBACK_ROUTE}`;
+  const savedAt = new Map<string, Date>();
+  return {
+    consentUrl: (ticket) => `${callback}?${new URLSearchParams({ code: 'demo', state: ticket }).toString()}`,
+    redeem: async () => `demo-${savedAt.size}`,
+    open: (permission) => ({
+      lastSavedAt: async () => savedAt.get(permission) ?? null,
+      save: async () => {
+        savedAt.set(permission, new Date());
+      },
+    }),
+  };
+}
 
 const today = todayIso(env.APP_TIMEZONE);
 const { container, backend } = createMemoryContainer(env, today, {
   read: demoReading,
   readInBackground: true,
+  driveProvider: pretendDrive(),
 });
 backend.pdf.pages = DEMO_STATEMENT_PAGES;
-const { accounts, categories, institutions, tags, transactions } = container;
+const { accounts, categories, institutions, tags, transactions, users } = container;
 
-const institutionIds = new Map<string, string>();
-for (const kind of INSTITUTION_KINDS) {
-  for (const name of DEFAULT_INSTITUTIONS[kind]) {
-    institutionIds.set(kind, (await institutions.create({ name, kind })).id);
-  }
-}
-const categoryIds = new Map<string, string>();
-for (const kind of Object.keys(SEED_CATEGORIES) as CategoryKind[]) {
-  for (const name of SEED_CATEGORIES[kind]) {
-    categoryIds.set(name, (await categories.create({ name, kind, parentId: null })).id);
-  }
-}
-const accountIds = new Map<string, string>();
-for (const account of SEED_ACCOUNTS) accountIds.set(account.name, (await accounts.create(account)).id);
-// One card with a balance in each currency, to try statements and installments.
-for (const currency of CURRENCIES) {
-  await accounts.create({
-    name: currency === DEFAULT_CURRENCY ? 'Visa' : `Visa ${currency}`,
-    type: 'credit_card',
-    currency,
-    bankId: institutionIds.get('bank'),
-    networkId: institutionIds.get('network'),
-  });
-}
-const tag = await tags.create({ name: 'Demo' });
+const admin = await users.ensureFirst({ username: env.AUTH_USERNAME, passwordHash: env.AUTH_PASSWORD_HASH });
+if (!admin) throw new Error('The demo starts empty: there cannot be a user yet');
+await container.welcome(admin);
 
 /** A few recent movements, one per day back from today, so no screen starts empty. */
 const SAMPLES = [
@@ -64,20 +61,41 @@ const SAMPLES = [
   { type: 'expense', amount: '85400,50', category: 'Servicios', description: 'Luz' },
   { type: 'income', amount: '1500000', category: 'Sueldo', description: 'Sueldo' },
 ] as const;
-for (const [daysAgo, sample] of SAMPLES.entries()) {
-  await transactions.create(
-    transactionCreateSchema.parse({
-      type: sample.type,
-      date: addDays(today, -daysAgo),
-      amountCents: parseAmountToCents(sample.amount),
-      currency: 'ARS',
-      accountId: accountIds.get('MercadoPago'),
-      categoryId: categoryIds.get(sample.category),
-      description: sample.description,
-      tagIds: sample.type === 'expense' ? [tag.id] : [],
-    }),
-  );
-}
+
+await runAsUser(admin.id, async () => {
+  const idByName = async (list: Promise<{ id: string; name: string }[]>) =>
+    new Map((await list).map((entry) => [entry.name, entry.id]));
+  const categoryIds = await idByName(categories.list());
+  const accountIds = await idByName(accounts.list());
+  const [bank] = (await institutions.list()).filter((institution) => institution.kind === 'bank');
+  const [network] = (await institutions.list()).filter((institution) => institution.kind === 'network');
+
+  // One card with a balance in each currency, to try statements and installments.
+  for (const currency of CURRENCIES) {
+    await accounts.create({
+      name: currency === DEFAULT_CURRENCY ? 'Visa' : `Visa ${currency}`,
+      type: 'credit_card',
+      currency,
+      bankId: bank?.id,
+      networkId: network?.id,
+    });
+  }
+  const tag = await tags.create({ name: 'Demo' });
+  for (const [daysAgo, sample] of SAMPLES.entries()) {
+    await transactions.create(
+      transactionCreateSchema.parse({
+        type: sample.type,
+        date: addDays(today, -daysAgo),
+        amountCents: parseAmountToCents(sample.amount),
+        currency: DEFAULT_CURRENCY,
+        accountId: accountIds.get('MercadoPago'),
+        categoryId: categoryIds.get(sample.category),
+        description: sample.description,
+        tagIds: sample.type === 'expense' ? [tag.id] : [],
+      }),
+    );
+  }
+});
 
 createApp(container, env).listen(env.PORT, () => {
   console.log(`Demo en memoria: http://localhost:${env.PORT} (usuario "${env.AUTH_USERNAME}")`);

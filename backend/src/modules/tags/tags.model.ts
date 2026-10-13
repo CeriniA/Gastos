@@ -1,5 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { COLLECTIONS } from '../../core/db/collections';
+import { ownedByUser, uniquePerUser } from '../../core/db/ownerPlugin';
 import type { ObjectId } from '../../core/db/ids';
 
 export interface TagDoc {
@@ -13,9 +14,12 @@ export interface TagDoc {
 const schema = new Schema<TagDoc>(
   {
     name: { type: String, required: true, trim: true },
-    nameKey: { type: String, required: true, unique: true },
+    nameKey: { type: String, required: true },
   },
   { timestamps: true },
 );
+
+uniquePerUser(schema, { nameKey: 1 });
+schema.plugin(ownedByUser);
 
 export const TagModel = model<TagDoc>('Tag', schema, COLLECTIONS.tags);

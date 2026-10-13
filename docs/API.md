@@ -11,21 +11,22 @@ Los esquemas de entrada y los tipos de salida están en `shared/src/schemas/`.
 
 ## Códigos de error
 
-| Código                | HTTP | Cuándo                                                      |
-| --------------------- | ---- | ----------------------------------------------------------- |
-| `VALIDATION`          | 400  | Datos inválidos. `details.issues` lista `{ path, message }` |
-| `INVALID_BACKUP`      | 400  | El archivo no es un respaldo, o es de una versión más nueva |
-| `INTEGRITY`           | 400  | El respaldo tiene referencias a datos que no incluye        |
-| `UNAUTHORIZED`        | 401  | Falta el token o venció                                     |
-| `INVALID_CREDENTIALS` | 401  | Usuario o contraseña incorrectos                            |
-| `NOT_FOUND`           | 404  | No existe                                                   |
-| `CONFLICT`            | 409  | La operación no se puede hacer en el estado actual          |
-| `DUPLICATE`           | 409  | Ya existe uno con ese nombre                                |
-| `IN_USE`              | 409  | No se puede borrar porque otros datos lo usan               |
-| `PAYLOAD_TOO_LARGE`   | 413  | Archivo o pedido demasiado grande                           |
-| `RATE_LIMITED`        | 429  | Demasiados intentos de login                                |
-| `AI_PROVIDER`         | 502  | Falló el servicio de lectura (etapa 2)                      |
-| `INTERNAL`            | 500  | Error inesperado                                            |
+| Código                | HTTP | Cuándo                                                                                                                                 |
+| --------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `VALIDATION`          | 400  | Datos inválidos. `details.issues` lista `{ path, message }`                                                                            |
+| `INVALID_BACKUP`      | 400  | El archivo no es un respaldo, es de una versión más nueva, o tiene datos que hoy son de otro usuario (`details.reason = "other_user"`) |
+| `INTEGRITY`           | 400  | El respaldo tiene referencias a datos que no incluye                                                                                   |
+| `UNAUTHORIZED`        | 401  | Falta el token o venció                                                                                                                |
+| `INVALID_CREDENTIALS` | 401  | Usuario o contraseña incorrectos, o usuario desactivado                                                                                |
+| `FORBIDDEN`           | 403  | Hace falta ser administrador                                                                                                           |
+| `NOT_FOUND`           | 404  | No existe                                                                                                                              |
+| `CONFLICT`            | 409  | La operación no se puede hacer en el estado actual                                                                                     |
+| `DUPLICATE`           | 409  | Ya existe uno con ese nombre                                                                                                           |
+| `IN_USE`              | 409  | No se puede borrar porque otros datos lo usan                                                                                          |
+| `PAYLOAD_TOO_LARGE`   | 413  | Archivo o pedido demasiado grande                                                                                                      |
+| `RATE_LIMITED`        | 429  | Demasiados intentos de login                                                                                                           |
+| `AI_PROVIDER`         | 502  | Falló el servicio de lectura (etapa 2)                                                                                                 |
+| `INTERNAL`            | 500  | Error inesperado                                                                                                                       |
 
 ## Estado y acceso
 
@@ -33,8 +34,24 @@ Los esquemas de entrada y los tipos de salida están en `shared/src/schemas/`.
 | ------ | ------------------ | ------------------------------------------------------------------------------------------- |
 | GET    | `/health`          | **Pública.** `{ status, database }`                                                         |
 | POST   | `/auth/login`      | **Pública.** `{ username, password }` → `{ token, expiresAt }`. 10 intentos cada 15 minutos |
-| GET    | `/auth/me`         | Sesión actual                                                                               |
-| POST   | `/auth/logout-all` | Cierra la sesión en todos los dispositivos, incluido el que lo pide                         |
+| GET    | `/auth/me`         | Sesión actual: `{ userId, username, role, expiresAt }`                                      |
+| POST   | `/auth/logout-all` | Cierra las sesiones de quien lo pide en todos los dispositivos, incluido este               |
+
+El token es un JWT que nombra al usuario. **Todo lo que devuelve o cambia cualquier otra ruta son datos del
+usuario del token**: pedir por su id un dato de otro usuario responde `NOT_FOUND`.
+
+## Usuarios
+
+| Método | Ruta                 | Descripción                                                                                                          |
+| ------ | -------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/users/me/password` | `{ currentPassword, newPassword }`. Cualquier usuario. Cierra sus sesiones: responde `204` y hay que volver a entrar |
+| GET    | `/users`             | **Solo administrador.** `[{ id, username, role, active, createdAt }]`                                                |
+| POST   | `/users`             | **Solo administrador.** `{ username, password, role? }` (`role`: `user` por defecto, o `admin`)                      |
+| PATCH  | `/users/:id`         | **Solo administrador.** `{ password?, active? }`. Las dos cierran las sesiones de ese usuario                        |
+
+Quien no es administrador recibe `FORBIDDEN`. La contraseña nueva tiene al menos 8 caracteres. Un nombre de
+usuario repetido (sin distinguir mayúsculas ni acentos) responde `DUPLICATE`; desactivarse a uno mismo,
+`CONFLICT`. No hay ruta para borrar un usuario ni para ver sus datos.
 
 ## Cuentas
 
@@ -63,12 +80,20 @@ La lista arranca con los bancos y marcas más comunes de Argentina (migración
 
 ## Tarjetas: cierres y vencimientos
 
-| Método | Ruta                       | Descripción                                                                                                           |
-| ------ | -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/card-periods?accountId=` | `{ periods, open }`: cada cierre con lo que la app le cargó (`chargedCents`), y lo comprado después del último cierre |
-| POST   | `/card-periods`            | `{ accountIds, closingDate, dueDate, totalCents?, minimumPaymentCents? }`. Un período por cuenta, todos o ninguno     |
-| PATCH  | `/card-periods/:id`        | Cualquiera de los cuatro datos                                                                                        |
-| DELETE | `/card-periods/:id`        | Sus compras vuelven a pagarse en su propia fecha                                                                      |
+| Método | Ruta                         | Descripción                                                                                                           |
+| ------ | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/card-periods?accountId=`   | `{ periods, open }`: cada cierre con lo que la app le cargó (`chargedCents`), y lo comprado después del último cierre |
+| POST   | `/card-periods`              | `{ accountIds, closingDate, dueDate, totalCents?, minimumPaymentCents? }`. Un período por cuenta, todos o ninguno     |
+| PATCH  | `/card-periods/:id`          | Cualquiera de los cuatro datos                                                                                        |
+| DELETE | `/card-periods/:id`          | Sus compras vuelven a pagarse en su propia fecha; sus pagos quedan como transferencias sueltas                        |
+| POST   | `/card-periods/:id/payments` | `{ accountId, date, amountCents, toAmountCents? }`. Registra un pago del resumen. Responde la transferencia creada    |
+
+Cada período trae `paidCents`: lo que suman sus pagos, en la moneda de la tarjeta.
+
+Un pago es una **transferencia** desde la cuenta `accountId` a la tarjeta, ligada al resumen (`cardPeriodId`);
+no es un egreso. `amountCents` es lo que sale de esa cuenta. Si la cuenta y la tarjeta tienen monedas
+distintas hace falta `toAmountCents`, lo que cubre del resumen. Se edita y se borra como cualquier movimiento;
+en la papelera deja de contar como pago.
 
 Una compra con tarjeta se paga en el vencimiento del primer cierre igual o posterior a su fecha. Al crear,
 cambiar o borrar un cierre, el backend recalcula la fecha de pago de las compras de esa tarjeta.
@@ -162,13 +187,22 @@ cambia de monto, sus productos cambian en la misma proporción.
 
 ## Respaldo
 
-| Método | Ruta                | Descripción                                                                                                 |
-| ------ | ------------------- | ----------------------------------------------------------------------------------------------------------- |
-| GET    | `/backup/export`    | Descarga el respaldo completo (JSON)                                                                        |
-| POST   | `/backup/restore`   | Cuerpo: el respaldo. Reemplaza todo o no cambia nada. Hasta 25 MB                                           |
-| GET    | `/backup/integrity` | `{ ok, checkedAt, broken[] }`                                                                               |
-| GET    | `/backup/drive`     | Copia en Drive: `{ configured, lastSavedAt, lastError }`                                                    |
-| POST   | `/backup/drive`     | Copia a Drive ahora. Responde el mismo estado; un error va en `lastError` (`not_authorized`, `unavailable`) |
+| Método | Ruta                     | Descripción                                                                                                                                   |
+| ------ | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/backup/export`         | Descarga el respaldo completo de los datos del usuario (JSON)                                                                                 |
+| POST   | `/backup/restore`        | Cuerpo: el respaldo. Reemplaza todos los datos del usuario o no cambia nada. Hasta 25 MB                                                      |
+| GET    | `/backup/integrity`      | `{ ok, checkedAt, broken[] }`                                                                                                                 |
+| GET    | `/backup/drive`          | La copia del usuario en su Drive: `{ available, connected, lastSavedAt, lastError }`                                                          |
+| POST   | `/backup/drive`          | Copia a Drive ahora. Responde el mismo estado; un error va en `lastError` (`not_authorized`, `unavailable`)                                   |
+| DELETE | `/backup/drive`          | Desconecta el Drive del usuario: la app se olvida del permiso. Responde el estado                                                             |
+| POST   | `/backup/drive/connect`  | `{ url }`: la página de Google donde el usuario da el permiso. `CONFLICT` si el servidor no tiene Drive configurado                           |
+| GET    | `/backup/drive/callback` | **Pública.** Ahí manda Google al navegador con `code` y `state`. Guarda el permiso y redirige a `/mas/datos?drive=connected\|refused\|failed` |
+
+`available` es `false` cuando al servidor le faltan `DRIVE_CLIENT_ID`, `DRIVE_CLIENT_SECRET` o
+`PUBLIC_API_URL`; `connected`, cuando este usuario todavía no conectó su Drive. El `state` es una nota
+firmada por el servidor, válida 10 minutos, que dice qué usuario vuelve: la ruta no usa token de sesión.
+
+Un respaldo de antes de que hubiera usuarios se restaura igual: sus datos pasan a ser de quien lo sube.
 
 ## Planillas
 
@@ -247,6 +281,20 @@ Cada producto de un movimiento es `{ name, amountCents, product, group, quantity
 del ticket, `product` el nombre genérico en español ("Leche"), `group` uno de `PRODUCT_GROUPS`
 (`shared/src/constants.ts`) o `null`, y `quantity` la cantidad o `null`.
 
+## Informes
+
+| Método | Ruta                                | Qué hace                                                                      |
+| ------ | ----------------------------------- | ----------------------------------------------------------------------------- |
+| GET    | `/reports/categories?month=YYYY-MM` | Ingresos y egresos del mes por categoría, por moneda: `{ month, currencies }` |
+
+Cada moneda trae `income` y `expense`, cada uno con `totalCents` y `categories`: las categorías principales
+con algo en el mes, de mayor a menor. Cada categoría es `{ categoryId, name, totalCents, children }`, donde
+`totalCents` incluye lo de sus subcategorías. `categoryId: null` junta lo que no tiene categoría.
+
+Cuenta lo mismo que `/transactions/summary`: movimientos confirmados, por fecha de pago, sin transferencias
+ni papelera. Un movimiento dividido suma cada parte a su categoría y una devolución resta de la suya.
+
 ## Por venir
 
-Etapa 4: `/reports`, `/recurrings`, `/exchange-rates`.
+Etapa 4: más informes en `/reports` (por cuenta, evolución mensual, comercios), `/recurrings`,
+`/exchange-rates`.

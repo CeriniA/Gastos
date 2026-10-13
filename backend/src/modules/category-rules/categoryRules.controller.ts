@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { categoryRuleInputSchema, idParamsSchema } from '@gastos/shared';
-import { noContent, ok, parse } from '../../core/http/http';
+import { asUser, noContent, ok, parse } from '../../core/http/http';
 import type { CategoryRulesService } from './categoryRules.service';
 
 export function createCategoryRulesController(service: CategoryRulesService) {
@@ -14,5 +14,5 @@ export function createCategoryRulesController(service: CategoryRulesService) {
     await service.remove(parse(idParamsSchema, req.params).id);
     noContent(res);
   };
-  return { list, save, remove };
+  return asUser({ list, save, remove });
 }

@@ -21,3 +21,4 @@ export * from './schemas/categoryRule';
 export * from './schemas/document';
 export * from './schemas/exchangeRate';
 export * from './schemas/consumption';
+export * from './schemas/report';

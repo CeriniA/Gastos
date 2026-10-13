@@ -102,6 +102,8 @@ export interface DocumentDependencies {
   now(): Date;
   /** Starts background work without waiting for it. */
   schedule(work: () => Promise<void>): void;
+  /** Whose documents the running code works on: each user has their own queue. */
+  owner(): string;
   onError(error: unknown, context: object): void;
 }
 
@@ -118,8 +120,11 @@ function toSummary(detail: DocumentDetail): DocumentSummary {
 }
 
 export function createDocumentsService(repository: DocumentsRepository, deps: DocumentDependencies) {
-  /** Only one document is read at a time: the free AI quota and 512 MB of memory both prefer it. */
-  let processing = false;
+  /**
+   * Each user's documents are read one at a time: the free AI quota and 512 MB
+   * of memory both prefer it. These are the users whose queue is running.
+   */
+  const processing = new Set<string>();
 
   async function find(id: string): Promise<DocumentDetail> {
     const document = await repository.findById(id);
@@ -278,8 +283,9 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
    * second call while one is running does nothing.
    */
   async function processQueue(): Promise<void> {
-    if (processing) return;
-    processing = true;
+    const owner = deps.owner();
+    if (processing.has(owner)) return;
+    processing.add(owner);
     const seen: string[] = [];
     try {
       for (;;) {
@@ -289,7 +295,7 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
         await processOne(next);
       }
     } finally {
-      processing = false;
+      processing.delete(owner);
     }
   }
 

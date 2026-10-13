@@ -1,10 +1,13 @@
 import type {
   Account,
+  CardPayment,
   CardPeriod,
   CardPeriodCreate,
   CardPeriodUpdate,
   CardPeriodView,
   CardStatement,
+  Transaction,
+  TransactionCreate,
 } from '@gastos/shared';
 import type { TransactionRunner, WriteOptions } from '../../core/db/transaction';
 import { DuplicateError, NotFoundError, fieldError } from '../../core/errors/errors';
@@ -21,6 +24,12 @@ export interface CardPeriodDependencies {
   ): Promise<number>;
   /** Live purchases (positive) and credits (negative) of an account, with their dates. */
   listCharges(accountId: string): Promise<{ date: string; paymentDate: string; signedCents: number }[]>;
+  /** Stores the transfer that pays a statement, linked to it. */
+  createPayment(transfer: TransactionCreate, cardPeriodId: string): Promise<Transaction>;
+  /** What was paid towards each statement, in the card's currency. */
+  paidByPeriod(cardPeriodIds: readonly string[]): Promise<Map<string, number>>;
+  /** The payments of a statement that goes away stay as plain transfers. */
+  releasePayments(cardPeriodId: string, options: WriteOptions): Promise<void>;
   runInTransaction: TransactionRunner;
 }
 
@@ -97,12 +106,14 @@ export function createCardPeriodsService(repository: CardPeriodsRepository, deps
         repository.findByAccount(accountId),
         deps.listCharges(accountId),
       ]);
+      const paid = await deps.paidByPeriod(periods.map((period) => period.id));
       const views: CardPeriodView[] = periods.map((period) => {
         const own = charges.filter((charge) => charge.paymentDate === period.dueDate);
         return {
           ...period,
           chargedCents: own.reduce((sum, charge) => sum + charge.signedCents, 0),
           transactionCount: own.length,
+          paidCents: paid.get(period.id) ?? 0,
         };
       });
       const lastClosing = periods[0]?.closingDate ?? null;
@@ -150,9 +161,41 @@ export function createCardPeriodsService(repository: CardPeriodsRepository, deps
       });
     },
 
+    /**
+     * Registers a payment of the statement: a transfer from one of the user's
+     * accounts to the card. Not an expense, since the purchases already are.
+     */
+    async pay(id: string, payment: CardPayment): Promise<Transaction> {
+      const period = await get(id);
+      const origin = (await deps.listAccounts()).find((account) => account.id === payment.accountId);
+      if (!origin) throw fieldError('accountId', 'Account does not exist');
+      return deps.createPayment(
+        {
+          type: 'transfer',
+          refund: false,
+          date: payment.date,
+          amountCents: payment.amountCents,
+          currency: origin.currency,
+          accountId: origin.id,
+          toAccountId: period.accountId,
+          toAmountCents: payment.toAmountCents,
+          categoryId: null,
+          description: '',
+          note: '',
+          tagIds: [],
+          splits: [],
+          paymentDate: null,
+          original: null,
+          items: [],
+        },
+        id,
+      );
+    },
+
     async remove(id: string): Promise<void> {
       const current = await get(id);
       await deps.runInTransaction(async (session) => {
+        await deps.releasePayments(id, { session });
         await repository.delete(id, { session });
         await deps.refreshPaymentDates(current.accountId, [current.dueDate], { session });
       });

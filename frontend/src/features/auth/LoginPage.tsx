@@ -1,4 +1,5 @@
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import { loginSchema, type LoginInput } from '@gastos/shared';
 import { es } from '../../shared/i18n/es';
 import { ServerWaking } from '../../shared/layout/ServerWaking';
@@ -8,6 +9,7 @@ import { useAuth } from './AuthContext';
 
 export function LoginPage() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const { failure, setFailure, run } = useAction();
   const form = useForm<LoginInput>({ defaultValues: { username: '', password: '' } });
 
@@ -17,7 +19,8 @@ export function LoginPage() {
       setFailure(es.fieldMessages.required ?? null);
       return;
     }
-    await run(login(parsed.data));
+    // Whoever comes in starts at the beginning, not on the screen the last person left open.
+    if (await run(login(parsed.data))) void navigate('/', { replace: true });
   });
 
   return (

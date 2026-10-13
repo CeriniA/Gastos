@@ -39,6 +39,22 @@ export type CardPeriodUpdate = z.infer<typeof cardPeriodUpdateSchema>;
 
 export const cardPeriodListQuerySchema = z.object({ accountId: objectIdSchema });
 
+/**
+ * Paying a statement: money moves from one of the user's accounts to the card.
+ * It is stored as a transfer linked to the statement, never as an expense (the
+ * purchases already are).
+ */
+export const cardPaymentSchema = z.object({
+  /** The account the money comes out of. */
+  accountId: objectIdSchema,
+  date: isoDateSchema,
+  /** What leaves that account, in its currency. */
+  amountCents: amountCentsSchema,
+  /** What reaches the card, when it is in another currency (dollars paid with pesos). */
+  toAmountCents: amountCentsSchema.nullable().default(null),
+});
+export type CardPayment = z.infer<typeof cardPaymentSchema>;
+
 export interface CardPeriod {
   id: string;
   accountId: string;
@@ -57,6 +73,8 @@ export interface CardPeriodView extends CardPeriod {
   /** Expenses minus credits of the card paid on this due date, installments included. */
   chargedCents: number;
   transactionCount: number;
+  /** What the payments registered for this statement add up to, in the card's currency. */
+  paidCents: number;
 }
 
 export interface CardStatement {

@@ -11,6 +11,18 @@ export interface BackupStore {
   save(content: string): Promise<void>;
 }
 
+/**
+ * A place where each user can keep their own copy. A user grants a permission
+ * once, and with it the server opens their store whenever it needs to.
+ */
+export interface BackupStoreProvider {
+  /** The page where the user grants the permission. `ticket` comes back with them. */
+  consentUrl(ticket: string): string;
+  /** Turns what that page sent back into the permission to keep. */
+  redeem(code: string): Promise<string>;
+  open(permission: string): BackupStore;
+}
+
 /** The one error a store throws. `reason` ends up on the data screen. */
 export class BackupStoreError extends Error {
   constructor(
@@ -58,13 +70,18 @@ async function readToken(
   return (await response.json()) as { access_token?: string; refresh_token?: string; expires_in?: number };
 }
 
-/** The page where the user grants the app access to its own files in their Drive. */
-export function authorizationUrl(clientId: string, redirectUri: string): string {
+/**
+ * The page where the user grants the app access to its own files in their
+ * Drive. Google hands `state` back untouched, which is how the server
+ * recognises who is coming back.
+ */
+export function authorizationUrl(clientId: string, redirectUri: string, state: string): string {
   const query = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: DRIVE_SCOPE,
+    state,
     // Offline access and a fresh consent are what make Google hand over a refresh token.
     access_type: 'offline',
     prompt: 'consent',
@@ -95,6 +112,23 @@ export async function exchangeCode(input: {
   if (!data.refresh_token)
     throw new BackupStoreError('not_authorized', 'Google did not send a refresh token');
   return data.refresh_token;
+}
+
+/**
+ * Google Drive for every user of the app: one set of Google credentials (the
+ * app's), one refresh token per user (their permission).
+ */
+export function createGoogleDrive(app: {
+  clientId: string;
+  clientSecret: string;
+  /** Where Google sends the user back; registered in Google Cloud. */
+  redirectUri: string;
+}): BackupStoreProvider {
+  return {
+    consentUrl: (ticket) => authorizationUrl(app.clientId, app.redirectUri, ticket),
+    redeem: (code) => exchangeCode({ ...app, code }),
+    open: (refreshToken) => createGoogleDriveStore({ ...app, refreshToken }),
+  };
 }
 
 export interface GoogleDriveOptions {

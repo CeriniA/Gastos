@@ -7,9 +7,11 @@ import {
   spendingCents,
   type ConsumptionItem,
   type CurrencyTotals,
+  type FiledAmount,
   type LastRate,
   type Paginated,
   type ProductGroup,
+  type Split,
   type Transaction,
   type TransactionItem,
   type TransactionListQuery,
@@ -19,6 +21,7 @@ import { COLLECTIONS } from '../../core/db/collections';
 import { idString, isoString, toObjectId, toObjectIdOrNull } from '../../core/db/ids';
 import type { WriteOptions } from '../../core/db/transaction';
 import { duplicateKey, installmentKey } from './duplicateKey';
+import { filedAmounts, type Filing } from './splits';
 import { TransactionModel, type TransactionDoc } from './transactions.model';
 
 /** Everything the service decides about a transaction before it is stored. */
@@ -251,6 +254,66 @@ export const transactionsRepository = {
   },
 
   /**
+   * What the live transfers that pay each of those statements add up to, in
+   * the card's currency: what reached the card, not what left the other account.
+   */
+  async sumPaymentsByPeriod(cardPeriodIds: readonly string[]): Promise<Map<string, number>> {
+    const paid = new Map<string, number>();
+    if (cardPeriodIds.length === 0) return paid;
+    const docs = await TransactionModel.find(
+      { cardPeriodId: { $in: cardPeriodIds.map(toObjectId) }, deletedAt: null, type: 'transfer' },
+      { cardPeriodId: 1, amountCents: 1, toAmountCents: 1 },
+    ).lean<Pick<TransactionDoc, 'cardPeriodId' | 'amountCents' | 'toAmountCents'>[]>();
+    for (const doc of docs) {
+      const period = doc.cardPeriodId!.toString();
+      paid.set(period, (paid.get(period) ?? 0) + (doc.toAmountCents ?? doc.amountCents));
+    }
+    return paid;
+  },
+
+  async clearCardPeriod(cardPeriodId: string, options: WriteOptions = {}): Promise<void> {
+    await TransactionModel.updateMany(
+      { cardPeriodId: toObjectId(cardPeriodId) },
+      { $set: { cardPeriodId: null } },
+      { session: options.session },
+    );
+  },
+
+  /** Every transaction, the trash included, with a part in that category. */
+  async findDividedBy(
+    categoryId: string,
+    options: WriteOptions = {},
+  ): Promise<{ id: string; splits: Split[] }[]> {
+    const docs = await TransactionModel.find({ 'splits.categoryId': toObjectId(categoryId) }, { splits: 1 })
+      .session(options.session ?? null)
+      .lean<Pick<TransactionDoc, '_id' | 'splits'>[]>();
+    return docs.map((doc) => ({
+      id: doc._id.toString(),
+      splits: doc.splits.map((part) => ({
+        categoryId: part.categoryId.toString(),
+        amountCents: part.amountCents,
+      })),
+    }));
+  },
+
+  /** Changes only how a transaction is filed: its category, or the parts it is divided in. */
+  async setFiling(id: string, filing: Filing, options: WriteOptions = {}): Promise<void> {
+    await TransactionModel.updateOne(
+      { _id: toObjectId(id) },
+      {
+        $set: {
+          categoryId: toObjectIdOrNull(filing.categoryId),
+          splits: filing.splits.map((part) => ({
+            categoryId: toObjectId(part.categoryId),
+            amountCents: part.amountCents,
+          })),
+        },
+      },
+      { session: options.session },
+    );
+  },
+
+  /**
    * Keys ("date|amountCents|currency") of live transactions on the given
    * days, by their own amount and by the amount of the receipt they came from
    * when that was in another currency. Used to spot a movement uploaded twice.
@@ -424,6 +487,37 @@ export const transactionsRepository = {
       .sort({ date: -1, createdAt: -1 })
       .lean<Pick<TransactionDoc, 'date' | 'original'>>();
     return { rate: doc?.original?.rate ?? null, date: doc?.date ?? null };
+  },
+
+  /**
+   * What each income or expense paid in a month adds to its category; a
+   * divided one, part by part. Refunds take away. Counts what `totalsByMonth` counts.
+   */
+  async findFiledByMonth(month: string): Promise<FiledAmount[]> {
+    const docs = await TransactionModel.find(
+      {
+        deletedAt: null,
+        status: 'confirmed',
+        type: { $in: ['income', 'expense'] },
+        paymentDate: { $gte: firstDayOfMonth(month), $lte: lastDayOfMonth(month) },
+      },
+      { type: 1, refund: 1, currency: 1, amountCents: 1, categoryId: 1, splits: 1 },
+    ).lean<
+      Pick<TransactionDoc, 'type' | 'refund' | 'currency' | 'amountCents' | 'categoryId' | 'splits'>[]
+    >();
+    return docs.flatMap((doc) =>
+      filedAmounts({
+        type: doc.type,
+        refund: doc.refund ?? false,
+        currency: doc.currency,
+        amountCents: doc.amountCents,
+        categoryId: idString(doc.categoryId),
+        splits: (doc.splits ?? []).map((part) => ({
+          categoryId: part.categoryId.toString(),
+          amountCents: part.amountCents,
+        })),
+      }),
+    );
   },
 
   /** Income and expense per currency for the transactions paid in a month. */

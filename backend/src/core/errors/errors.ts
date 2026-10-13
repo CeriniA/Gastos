@@ -59,6 +59,13 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+/** Signed in, but this is not for them (only an admin manages users). */
+export class ForbiddenError extends AppError {
+  constructor() {
+    super(403, 'FORBIDDEN', 'Not allowed');
+  }
+}
+
 export class AiProviderError extends AppError {
   constructor(message: string, details?: unknown) {
     super(502, 'AI_PROVIDER', message, details);

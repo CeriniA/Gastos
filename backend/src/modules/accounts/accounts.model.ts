@@ -1,6 +1,7 @@
 import { Schema, model } from 'mongoose';
 import { ACCOUNT_TYPES, CURRENCIES, type AccountType, type Currency } from '@gastos/shared';
 import { COLLECTIONS } from '../../core/db/collections';
+import { ownedByUser, uniquePerUser } from '../../core/db/ownerPlugin';
 import type { ObjectId } from '../../core/db/ids';
 
 export interface AccountDoc {
@@ -20,7 +21,7 @@ export interface AccountDoc {
 const schema = new Schema<AccountDoc>(
   {
     name: { type: String, required: true, trim: true },
-    nameKey: { type: String, required: true, unique: true },
+    nameKey: { type: String, required: true },
     type: { type: String, required: true, enum: [...ACCOUNT_TYPES] },
     currency: { type: String, required: true, enum: [...CURRENCIES] },
     bankId: { type: Schema.Types.ObjectId, default: null },
@@ -29,5 +30,8 @@ const schema = new Schema<AccountDoc>(
   },
   { timestamps: true },
 );
+
+uniquePerUser(schema, { nameKey: 1 });
+schema.plugin(ownedByUser);
 
 export const AccountModel = model<AccountDoc>('Account', schema, COLLECTIONS.accounts);

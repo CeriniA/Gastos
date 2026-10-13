@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { consumptionSearchQuerySchema, consumptionSummaryQuerySchema } from '@gastos/shared';
-import { ok, parse } from '../../core/http/http';
+import { asUser, ok, parse } from '../../core/http/http';
 import type { ConsumptionService } from './consumption.service';
 
 export function createConsumptionController(service: ConsumptionService) {
@@ -11,5 +11,5 @@ export function createConsumptionController(service: ConsumptionService) {
   const search: RequestHandler = async (req, res) => {
     ok(res, await service.search(parse(consumptionSearchQuerySchema, req.query)));
   };
-  return { summary, search };
+  return asUser({ summary, search });
 }

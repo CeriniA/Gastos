@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import { after, test } from 'node:test';
-import { API_PREFIX, type ImportPreview } from '@gastos/shared';
+import { API_PREFIX, DATA_SCREEN_PATH, DRIVE_RESULT_PARAM, type ImportPreview } from '@gastos/shared';
 import { createApp } from './app';
 import { env } from './config/env';
 import { createMemoryContainer } from './testing/memoryApp';
@@ -13,14 +13,34 @@ import { createMemoryContainer } from './testing/memoryApp';
  */
 
 const PASSWORD = 'demo';
+/** The password of the users the tests create. */
+const USER_PASSWORD = 'clave-de-prueba';
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+/** A pretend Google: its consent page is just somewhere to read the ticket back from. */
+const CONSENT_PAGE = 'https://google.test/consent';
 
-const { container } = createMemoryContainer(env, '2026-10-10');
+const { container } = createMemoryContainer(env, '2026-10-10', {
+  driveProvider: {
+    consentUrl: (ticket) => `${CONSENT_PAGE}?state=${ticket}`,
+    redeem: async (code) => `permission-${code}`,
+    open: () => ({ lastSavedAt: async () => null, save: async () => undefined }),
+  },
+});
+// As the server does on its first start: the admin of the configuration.
+await container.users.ensureFirst({ username: env.AUTH_USERNAME, passwordHash: env.AUTH_PASSWORD_HASH });
 const server = createApp(container, env).listen(0);
 const base = `http://localhost:${(server.address() as AddressInfo).port}${API_PREFIX}`;
 after(() => server.close());
 
+/** Whose session the next calls go with. */
 let token = '';
+
+async function signIn(username: string, password: string): Promise<string> {
+  const session = await data<{ token: string }>(
+    await call('POST', '/auth/login', { username, password }, false),
+  );
+  return session.token;
+}
 
 async function call(method: string, path: string, body?: unknown, auth = true) {
   const response = await fetch(`${base}${path}`, {
@@ -61,11 +81,10 @@ test('only the health check and the login answer without a token', async () => {
   const wrong = await call('POST', '/auth/login', { username: env.AUTH_USERNAME, password: 'otra' }, false);
   assert.equal((await failure(wrong, 401)).code, 'INVALID_CREDENTIALS');
 
-  const session = await data<{ token: string }>(
-    await call('POST', '/auth/login', { username: env.AUTH_USERNAME, password: PASSWORD }, false),
-  );
-  token = session.token;
+  token = await signIn(env.AUTH_USERNAME, PASSWORD);
   assert.deepEqual(await data<unknown[]>(await call('GET', '/accounts')), []);
+  const me = await data<{ username: string; role: string }>(await call('GET', '/auth/me'));
+  assert.deepEqual([me.username, me.role], [env.AUTH_USERNAME, 'admin']);
 });
 
 test('errors come in one shape, with the field that is wrong', async () => {
@@ -187,6 +206,177 @@ test('the backup is downloaded and put back whole', async () => {
     'INVALID_BACKUP',
   );
   assert.equal((await data<{ ok: boolean }>(await call('GET', '/backup/integrity'))).ok, true);
+});
+
+test('each user has their own data, and none of it reaches another', async () => {
+  const admin = token;
+  const [mine] = (
+    await data<{ items: { id: string; accountId: string }[] }>(await call('GET', '/transactions'))
+  ).items;
+  assert.ok(mine);
+  await data(await call('POST', '/users', { username: 'Ana', password: USER_PASSWORD }), 201);
+
+  token = await signIn('ana', USER_PASSWORD);
+  // She starts with the categories and accounts every user starts with, and nothing of his.
+  const accounts = await data<{ id: string; name: string }[]>(await call('GET', '/accounts'));
+  assert.ok(accounts.length > 0);
+  assert.equal(
+    accounts.some((account) => account.name === 'Banco'),
+    false,
+  );
+  assert.equal((await data<{ total: number }>(await call('GET', '/transactions'))).total, 0);
+  assert.equal((await data<{ total: number }>(await call('GET', '/transactions?deleted=true'))).total, 0);
+  assert.deepEqual(await data<unknown[]>(await call('GET', '/tags')), []);
+  assert.deepEqual(await data<unknown[]>(await call('GET', '/category-rules')), []);
+  assert.deepEqual(await data<unknown[]>(await call('GET', '/documents?status=all')), []);
+  const report = await data<{ currencies: unknown[] }>(
+    await call('GET', '/reports/categories?month=2026-10'),
+  );
+  assert.deepEqual(report.currencies, []);
+  assert.doesNotMatch(
+    JSON.stringify(await data(await call('GET', '/transactions/summary?month=2026-10'))),
+    /1540050/,
+  );
+  const backup = (await (await call('GET', '/backup/export')).json()) as {
+    collections: Record<string, unknown[]>;
+  };
+  assert.equal(backup.collections.transactions?.length, 0);
+  const exported = await (await call('GET', '/spreadsheet/export?format=csv')).text();
+  assert.equal(exported.trim().split('\n').length, 1, 'only the header row');
+
+  // Knowing an id of his does not help: for her it does not exist.
+  for (const [method, path] of [
+    ['GET', `/transactions/${mine.id}`],
+    ['PATCH', `/transactions/${mine.id}`],
+    ['DELETE', `/transactions/${mine.id}`],
+    ['GET', `/accounts/${mine.accountId}`],
+    ['DELETE', `/accounts/${mine.accountId}`],
+  ] as const) {
+    const response = await call(method, path, method === 'PATCH' ? { description: 'mío' } : undefined);
+    assert.equal((await failure(response, 404)).code, 'NOT_FOUND', `${method} ${path}`);
+  }
+  const borrowed = await call('POST', '/transactions', {
+    type: 'expense',
+    date: '2026-10-05',
+    amountCents: 100,
+    currency: 'ARS',
+    accountId: mine.accountId,
+  });
+  assert.equal((await failure(borrowed, 400)).code, 'VALIDATION', 'his account is not hers to use');
+
+  // The same name is hers to use, and what she uploads is only in her tray.
+  await data(await call('POST', '/accounts', { name: 'Banco', type: 'bank', currency: 'ARS' }), 201);
+  const upload = new FormData();
+  upload.append('kind', 'receipt');
+  const jpeg = Buffer.concat([
+    Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
+    Buffer.from('ticket de ana'.padEnd(16, '.')),
+  ]);
+  upload.append('files', new Blob([jpeg], { type: 'image/jpeg' }), 'ticket.jpg');
+  await data(await call('POST', '/documents', upload), 202);
+  assert.equal((await data<unknown[]>(await call('GET', '/documents'))).length, 1);
+
+  token = admin;
+  assert.deepEqual(await data<unknown[]>(await call('GET', '/documents')), []);
+  assert.equal((await data<{ total: number }>(await call('GET', '/transactions'))).total, 1);
+  assert.deepEqual(
+    (await data<{ name: string }[]>(await call('GET', '/accounts'))).map((account) => account.name),
+    ['Banco'],
+  );
+});
+
+test('only an admin manages users; anybody changes their own password', async () => {
+  const admin = token;
+  const users = await data<{ id: string; username: string; role: string }[]>(await call('GET', '/users'));
+  assert.deepEqual(
+    users.map((user) => [user.username, user.role]),
+    [
+      [env.AUTH_USERNAME, 'admin'],
+      ['Ana', 'user'],
+    ],
+  );
+  assert.doesNotMatch(JSON.stringify(users), /hash|driveToken/i);
+  assert.equal(
+    (await failure(await call('POST', '/users', { username: 'ana', password: USER_PASSWORD }), 409)).code,
+    'DUPLICATE',
+  );
+  assert.equal(
+    (await failure(await call('POST', '/users', { username: 'beto', password: 'corta' }), 400)).code,
+    'VALIDATION',
+  );
+  const ana = users.find((user) => user.username === 'Ana')!;
+
+  token = await signIn('ana', USER_PASSWORD);
+  for (const [method, path, body] of [
+    ['GET', '/users', undefined],
+    ['POST', '/users', { username: 'beto', password: USER_PASSWORD }],
+    ['PATCH', `/users/${ana.id}`, { active: true }],
+  ] as const) {
+    assert.equal((await failure(await call(method, path, body), 403)).code, 'FORBIDDEN', `${method} ${path}`);
+  }
+
+  const wrong = await call('POST', '/users/me/password', {
+    currentPassword: 'no-es',
+    newPassword: 'otra-clave-1',
+  });
+  assert.equal((await failure(wrong, 400)).code, 'VALIDATION');
+  const changed = await call('POST', '/users/me/password', {
+    currentPassword: USER_PASSWORD,
+    newPassword: 'otra-clave-1',
+  });
+  assert.equal(changed.status, 204);
+  assert.equal(
+    (await failure(await call('GET', '/accounts'), 401)).code,
+    'UNAUTHORIZED',
+    'the old session is closed',
+  );
+  token = await signIn('ana', 'otra-clave-1');
+  assert.equal((await call('GET', '/accounts')).status, 200);
+
+  // Switched off by the admin, she is out at once; switched back on, she can sign in again.
+  const hers = token;
+  token = admin;
+  await data(await call('PATCH', `/users/${ana.id}`, { active: false }));
+  token = hers;
+  assert.equal((await failure(await call('GET', '/accounts'), 401)).code, 'UNAUTHORIZED');
+  token = admin;
+  await data(await call('PATCH', `/users/${ana.id}`, { active: true }));
+});
+
+test('each user connects their own Drive, coming back from Google without a session', async () => {
+  const admin = token;
+  token = await signIn('ana', 'otra-clave-1');
+  const off = await data<{ available: boolean; connected: boolean }>(await call('GET', '/backup/drive'));
+  assert.deepEqual([off.available, off.connected], [true, false]);
+
+  const { url } = await data<{ url: string }>(await call('POST', '/backup/drive/connect'));
+  const ticket = new URL(url).searchParams.get('state')!;
+  assert.ok(url.startsWith(CONSENT_PAGE));
+  const callback = (query: Record<string, string>) =>
+    fetch(`${base}/backup/drive/callback?${new URLSearchParams(query).toString()}`, { redirect: 'manual' });
+  const landing = (response: Response) => new URL(response.headers.get('location') ?? '');
+
+  const forged = await callback({ code: 'x', state: 'not-a-ticket' });
+  assert.equal(landing(forged).searchParams.get(DRIVE_RESULT_PARAM), 'failed');
+  const refused = await callback({ error: 'access_denied', state: ticket });
+  assert.equal(landing(refused).searchParams.get(DRIVE_RESULT_PARAM), 'refused');
+  assert.equal((await data<{ connected: boolean }>(await call('GET', '/backup/drive'))).connected, false);
+
+  const granted = await callback({ code: 'granted', state: ticket });
+  assert.equal(granted.status, 302);
+  assert.equal(
+    landing(granted).origin + landing(granted).pathname,
+    `${env.CORS_ORIGIN[0]}${DATA_SCREEN_PATH}`,
+  );
+  assert.equal(landing(granted).searchParams.get(DRIVE_RESULT_PARAM), 'connected');
+  assert.equal((await data<{ connected: boolean }>(await call('GET', '/backup/drive'))).connected, true);
+
+  // Her Drive is hers: his is still not connected, and she can let go of hers.
+  token = admin;
+  assert.equal((await data<{ connected: boolean }>(await call('GET', '/backup/drive'))).connected, false);
+  token = await signIn('ana', 'otra-clave-1');
+  assert.equal((await data<{ connected: boolean }>(await call('DELETE', '/backup/drive'))).connected, false);
+  token = admin;
 });
 
 test('signing out everywhere closes the session that asked for it', async () => {

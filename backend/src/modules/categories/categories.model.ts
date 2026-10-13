@@ -1,6 +1,7 @@
 import { Schema, model } from 'mongoose';
 import { CATEGORY_KINDS, type CategoryKind } from '@gastos/shared';
 import { COLLECTIONS } from '../../core/db/collections';
+import { ownedByUser, uniquePerUser } from '../../core/db/ownerPlugin';
 import type { ObjectId } from '../../core/db/ids';
 
 export interface CategoryDoc {
@@ -27,6 +28,8 @@ const schema = new Schema<CategoryDoc>(
 );
 
 // Two siblings of the same kind cannot share a name.
-schema.index({ kind: 1, parentId: 1, nameKey: 1 }, { unique: true });
+uniquePerUser(schema, { kind: 1, parentId: 1, nameKey: 1 });
+
+schema.plugin(ownedByUser);
 
 export const CategoryModel = model<CategoryDoc>('Category', schema, COLLECTIONS.categories);

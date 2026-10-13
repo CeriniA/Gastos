@@ -6,7 +6,8 @@ Cada etapa termina en algo que funciona. Si una se complica, lo anterior ya sirv
 
 | Qué                                                          | Estado                                                                                                                                                              |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasa en la PC del usuario el 13/10/2026 con las pruebas por HTTP y de Excel (168 pruebas)                                                                           |
+| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasa en la PC del usuario el 13/10/2026 con usuarios y datos por usuario (185 pruebas)                                                                              |
+| Usuarios y datos por usuario contra MongoDB Atlas            | **Sin probar.** Escrito el 13/10/2026; la migración que le pone dueño a los datos corre por primera vez en el próximo despliegue. Bajar un respaldo antes           |
 | Pantallas de la etapa 1 en un navegador                      | Recorridas el 13/10/2026 contra la demo en memoria (`npm run demo`), tamaño celular: flujo y textos. Sin mirar el aspecto ni probar las descargas                   |
 | Lectura de resúmenes en PDF                                  | Escrita el 12/10/2026 sin ningún resumen real a mano: la lectura del PDF, el tapado de datos y las instrucciones a la IA se ajustan con el primer resumen verdadero |
 | Compilación de backend y frontend (`npm run build`)          | Render compiló los dos el 11/10/2026; se repite en cada push                                                                                                        |
@@ -32,33 +33,57 @@ También subido (`020c281`, repaso de la etapa 1): la demo en memoria (`npm run 
 (`backend/src/app.test.ts`), el arreglo de los movimientos divididos que no se reconocían como repetidos al
 importar, la confirmación al borrar una cuenta y `useAction` en Login, Más y el formulario de movimientos.
 
-**Hecho después, en la carpeta del usuario, sin commit (repaso de las etapas 2 y 3):**
+Y el repaso de las etapas 2 y 3 (`4806090`): la demo simula la IA y el lector de PDF, y los dos arreglos de
+la pantalla de revisión (a dónde va al confirmar, y la tarjeta elegida con "Cuenta para todos").
 
-1. La demo simula la IA y el lector de PDF (`backend/src/scripts/demoReading.ts`): cada ticket, captura o
-   resumen que se sube "lee" la misma respuesta inventada, con campos dudosos, productos, repetidos, cuotas,
-   devolución, cargos financieros y una línea en dólares.
-2. Con eso se recorrieron en un navegador Agregar, Pendientes, Revisión (ticket, capturas y resumen), Resumen
-   en PDF, Tarjetas e Informes. Lo que apareció y se corrigió:
-   - al confirmar un documento la app volvía a Pendientes en vez de ir a Movimientos;
-   - en un resumen, elegir la tarjeta con "Cuenta para todos" mandaba las líneas en dólares a la tarjeta en
-     pesos (y les borraba el monto) y dejaba los cierres sin tarjeta marcada. Ahora van a la tarjeta en
-     dólares y los cierres quedan marcados para las dos.
+**Hecho después, en la carpeta del usuario, sin commit: usuarios (ver la sección "Usuarios" más abajo).**
 
-**Primer paso al retomar:**
+1. Usuarios en MongoDB con contraseña en hash y sesión por JWT. El administrador crea usuarios, les cambia
+   la contraseña y los activa o desactiva (Más → Usuarios). Cada uno cambia la suya (Más → Cambiar mi
+   contraseña).
+2. Cada dato tiene dueño y nadie ve los de otro. El dueño lo pone y lo filtra un solo lugar
+   (`core/db/ownerPlugin.ts`); sin usuario, tocar datos da error.
+3. Respaldo, restauración, exportación, cola de documentos y limpiezas son de cada usuario.
+4. Cada usuario conecta su propio Google Drive desde la app. En Render quedan `DRIVE_CLIENT_ID`,
+   `DRIVE_CLIENT_SECRET` y `PUBLIC_API_URL`; `DRIVE_REFRESH_TOKEN` ya no se usa.
+5. Se fueron `npm run seed` y `npm run drive-auth`: los datos iniciales se dan solos a cada usuario nuevo.
 
-1. `npm run check`: pasó el 13/10/2026 (168 pruebas).
-2. Commit: `fix: review screen after confirming and card chosen for all; demo reads documents`
-3. Push: Render vuelve a desplegar solo. No hay migraciones nuevas.
+**Y tres mejoras más, también sin commit:**
 
-**Encontrado y sin corregir:** al unir dos categorías que son partes del mismo movimiento dividido, el
-movimiento queda "dividido en 2 categorías" con las dos partes en la misma. Los totales dan bien; se
-arregla editando el movimiento.
+1. Al unir categorías, las partes de un movimiento dividido que quedan en la misma categoría se juntan (era
+   el problema que había quedado anotado sin corregir).
+2. Pagar la tarjeta: "Registrar un pago" en cada resumen de Más → Tarjetas. Es una transferencia ligada al
+   resumen, que muestra lo pagado y lo que falta.
+3. Informe por categoría, con ingresos y egresos y el árbol de categorías. Informes ahora tiene dos
+   pestañas: "Por categoría" y "Consumo".
+
+**Primer paso al retomar. Leer entero antes de subir: este cambio toca todos los datos guardados.**
+
+1. `npm run check`: pasó el 13/10/2026 (185 pruebas).
+2. **Bajar un respaldo desde la app en producción (Más → Respaldo y datos), antes del push.** La versión
+   nueva lo sabe restaurar aunque no tenga dueños.
+3. Commit: `feat: users with their own data, per-user Drive, card payments, report by category`
+4. Push. Al arrancar, Render:
+   - crea el primer usuario, administrador, con `AUTH_USERNAME` y `AUTH_PASSWORD_HASH`;
+   - corre la migración `2026-10-13-data-owners`: todo lo guardado pasa a ser de ese usuario y los índices
+     únicos se rehacen por usuario.
+5. Entrar de nuevo (las sesiones viejas dejan de valer) y revisar que estén las cuentas y los movimientos.
+   Si algo falta o el servidor no arranca, mirar los registros de Render; con el respaldo del paso 2 se
+   recupera todo.
+6. Crear un segundo usuario y comprobar que no ve nada.
+
+**No probado contra una base real:** la migración, los índices por usuario y el filtro por dueño están
+probados sobre Mongoose sin base y sobre el backend en memoria (incluido por HTTP, con dos usuarios). Contra
+MongoDB Atlas corren por primera vez en el paso 4. Lo más prudente es probarlo antes en la base `gastos-dev`
+(`npm run dev:backend` con `MONGODB_URI` apuntando ahí, después de restaurarle el respaldo).
 
 **Pendiente del usuario (no es código):**
 
-- Bajar un respaldo desde la app (Más → Datos), hasta que la copia en Drive esté andando.
-- Activar la copia en Drive con `docs/RESPALDO_DRIVE.md` (Google Cloud, `npm run drive-auth -w backend`,
-  variables en Render) y probar "Copiar ahora".
+- Bajar un respaldo desde la app (Más → Datos) antes de subir lo de usuarios.
+- Configurar Google una vez con `docs/RESPALDO_DRIVE.md` (credencial de tipo "Aplicación web", tres
+  variables en Render) y después conectar el Drive desde la app y probar "Copiar ahora". Si ya se había
+  creado la credencial de tipo "App de escritorio", hay que crear una nueva.
+- Crear los usuarios que hagan falta en Más → Usuarios y pasarles su contraseña.
 - Que el amigo pruebe un resumen real: qué quedó sin tapar en el texto, si la suma da igual al total y si
   los intereses, impuestos y comisiones salen en "Cargos financieros".
 
@@ -66,9 +91,8 @@ arregla editando el movimiento.
 
 - Ajustar el tapado y las instrucciones con el primer resumen real.
 - La misma compra cargada por dos vías (ticket y resumen): detectarla y proponer unirla. Antes hay que
-  definir el margen de días (está abierto en `DECISIONES.md`).
-- Pagar la tarjeta como transferencia ligada a su resumen.
-- Etapa 4: informes y movimientos fijos.
+  definir el margen de días (está abierto en `DECISIONES.md`; se propuso 3, con mismo monto y cuenta).
+- Etapa 4: los informes que faltan (por cuenta, evolución mensual, comercios) y movimientos fijos.
 - Uso sin conexión: está en la segunda versión; el usuario decidió no adelantarlo por ahora.
 
 **Cómo se trabaja (recordatorio para el asistente):**
@@ -79,6 +103,28 @@ arregla editando el movimiento.
 - Antes de entregar: formato, `npm run audit:code`, pruebas y tipos, y decir qué se corrió.
 - Un problema que se encuentra se arregla en el momento, no se anota como deuda sin avisar.
 - No leer `backend/.env`.
+
+## Usuarios (13/10/2026)
+
+Hecho:
+
+- Colección `users`, login contra la base, JWT con el id del usuario y la versión de sus sesiones.
+- Administrador: crea usuarios, les cambia la contraseña, los activa o desactiva. No ve datos de nadie.
+- Cada usuario cambia su contraseña y cierra sus sesiones en todos los dispositivos.
+- Dueño en cada dato (`ownedByUser`), índices únicos por usuario y migración de lo que ya había.
+- Respaldo, restauración (también de un respaldo viejo), exportación, cola de documentos, limpiezas y
+  copia a Drive por usuario.
+- Conexión del Drive de cada uno desde la app, con el permiso guardado cifrado.
+- Pantallas: Más → Usuarios, Más → Cambiar mi contraseña, y la sección de Drive en Respaldo y datos.
+  Recorridas en un navegador con la demo: crear un usuario, entrar como él y no ver nada del otro, cambiar
+  la contraseña, conectar y desconectar Drive, desactivar un usuario.
+
+Falta:
+
+- Probarlo contra MongoDB Atlas (ver "Dónde quedamos").
+- Probar la conexión de Drive con Google de verdad: hasta ahora, con un Google simulado.
+- Que el administrador pueda renombrar un usuario o cambiarle el tipo (hoy se crea otro).
+- Un límite de uso de la IA por usuario: hoy todos comparten el mismo cupo de Gemini.
 
 ## Etapa 1: base usable (este repositorio)
 
@@ -175,7 +221,9 @@ sigue en esta lista es lo que esos controles no cubren.
   Sin recorrer: un ticket en otra moneda (el cambio), el alta de cuotas a mano, Bancos y tarjetas, y las
   descargas. Un error visual lo encuentra el usuario.
 - **Las consultas a MongoDB no tienen pruebas.** Las pruebas corren sobre repositorios en memoria; lo que
-  hace cada repositorio real contra la base solo se comprueba usando la app.
+  hace cada repositorio real contra la base solo se comprueba usando la app. Con varios usuarios pesa más:
+  el filtro por dueño está probado sobre Mongoose sin base, no contra una base de verdad. Se resolvería con
+  una base de pruebas (por ejemplo `mongodb-memory-server`, una dependencia solo de desarrollo).
 - **Vulnerabilidades de las librerías** (`npm audit` del 11/10/2026: 1 baja, 2 moderadas, ninguna alta).
   - `esbuild` (dentro de `tsup`): afectaba a su servidor de desarrollo en Windows, que este proyecto
     no usa. Corregido con `npm audit fix` el 11/10/2026.
@@ -231,11 +279,15 @@ Falta:
 - Probarlo con un resumen real y ajustar el tapado y las instrucciones.
 - PDF escaneado (sin texto): hoy se rechaza con aviso.
 - Detección de la misma compra cargada por dos vías (ticket y resumen) y propuesta de unión.
-- Pagar la tarjeta como transferencia desde el banco, ligada a su resumen.
+
+Hecho (13/10/2026): pagar la tarjeta como transferencia desde otra cuenta, ligada a su resumen, con lo
+pagado y lo que falta a la vista.
 
 ## Etapa 4: informes, fijos y monedas
 
-- Informes por categoría (con el árbol), por cuenta, evolución mensual, comercios.
+Hecho (13/10/2026): informe por categoría, de ingresos y egresos, con el árbol de categorías.
+
+- Informes por cuenta, evolución mensual, comercios.
 - Tasas de cambio manuales (`exchange-rates`) y vista consolidada.
 - Movimientos fijos (`recurrings`): sugerencia, marca manual, proyección y avisos.
 - Proyección de cuotas y fijos.

@@ -1,78 +1,78 @@
-import { timingSafeEqual } from 'node:crypto';
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import type { LoginInput, LoginResult, SessionInfo } from '@gastos/shared';
+import {
+  objectIdSchema,
+  type LoginInput,
+  type LoginResult,
+  type SessionInfo,
+  type User,
+} from '@gastos/shared';
 import { UnauthorizedError } from '../../core/errors/errors';
 
+const DAY_SECONDS = 24 * 60 * 60;
+const SECOND_MS = 1000;
+
 export interface AuthConfig {
-  username: string;
-  passwordHash: string;
   jwtSecret: string;
   expiresDays: number;
 }
 
-function sameText(a: string, b: string): boolean {
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  return left.length === right.length && timingSafeEqual(left, right);
+/** A user and the number their open sessions must carry to stay valid. */
+interface KnownUser {
+  user: User;
+  sessionVersion: number;
 }
 
-/** Where the moment of the last "sign out everywhere" is remembered. */
-export interface AuthStateStore {
-  load(): Promise<Date | null>;
-  save(sessionsValidFrom: Date): Promise<void>;
+/** What the sessions need to know about users. The users module answers it. */
+export interface UserDirectory {
+  authenticate(username: string, password: string): Promise<KnownUser | null>;
+  findActive(userId: string): Promise<KnownUser | null>;
+  closeSessions(userId: string): Promise<void>;
 }
 
 /**
- * Single-user authentication. The user and the bcrypt hash of the password
- * live in environment variables; there is no users collection.
+ * Sessions: a signed token (JWT) that names the user and the version of their
+ * sessions it was issued for. Closing a user's sessions raises that version,
+ * so every token issued before stops being accepted at once.
  */
-export function createAuthService(config: AuthConfig, state: AuthStateStore) {
-  // Kept in memory so checking a token never waits for the database.
-  // In seconds, like the "issued at" of a token.
-  let validFromSeconds = 0;
-  const remember = (moment: Date | null) => {
-    validFromSeconds = moment ? Math.ceil(moment.getTime() / 1000) : 0;
-  };
-
+export function createAuthService(config: AuthConfig, users: UserDirectory) {
   return {
-    /** Reads the stored state. Called at startup and after a restore. */
-    async init(): Promise<void> {
-      remember(await state.load());
-    },
-
-    /**
-     * Signs out every device: no session started before now is accepted
-     * again, including the one that asked for it.
-     */
-    async revokeAll(now: Date = new Date()): Promise<void> {
-      await state.save(now);
-      remember(now);
-    },
-
     async login(input: LoginInput): Promise<LoginResult> {
-      // Always run the hash comparison so a wrong username takes as long as a wrong password.
-      const passwordOk = await bcrypt.compare(input.password, config.passwordHash);
-      const usernameOk = sameText(input.username, config.username);
-      if (!passwordOk || !usernameOk) throw new UnauthorizedError('INVALID_CREDENTIALS');
+      const known = await users.authenticate(input.username, input.password);
+      if (!known) throw new UnauthorizedError('INVALID_CREDENTIALS');
 
-      const expiresInSeconds = config.expiresDays * 24 * 60 * 60;
-      const token = jwt.sign({ sub: config.username }, config.jwtSecret, {
+      const expiresInSeconds = config.expiresDays * DAY_SECONDS;
+      const token = jwt.sign({ sub: known.user.id, sv: known.sessionVersion }, config.jwtSecret, {
         algorithm: 'HS256',
         expiresIn: expiresInSeconds,
       });
-      return { token, expiresAt: new Date(Date.now() + expiresInSeconds * 1000).toISOString() };
+      return { token, expiresAt: new Date(Date.now() + expiresInSeconds * SECOND_MS).toISOString() };
     },
 
-    verify(token: string): SessionInfo | null {
+    /** Who the token belongs to, or null when it is forged, expired or closed. */
+    async verify(token: string): Promise<SessionInfo | null> {
+      let payload: jwt.JwtPayload;
       try {
-        const payload = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
-        if (typeof payload === 'string' || payload.sub !== config.username || !payload.exp) return null;
-        if (!payload.iat || payload.iat < validFromSeconds) return null;
-        return { username: config.username, expiresAt: new Date(payload.exp * 1000).toISOString() };
+        const decoded = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
+        if (typeof decoded === 'string' || !decoded.exp) return null;
+        // Tokens from before users existed named the user, not their id.
+        if (!objectIdSchema.safeParse(decoded.sub).success) return null;
+        payload = decoded;
       } catch {
         return null;
       }
+      const known = await users.findActive(payload.sub!);
+      if (!known || payload.sv !== known.sessionVersion) return null;
+      return {
+        userId: known.user.id,
+        username: known.user.username,
+        role: known.user.role,
+        expiresAt: new Date(payload.exp! * SECOND_MS).toISOString(),
+      };
+    },
+
+    /** Signs the user out of every device, including the one that asks. */
+    revokeAll(userId: string): Promise<void> {
+      return users.closeSessions(userId);
     },
   };
 }

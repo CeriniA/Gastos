@@ -31,6 +31,7 @@ import {
   createExchangeRatesService,
   type ExchangeRatesService,
 } from './modules/exchange-rates/exchangeRates.service';
+import { createReportsService, type ReportsService } from './modules/reports/reports.service';
 import { createSpreadsheetService, type SpreadsheetService } from './modules/spreadsheet/spreadsheet.service';
 import type { TagsRepository } from './modules/tags/tags.repository';
 import { createTagsService, type TagsService } from './modules/tags/tags.service';
@@ -70,6 +71,8 @@ export interface Runtime {
   rates: RateProvider | null;
   /** Starts background work without waiting for it. */
   schedule: (work: () => Promise<void>) => void;
+  /** The user the running code works for. */
+  owner: () => string;
   onError: (error: unknown, context: object) => void;
 }
 
@@ -83,6 +86,7 @@ export interface Services {
   exchangeRates: ExchangeRatesService;
   installmentPlans: InstallmentPlansService;
   institutions: InstitutionsService;
+  reports: ReportsService;
   tags: TagsService;
   transactions: TransactionsService;
   spreadsheet: SpreadsheetService;
@@ -121,6 +125,9 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     listAccounts: () => accounts.list(),
     refreshPaymentDates: transactions.refreshPaymentDates,
     listCharges: transactions.listCharges,
+    createPayment: transactions.createCardPayment,
+    paidByPeriod: transactions.paidByCardPeriod,
+    releasePayments: transactions.releaseCardPeriod,
     runInTransaction,
   });
 
@@ -197,6 +204,7 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     today,
     now: runtime.now,
     schedule: runtime.schedule,
+    owner: runtime.owner,
     onError: runtime.onError,
   });
 
@@ -204,7 +212,13 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
 
   const consumption: ConsumptionService = createConsumptionService({ listItems: transactions.listItems });
 
+  const reports: ReportsService = createReportsService({
+    listFiled: transactions.listFiled,
+    listCategories: () => categories.list(),
+  });
+
   return {
+    reports,
     accounts,
     cardPeriods,
     categories,

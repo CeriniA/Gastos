@@ -42,17 +42,30 @@ export function useDriveBackup() {
   });
 }
 
-export function useDriveBackupNow() {
+/** What the user does with their copy in Drive. Each answers with how the copy stands now. */
+export function useDriveBackupActions() {
   const client = useQueryClient();
-  return useMutation({
-    mutationFn: () => api<DriveBackupStatus>('/backup/drive', { method: 'POST' }),
-    onSuccess: (status) => client.setQueryData(DRIVE_KEY, status),
-  });
+  const keep = (status: DriveBackupStatus) => client.setQueryData(DRIVE_KEY, status);
+  return {
+    copyNow: useMutation({
+      mutationFn: () => api<DriveBackupStatus>('/backup/drive', { method: 'POST' }),
+      onSuccess: keep,
+    }),
+    disconnect: useMutation({
+      mutationFn: () => api<DriveBackupStatus>('/backup/drive', { method: 'DELETE' }),
+      onSuccess: keep,
+    }),
+    /** Leaves the app for Google's page, where the user grants the permission. */
+    connect: useMutation({
+      mutationFn: () => api<{ url: string }>('/backup/drive/connect', { method: 'POST' }),
+      onSuccess: ({ url }) => window.location.assign(url),
+    }),
+  };
 }
 
-/** The copy is on but failing, or has not run for too long while the app is in use. */
+/** The user's copy is connected but failing, or has not run for too long while the app is in use. */
 export function driveBackupNeedsAttention(status: DriveBackupStatus | undefined, now = new Date()): boolean {
-  if (!status?.configured) return false;
+  if (!status?.connected) return false;
   if (status.lastError) return true;
   return !status.lastSavedAt || hoursBetween(status.lastSavedAt, now) > DRIVE_BACKUP_STALE_HOURS;
 }

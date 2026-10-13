@@ -9,7 +9,7 @@ import {
   statementPreviewSchema,
   statementUploadSchema,
 } from '@gastos/shared';
-import { noContent, ok, parse } from '../../core/http/http';
+import { asUser, noContent, ok, parse } from '../../core/http/http';
 import type { DocumentsService } from './documents.service';
 
 export function createDocumentsController(service: DocumentsService) {
@@ -53,5 +53,5 @@ export function createDocumentsController(service: DocumentsService) {
     await service.remove(id, parse(documentDeleteQuerySchema, req.query).transactions);
     noContent(res);
   };
-  return { list, upload, previewStatement, uploadStatement, get, file, retry, confirm, remove };
+  return asUser({ list, upload, previewStatement, uploadStatement, get, file, retry, confirm, remove });
 }

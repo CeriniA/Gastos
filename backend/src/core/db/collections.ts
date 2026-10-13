@@ -12,5 +12,5 @@ export const COLLECTIONS = {
   categoryRules: 'categoryRules',
   exchangeRates: 'exchangeRates',
   migrations: 'migrations',
-  authState: 'authState',
+  users: 'users',
 } as const;

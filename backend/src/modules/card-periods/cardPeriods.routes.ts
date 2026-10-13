@@ -9,5 +9,6 @@ export function createCardPeriodsRouter(service: CardPeriodsService): Router {
   router.post('/', controller.create);
   router.patch('/:id', controller.update);
   router.delete('/:id', controller.remove);
+  router.post('/:id/payments', controller.pay);
   return router;
 }

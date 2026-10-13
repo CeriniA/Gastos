@@ -23,6 +23,7 @@ import type { WriteOptions } from '../../core/db/transaction';
 import { NotFoundError, ValidationError } from '../../core/errors/errors';
 import { dueDateFor, resolvePaymentDate, type PeriodDates } from './paymentDate';
 import { duplicateKey, installmentKey } from './duplicateKey';
+import { joinSameCategory } from './splits';
 import type { TransactionRecord, TransactionsRepository } from './transactions.repository';
 
 /** What the transactions module needs from the rest of the app. */
@@ -53,6 +54,8 @@ interface Origin {
   documentId?: string;
   /** Future installments are stored as projected; everything else is confirmed. */
   status?: TransactionStatus;
+  /** The card statement a transfer pays. */
+  cardPeriodId?: string;
 }
 
 /** One transaction to store in bulk, with what its origin knows about it. */
@@ -201,7 +204,9 @@ export function createTransactionsService(repository: TransactionsRepository, de
       items: input.items,
       installment: origin.installment === undefined ? (previous?.installment ?? null) : origin.installment,
       documentId: origin.documentId ?? previous?.documentId ?? null,
-      cardPeriodId: previous?.cardPeriodId ?? null,
+      // Only a transfer pays a statement: changed into something else, it lets go of it.
+      cardPeriodId:
+        input.type === 'transfer' ? (origin.cardPeriodId ?? previous?.cardPeriodId ?? null) : null,
       recurringId: previous?.recurringId ?? null,
       edited: previous ? previous.edited || previous.source !== 'manual' : false,
     };
@@ -247,6 +252,20 @@ export function createTransactionsService(repository: TransactionsRepository, de
       const [created] = await repository.insertMany([record]);
       return created!;
     },
+
+    /** The transfer that pays a card statement, linked to it. */
+    async createCardPayment(input: TransactionCreate, cardPeriodId: string): Promise<Transaction> {
+      const record = prepare(input, await loadReferences(), { source: 'manual', cardPeriodId });
+      const [created] = await repository.insertMany([record]);
+      return created!;
+    },
+
+    /** What was paid towards each of those statements, in the card's currency. */
+    paidByCardPeriod: (cardPeriodIds: readonly string[]) => repository.sumPaymentsByPeriod(cardPeriodIds),
+
+    /** A statement is going away: its payments stay as plain transfers. */
+    releaseCardPeriod: (cardPeriodId: string, options: WriteOptions) =>
+      repository.clearCardPeriod(cardPeriodId, options),
 
     /** All-or-nothing bulk insert, validated row by row. Used by the import and by documents. */
     async createMany(
@@ -368,6 +387,9 @@ export function createTransactionsService(repository: TransactionsRepository, de
       return { month, totals: await repository.totalsByMonth(month) };
     },
 
+    /** What each income or expense paid in a month adds to its category, for the report by category. */
+    listFiled: (month: string) => repository.findFiledByMonth(month),
+
     /** Receipt lines of the confirmed expenses in a date range, for the consumption report. */
     listItems: (range: { from?: string; to?: string }) => repository.findItems(range),
 
@@ -395,8 +417,18 @@ export function createTransactionsService(repository: TransactionsRepository, de
     // What other modules may ask about transactions.
     countByAccount: (accountId: string) => repository.countByAccount(accountId),
     countByCategory: (categoryId: string) => repository.countByCategory(categoryId),
-    moveCategory: (fromId: string, toId: string, options: WriteOptions) =>
-      repository.moveCategory(fromId, toId, options),
+    /**
+     * Everything filed under one category goes to another (they are being
+     * merged). A divided transaction with a part in each ends up with two parts
+     * in the same category: those become one.
+     */
+    async moveCategory(fromId: string, toId: string, options: WriteOptions): Promise<void> {
+      await repository.moveCategory(fromId, toId, options);
+      for (const divided of await repository.findDividedBy(toId, options)) {
+        const filing = joinSameCategory(divided.splits);
+        if (filing) await repository.setFiling(divided.id, filing, options);
+      }
+    },
     removeTag: (tagId: string, options: WriteOptions) => repository.pullTag(tagId, options),
     /**
      * For each candidate, whether a stored transaction has the same day and

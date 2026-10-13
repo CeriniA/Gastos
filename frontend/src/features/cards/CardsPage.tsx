@@ -6,6 +6,7 @@ import {
   formatMoney,
   parseAmountToCents,
   type Account,
+  type CardPayment,
   type CardPeriodCreate,
   type CardPeriodView,
 } from '@gastos/shared';
@@ -16,6 +17,7 @@ import { QueryState } from '../../shared/ui/QueryState';
 import { Button, Card, Field, Loading, Notice, PageTitle, Select, TextInput } from '../../shared/ui/ui';
 import { useAccounts } from '../accounts/api';
 import { useCardPeriodMutations, useCardStatement } from './api';
+import { PaymentForm } from './PaymentForm';
 
 interface PeriodDraft {
   closingDate: string;
@@ -95,19 +97,28 @@ function PeriodFields({ draft, onChange }: { draft: PeriodDraft; onChange: (draf
 
 function PeriodRow({
   period,
-  currency,
+  card,
+  sources,
   busy,
   onSave,
+  onPay,
   onDelete,
 }: {
   period: CardPeriodView;
-  currency: string;
+  card: Account;
+  /** The accounts a payment can come from. */
+  sources: readonly Account[];
   busy: boolean;
   onSave: (draft: PeriodDraft) => Promise<boolean>;
+  onPay: (payment: CardPayment) => Promise<boolean>;
   onDelete: () => void;
 }) {
+  const { currency } = card;
   const [draft, setDraft] = useState<PeriodDraft | null>(null);
+  const [paying, setPaying] = useState(false);
   const difference = period.totalCents === null ? null : period.totalCents - period.chargedCents;
+  // What there is to pay is what the bank says; without that, what the app added up.
+  const remainingCents = (period.totalCents ?? period.chargedCents) - period.paidCents;
 
   if (draft) {
     const save = async (event: FormEvent) => {
@@ -153,7 +164,34 @@ function PeriodRow({
           {es.cards.minimumIs(formatMoney(period.minimumPaymentCents, currency))}
         </p>
       ) : null}
+      {period.paidCents > 0 ? (
+        <p className="text-sm text-muted">
+          {es.cards.paid(formatMoney(period.paidCents, currency))}{' '}
+          {remainingCents > 0
+            ? es.cards.remaining(formatMoney(remainingCents, currency))
+            : es.cards.paidInFull}
+        </p>
+      ) : null}
+      {paying ? (
+        <PaymentForm
+          card={card}
+          sources={sources}
+          remainingCents={remainingCents}
+          busy={busy}
+          onPay={async (payment) => {
+            const done = await onPay(payment);
+            if (done) setPaying(false);
+            return done;
+          }}
+          onCancel={() => setPaying(false)}
+        />
+      ) : null}
       <div className="mt-1 flex">
+        {paying ? null : (
+          <Button variant="quiet" className="px-0 pr-4" onClick={() => setPaying(true)}>
+            {es.cards.pay}
+          </Button>
+        )}
         <Button
           variant="quiet"
           className="px-0 pr-4"
@@ -177,9 +215,17 @@ function PeriodRow({
   );
 }
 
-function CardStatementView({ card, cards }: { card: Account; cards: readonly Account[] }) {
+function CardStatementView({
+  card,
+  cards,
+  sources,
+}: {
+  card: Account;
+  cards: readonly Account[];
+  sources: readonly Account[];
+}) {
   const statement = useCardStatement(card.id);
-  const { create, update, remove } = useCardPeriodMutations();
+  const { create, update, remove, pay } = useCardPeriodMutations();
   const [draft, setDraft] = useState<PeriodDraft>(EMPTY);
   // The same card in the other currency shares its dates: offered ticked.
   const twins = cards.filter(
@@ -191,7 +237,7 @@ function CardStatementView({ card, cards }: { card: Account; cards: readonly Acc
   );
   const [alsoFor, setAlsoFor] = useState<string[]>(() => twins.map((twin) => twin.id));
   const { failure, setFailure, run } = useAction();
-  const busy = create.isPending || update.isPending || remove.isPending;
+  const busy = create.isPending || update.isPending || remove.isPending || pay.isPending;
 
   const add = async (event: FormEvent) => {
     event.preventDefault();
@@ -237,9 +283,11 @@ function CardStatementView({ card, cards }: { card: Account; cards: readonly Acc
                   <PeriodRow
                     key={period.id}
                     period={period}
-                    currency={card.currency}
+                    card={card}
+                    sources={sources}
                     busy={busy}
                     onSave={(edited) => save(period.id, edited)}
+                    onPay={(payment) => run(() => pay.mutateAsync({ id: period.id, payment }))}
                     onDelete={() => {
                       if (window.confirm(es.cards.deleteConfirm))
                         void run(() => remove.mutateAsync(period.id));
@@ -323,7 +371,13 @@ export function CardsPage() {
               </Select>
             </div>
           ) : null}
-          <CardStatementView key={card.id} card={card} cards={cards} />
+          <CardStatementView
+            key={card.id}
+            card={card}
+            cards={cards}
+            // A card is paid from money, not from another card.
+            sources={accounts.data.filter((account) => account.type !== 'credit_card' && !account.archived)}
+          />
         </>
       )}
     </>

@@ -104,10 +104,11 @@ test('a revoked permission and an unreachable Google are told apart', async () =
 });
 
 test('the consent page asks only for the app files, with offline access', async () => {
-  const url = new URL(authorizationUrl('client', 'http://127.0.0.1:53682'));
+  const url = new URL(authorizationUrl('client', 'http://127.0.0.1:53682', 'who-is-asking'));
   assert.equal(url.searchParams.get('scope'), 'https://www.googleapis.com/auth/drive.file');
   assert.equal(url.searchParams.get('access_type'), 'offline');
   assert.equal(url.searchParams.get('redirect_uri'), 'http://127.0.0.1:53682');
+  assert.equal(url.searchParams.get('state'), 'who-is-asking');
 
   const { sent } = setup([]);
   const refreshToken = await exchangeCode({

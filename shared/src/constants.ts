@@ -51,6 +51,12 @@ export const MAX_RATE = 1_000_000_000;
 /** Longest username and password the login accepts. */
 export const MAX_USERNAME_LENGTH = 100;
 export const MAX_PASSWORD_LENGTH = 200;
+/** Shorter passwords are guessed too easily; applies to every password set from now on. */
+export const MIN_PASSWORD_LENGTH = 8;
+
+/** An admin also creates users and resets their passwords. Nobody sees another user's data. */
+export const USER_ROLES = ['admin', 'user'] as const;
+export type UserRole = (typeof USER_ROLES)[number];
 
 /** Decimals kept in an exchange rate. */
 export const RATE_DECIMALS = 6;
@@ -217,6 +223,15 @@ export const DRIVE_BACKUP_STALE_HOURS = 72;
 /** Why the last copy to Drive failed. The frontend maps each one to a Spanish message. */
 export const DRIVE_BACKUP_ERRORS = ['not_authorized', 'unavailable'] as const;
 export type DriveBackupError = (typeof DRIVE_BACKUP_ERRORS)[number];
+/**
+ * How connecting a Drive ended. Google sends the browser back to the server,
+ * which sends it on to the data screen with one of these in DRIVE_RESULT_PARAM.
+ */
+export const DRIVE_CONNECT_RESULTS = ['connected', 'refused', 'failed'] as const;
+export type DriveConnectResult = (typeof DRIVE_CONNECT_RESULTS)[number];
+export const DRIVE_RESULT_PARAM = 'drive';
+/** The screen the browser comes back to after connecting a Drive. */
+export const DATA_SCREEN_PATH = '/mas/datos';
 
 /** Bump when the backup file layout changes; restore refuses newer versions. */
 export const BACKUP_FORMAT_VERSION = 1;
@@ -232,6 +247,7 @@ export const ERROR_CODES = [
   'IN_USE',
   'UNAUTHORIZED',
   'INVALID_CREDENTIALS',
+  'FORBIDDEN',
   'RATE_LIMITED',
   'PAYLOAD_TOO_LARGE',
   'INVALID_BACKUP',

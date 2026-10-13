@@ -14,11 +14,15 @@ const LINKS = [
   { to: '/mas/etiquetas', label: es.more.tags },
   { to: '/mas/papelera', label: es.more.trash },
   { to: '/mas/datos', label: es.more.data },
+  { to: '/mas/contrasena', label: es.more.password },
 ] as const;
+/** Only an admin sees it; the server refuses the rest anyway. */
+const ADMIN_LINKS = [{ to: '/mas/usuarios', label: es.more.users }] as const;
 
 export function MorePage() {
-  const { logout } = useAuth();
+  const { logout, session } = useAuth();
   const { failure, run } = useAction();
+  const links = session?.role === 'admin' ? [...LINKS, ...ADMIN_LINKS] : LINKS;
 
   const logoutEverywhere = async () => {
     if (!window.confirm(es.auth.logoutAllConfirm)) return;
@@ -28,7 +32,7 @@ export function MorePage() {
     <>
       <PageTitle>{es.more.title}</PageTitle>
       <ul className="mb-6 divide-y divide-line rounded-xl border border-line bg-surface">
-        {LINKS.map((link) => (
+        {links.map((link) => (
           <li key={link.to}>
             <Link to={link.to} className="flex min-h-14 items-center justify-between px-4 font-medium">
               {link.label}
@@ -44,6 +48,7 @@ export function MorePage() {
           <Notice tone="error">{failure}</Notice>
         </div>
       ) : null}
+      {session ? <p className="mb-2 text-sm text-muted">{es.auth.signedInAs(session.username)}</p> : null}
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" onClick={logout}>
           {es.auth.logout}

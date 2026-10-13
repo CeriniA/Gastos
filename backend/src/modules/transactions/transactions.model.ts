@@ -10,6 +10,7 @@ import {
   type TransactionType,
 } from '@gastos/shared';
 import { COLLECTIONS } from '../../core/db/collections';
+import { ownedByUser } from '../../core/db/ownerPlugin';
 import type { ObjectId } from '../../core/db/ids';
 
 export interface TransactionDoc {
@@ -142,5 +143,7 @@ schema.index({ 'splits.categoryId': 1 });
 schema.index({ tagIds: 1 });
 schema.index({ documentId: 1 });
 schema.index({ 'original.currency': 1, date: -1 });
+
+schema.plugin(ownedByUser);
 
 export const TransactionModel = model<TransactionDoc>('Transaction', schema, COLLECTIONS.transactions);

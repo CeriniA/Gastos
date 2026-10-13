@@ -8,6 +8,7 @@ import {
   type DocumentStatus,
 } from '@gastos/shared';
 import { COLLECTIONS } from '../../core/db/collections';
+import { ownedByUser, uniquePerUser } from '../../core/db/ownerPlugin';
 import type { ObjectId } from '../../core/db/ids';
 
 /** Uploaded receipts and screenshots, from upload until the user confirms what was read. */
@@ -49,7 +50,7 @@ const schema = new Schema<DocumentDoc>(
     kind: { type: String, required: true, enum: [...DOCUMENT_KINDS] },
     status: { type: String, required: true, enum: [...DOCUMENT_STATUSES] },
     fileName: { type: String, required: true },
-    sha256: { type: String, required: true, unique: true },
+    sha256: { type: String, required: true },
     accountId: { type: Schema.Types.ObjectId, default: null },
     files: {
       type: [
@@ -72,5 +73,8 @@ const schema = new Schema<DocumentDoc>(
   { timestamps: true },
 );
 schema.index({ status: 1, createdAt: 1 });
+
+uniquePerUser(schema, { sha256: 1 });
+schema.plugin(ownedByUser);
 
 export const DocumentModel = model<DocumentDoc>('Document', schema, COLLECTIONS.documents);

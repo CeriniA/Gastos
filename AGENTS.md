@@ -23,12 +23,31 @@ leé `docs/ARQUITECTURA.md` y `docs/ESPECIFICACION.md`. Estas reglas no son opci
 - La fecha de pago la decide únicamente `resolvePaymentDate`.
 - Totales, saldos y montos convertidos se calculan; no se guardan.
 
+## Usuarios y dueños de los datos
+
+Cada dato es de un usuario y nadie ve los de otro, tampoco el administrador. El dueño no se pasa como
+argumento: lo pone y lo filtra un solo lugar. Leé "Usuarios y dueños" en `docs/ARQUITECTURA.md` antes de
+tocar un modelo, un controller o una tarea en segundo plano.
+
+- Toda colección con datos de un usuario lleva `schema.plugin(ownedByUser)` (`core/db/ownerPlugin.ts`). Lo
+  que no puede repetirse es único **por usuario**: `uniquePerUser(schema, …)`, no `unique: true`.
+- Los repositorios y services se escriben como si hubiera un solo usuario. No reciben ni filtran por
+  `userId` a mano.
+- Todo controller de datos devuelve sus handlers por `asUser({ … })` (`core/http/http.ts`).
+- Lo que corre sin un pedido detrás (limpiezas, copia a Drive, cola de documentos) va dentro de
+  `container.forEachUser` o `runAsUser`. Sin usuario, tocar datos da error: es a propósito.
+- Si esquivás Mongoose y usás el driver (`model.collection…`), filtrá con `ownedOnly()` y marcá con
+  `stampOwner()`.
+- `runAsSystem` es solo para migraciones marcadas `system`. No lo uses para "que ande".
+- `users` no es dato de nadie: no lleva el plugin ni puerto de respaldo. Contraseñas y permisos no salen
+  en ninguna respuesta ni en ningún respaldo.
+
 ## Capas del backend
 
 `routes → controller → service → repository → model`. Las dependencias van solo hacia abajo.
 
 - **controller**: valida la entrada con `parse(schema, ...)`, llama al service, responde con `ok(...)`.
-  Sin reglas de negocio, sin base de datos.
+  Sin reglas de negocio, sin base de datos. Devuelve sus handlers por `asUser`.
 - **service**: reglas de negocio. No importa `express` ni `mongoose` ni modelos.
 - **repository**: único lugar que usa el modelo. Devuelve los tipos de `shared`, con ids como texto.
 - Un módulo no importa los archivos internos de otro. Lo que necesita de otro módulo lo recibe como
@@ -55,8 +74,10 @@ MongoDB no tiene claves foráneas; la integridad la garantiza el backend.
 - Lo que tiene historia se archiva, no se borra. Reglas de borrado: `docs/ESPECIFICACION.md`.
 - Toda colección nueva registra su puerto (`createCollectionPort`) con sus referencias en
   `backend/src/composition.ts`. Así entra sola en el respaldo y en el chequeo de integridad.
-  Única excepción: `authState` (ver `docs/DECISIONES.md`).
-- Un cambio en la estructura de datos guardados lleva una migración en `backend/src/migrations/`.
+  Única excepción: `users` (ver `docs/DECISIONES.md`).
+- Un cambio en la estructura de datos guardados lleva una migración en `backend/src/migrations/`. Se
+  escribe como un repositorio, para un solo usuario: corre una vez por cada uno, y también sobre un
+  respaldo viejo cuando alguien lo restaura.
 
 ## Regla del producto
 
@@ -71,13 +92,16 @@ duplicado, movimiento fijo, unión de movimientos) se aplica sin confirmación d
 2. Las reglas nuevas tienen prueba. Para esperar un error usá `codeOf` de
    `backend/src/testing/assertions.ts`. Las de servicios se prueban con `createMemoryBackend()`
    (`backend/src/testing/memory.ts`), sin base de datos; si agregás un método a un repositorio,
-   agregalo también ahí.
+   agregalo también ahí. Una ruta nueva se suma a la prueba de `backend/src/app.test.ts` que comprueba
+   que un usuario no ve lo de otro.
 3. Si cambió una decisión, está anotada en `docs/DECISIONES.md`.
 4. Si cambió un endpoint, está en `docs/API.md`.
 
 ## Qué no hacer
 
 - No poner la clave de la IA ni ningún secreto en el frontend ni en el repositorio.
+- No devolver ni registrar en los logs un hash de contraseña ni el permiso de Drive de un usuario.
+- No agregar una pantalla ni una ruta donde un usuario (aunque sea administrador) vea datos de otro.
 - No guardar imágenes de comprobantes después de que el usuario confirma o descarta la revisión.
 - No mandar a la IA un resumen de tarjeta sin pasar por el tapado de datos (`shared/src/redaction.ts`) y la
   aprobación del usuario. El PDF y su contraseña no se guardan.

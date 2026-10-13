@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 import { exportQuerySchema, importCommitSchema, importReviewSchema } from '@gastos/shared';
 import { ValidationError } from '../../core/errors/errors';
-import { ok, parse, sendFile } from '../../core/http/http';
+import { asUser, ok, parse, sendFile } from '../../core/http/http';
 import type { SpreadsheetService } from './spreadsheet.service';
 
 export function createSpreadsheetController(service: SpreadsheetService) {
@@ -21,5 +21,5 @@ export function createSpreadsheetController(service: SpreadsheetService) {
   const review: RequestHandler = async (req, res) => {
     ok(res, await service.review(parse(importReviewSchema, req.body)));
   };
-  return { exportTransactions, template, preview, review, commit };
+  return asUser({ exportTransactions, template, preview, review, commit });
 }

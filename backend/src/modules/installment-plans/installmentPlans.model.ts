@@ -1,6 +1,7 @@
 import { Schema, model } from 'mongoose';
 import { CURRENCIES, type Currency } from '@gastos/shared';
 import { COLLECTIONS } from '../../core/db/collections';
+import { ownedByUser } from '../../core/db/ownerPlugin';
 import type { ObjectId } from '../../core/db/ids';
 
 /** Stage 3: a purchase paid in installments; its transactions link back through installment.planId. */
@@ -28,6 +29,8 @@ const schema = new Schema<InstallmentPlanDoc>(
   },
   { timestamps: true },
 );
+
+schema.plugin(ownedByUser);
 
 export const InstallmentPlanModel = model<InstallmentPlanDoc>(
   'InstallmentPlan',

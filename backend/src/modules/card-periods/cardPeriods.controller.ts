@@ -1,11 +1,12 @@
 import type { RequestHandler } from 'express';
 import {
+  cardPaymentSchema,
   cardPeriodCreateSchema,
   cardPeriodListQuerySchema,
   cardPeriodUpdateSchema,
   idParamsSchema,
 } from '@gastos/shared';
-import { noContent, ok, parse } from '../../core/http/http';
+import { asUser, noContent, ok, parse } from '../../core/http/http';
 import type { CardPeriodsService } from './cardPeriods.service';
 
 export function createCardPeriodsController(service: CardPeriodsService) {
@@ -23,5 +24,9 @@ export function createCardPeriodsController(service: CardPeriodsService) {
     await service.remove(parse(idParamsSchema, req.params).id);
     noContent(res);
   };
-  return { statement, create, update, remove };
+  const pay: RequestHandler = async (req, res) => {
+    const { id } = parse(idParamsSchema, req.params);
+    ok(res, await service.pay(id, parse(cardPaymentSchema, req.body)), 201);
+  };
+  return asUser({ statement, create, update, remove, pay });
 }

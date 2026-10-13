@@ -13,6 +13,7 @@ import {
   type Tag,
   type Transaction,
 } from '@gastos/shared';
+import { currentUserId, hasOwner } from '../core/context/owner';
 import type { DbSession, TransactionRunner } from '../core/db/transaction';
 import type { AccountsRepository } from '../modules/accounts/accounts.repository';
 import type { CardPeriodsRepository } from '../modules/card-periods/cardPeriods.repository';
@@ -23,6 +24,7 @@ import type { InstallmentPlansRepository } from '../modules/installment-plans/in
 import type { InstitutionsRepository } from '../modules/institutions/institutions.repository';
 import type { TagsRepository } from '../modules/tags/tags.repository';
 import { duplicateKey, installmentKey } from '../modules/transactions/duplicateKey';
+import { filedAmounts } from '../modules/transactions/splits';
 import type { TransactionsRepository } from '../modules/transactions/transactions.repository';
 import type { AiExtractor, ExtractionInput } from '../providers/ai/aiExtractor';
 import type { PdfReadError, PdfTextReader } from '../providers/pdf/pdfReader';
@@ -59,14 +61,19 @@ export interface MemoryBackendOptions {
   read?: (input: ExtractionInput) => ExtractionResult;
   /** Reads uploads as soon as they arrive, like the real server. Tests leave it off and decide when. */
   readInBackground?: boolean;
+  /** Refuses to touch data unless the code runs as a user, like the database does. */
+  requireUser?: boolean;
 }
+
+/** Whose data it is when nobody says: the only user of a test that has none. */
+const SOLO_USER = 'solo';
 
 export function createMemoryBackend(today = '2026-10-10', options: MemoryBackendOptions = {}) {
   /** The clock the services see. Tests move it forward to make waiting documents due. */
   const clock = { now: new Date(`${today}T12:00:00.000Z`) };
   /** The calendar day the services see. Tests move it to make installments come due. */
   const calendar = { today };
-  const store: Store = {
+  const emptyStore = (): Store => ({
     accounts: [],
     institutions: [],
     cardPeriods: [],
@@ -76,7 +83,32 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
     transactions: [],
     rules: [],
     documents: [],
+  });
+  /**
+   * Each user has their own arrays, like each has their own documents in the
+   * database. Code that runs for nobody in particular (most tests call the
+   * services directly) works on a single user's, unless `requireUser` asks for
+   * the same strictness as production: no user, no data.
+   */
+  const stores = new Map<string, Store>();
+  const owner = (): string => {
+    if (hasOwner()) return currentUserId();
+    if (options.requireUser) throw new Error('Data was reached without saying whose it is');
+    return SOLO_USER;
   };
+  const mine = (): Store => {
+    const key = owner();
+    const existing = stores.get(key) ?? emptyStore();
+    stores.set(key, existing);
+    return existing;
+  };
+  /** The running user's arrays, under the names the repositories below use. */
+  const store = new Proxy({} as Store, {
+    get: (_target, name) => mine()[name as keyof Store],
+    set: (_target, name, value) => Reflect.set(mine(), name, value),
+    ownKeys: () => Reflect.ownKeys(mine()),
+    getOwnPropertyDescriptor: (_target, name) => Reflect.getOwnPropertyDescriptor(mine(), name),
+  });
   /** Switches a test can flip to make a write fail, to check that work is rolled back. */
   const faults = { insertTransactions: false };
 
@@ -120,7 +152,7 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
 
   const runInTransaction: TransactionRunner = async (work, existing) => {
     if (existing) return work(existing);
-    const snapshot = structuredClone(store);
+    const snapshot = structuredClone(mine());
     try {
       return await work({} as DbSession);
     } catch (error) {
@@ -420,6 +452,31 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
         ),
       }));
     },
+    async sumPaymentsByPeriod(cardPeriodIds) {
+      const paid = new Map<string, number>();
+      for (const transaction of store.transactions) {
+        const period = transaction.cardPeriodId;
+        if (!period || !cardPeriodIds.includes(period)) continue;
+        if (transaction.deletedAt !== null || transaction.type !== 'transfer') continue;
+        paid.set(period, (paid.get(period) ?? 0) + (transaction.toAmountCents ?? transaction.amountCents));
+      }
+      return paid;
+    },
+    async clearCardPeriod(cardPeriodId) {
+      store.transactions = store.transactions.map((transaction) =>
+        transaction.cardPeriodId === cardPeriodId ? { ...transaction, cardPeriodId: null } : transaction,
+      );
+    },
+    async findDividedBy(categoryId) {
+      return store.transactions
+        .filter((transaction) => transaction.splits.some((part) => part.categoryId === categoryId))
+        .map((transaction) => ({ id: transaction.id, splits: transaction.splits }));
+    },
+    async setFiling(id, filing) {
+      store.transactions = store.transactions.map((transaction) =>
+        transaction.id === id ? { ...transaction, ...filing } : transaction,
+      );
+    },
     async installmentKeys(amounts) {
       return new Set(
         store.transactions.flatMap((transaction) =>
@@ -532,6 +589,17 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
         )
         .sort((a, b) => b.date.localeCompare(a.date));
       return { rate: latest?.original?.rate ?? null, date: latest?.date ?? null };
+    },
+    async findFiledByMonth(month) {
+      return store.transactions
+        .filter(
+          (transaction) =>
+            transaction.deletedAt === null &&
+            transaction.status === 'confirmed' &&
+            transaction.paymentDate >= firstDayOfMonth(month) &&
+            transaction.paymentDate <= lastDayOfMonth(month),
+        )
+        .flatMap(filedAmounts);
     },
     async totalsByMonth(month) {
       const totals = new Map<string, CurrencyTotals>();
@@ -712,8 +780,9 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
       schedule: (work) => {
         if (options.readInBackground) work().catch((error: unknown) => errors.push({ error, context: {} }));
       },
+      owner,
       onError: (error, context) => errors.push({ error, context }),
     },
   );
-  return { ...services, store, runInTransaction, faults, ai, pdf, errors, clock, calendar };
+  return { ...services, store, emptyStore, runInTransaction, faults, ai, pdf, errors, clock, calendar };
 }

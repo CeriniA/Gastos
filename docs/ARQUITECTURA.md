@@ -36,10 +36,12 @@ tipo de TypeScript sale de él.
 src/
   config/env.ts        Único lector de variables de entorno
   core/
+    context/           De quién son los datos que toca el código que está corriendo
+    crypto/            Guardar un secreto cifrado; notas firmadas de corta vida
     errors/            Errores tipados
-    http/              parse(), ok(), sendFile()
-    middleware/        Autenticación y manejo único de errores
-    db/                Conexión, transacciones, ids, puertos de colección, migraciones
+    http/              parse(), ok(), sendFile(), asUser()
+    middleware/        Autenticación, permiso de administrador y manejo único de errores
+    db/                Conexión, transacciones, ids, dueño de cada dato, puertos de colección, migraciones
   modules/<nombre>/
     <nombre>.routes.ts
     <nombre>.controller.ts
@@ -52,9 +54,11 @@ src/
   providers/drive/     Dónde se guarda la copia automática del respaldo (Google Drive, por HTTPS)
   migrations/          Cambios numerados sobre datos guardados
   wiring.ts            Donde se conectan los servicios entre sí (sin base de datos)
+  container.ts         Usuarios, sesiones, respaldo y Drive armados sobre esos servicios
   composition.ts       Producción: repositorios reales, transacciones reales, puertos de colección
+  starter.ts           Con qué arranca cada usuario: categorías, cuentas, bancos
   testing/memory.ts    El backend completo en memoria, para pruebas
-  testing/memoryApp.ts Lo que le falta a ese backend para atender por HTTP (login y respaldo en memoria)
+  testing/memoryApp.ts El mismo armado de container.ts sobre ese backend, para atender por HTTP
   app.ts               Express: middleware y rutas
   server.ts            Arranque
 ```
@@ -85,10 +89,51 @@ MongoDB o la versión en memoria de las pruebas.
 
 `eslint.config.js` hace cumplir las dos reglas (capas y fronteras entre módulos).
 
+### Usuarios y dueños
+
+La app tiene varios usuarios y cada dato es de uno solo. Nadie ve los datos de otro, tampoco el
+administrador, que solo crea usuarios, les cambia la contraseña y los activa o desactiva.
+
+**Quién entra.** Los usuarios viven en la colección `users` (módulo `users`), con la contraseña como hash
+de bcrypt. El módulo `auth` arma las sesiones: un token JWT que lleva el id del usuario y la versión de
+sus sesiones. Cerrar las sesiones de alguien (cerrar sesión en todos lados, cambiar la contraseña,
+desactivarlo) sube esa versión, y todo token anterior deja de valer en el acto. El primer usuario, un
+administrador, se crea al arrancar con `AUTH_USERNAME` y `AUTH_PASSWORD_HASH`; el resto se crea desde la app.
+
+**De quién es cada dato.** El dueño no viaja como argumento por los services y repositorios: está en un
+solo lugar y falla del lado seguro.
+
+1. `core/context/owner.ts` guarda para quién corre el código (`runAsUser`). Sin usuario, pedir el dueño
+   **da error**: un olvido rompe, no muestra datos ajenos.
+2. `core/db/ownerPlugin.ts` (`ownedByUser`) se agrega al esquema de cada colección de datos. Le pone el
+   campo `userId`, hace que toda consulta, actualización, borrado, agregación o escritura en lote vea solo
+   lo del usuario que corre, y marca con él todo documento nuevo, diga lo que diga.
+3. Los repositorios y los services se escriben como si hubiera un solo usuario.
+
+Quién entra al contexto:
+
+| Dónde                                             | Cómo                                                                             |
+| ------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Un pedido HTTP                                    | El controller devuelve sus handlers por `asUser`, que usa el usuario del token   |
+| Tareas del servidor (limpieza, Drive, documentos) | `container.forEachUser`: una vuelta por cada usuario                             |
+| La vuelta de Google al conectar Drive             | `runAsUser` con el usuario que dice la nota firmada que viajó a Google           |
+| Migraciones                                       | Una vez por cada usuario; las marcadas `system` corren una vez con `runAsSystem` |
+
+`asUser` está en el controller y no en un middleware porque entre el middleware de autenticación y el
+controller se lee el cuerpo del pedido o sus archivos, y el contexto no sobrevive a eso.
+
+Lo que es único es único **por usuario** (`uniquePerUser`): dos usuarios pueden tener cada uno su cuenta
+"Efectivo". El código que usa el driver sin pasar por Mongoose (el respaldo) filtra con `ownedOnly()` y
+marca con `stampOwner()`.
+
+`users` es la única colección sin dueño ni puerto de respaldo: no es dato de nadie y guarda secretos. El
+permiso de Drive de cada usuario se guarda cifrado (`core/crypto/secretBox.ts`) con una clave derivada de
+`JWT_SECRET`.
+
 ### Errores
 
 Los services lanzan errores tipados (`NotFoundError`, `ValidationError`, `ConflictError`,
-`DuplicateError`, `InUseError`, `UnauthorizedError`, `AiProviderError`). Un único middleware los
+`DuplicateError`, `InUseError`, `UnauthorizedError`, `ForbiddenError`, `AiProviderError`). Un único middleware los
 convierte en la respuesta. Los controllers no atrapan errores. El frontend traduce el código de error a
 un mensaje en español en un solo archivo.
 
@@ -107,6 +152,11 @@ funcionan, sin código extra por módulo:
 - el respaldo completo y su restauración;
 - el chequeo de integridad;
 - el rechazo de un respaldo con referencias rotas.
+
+Los puertos trabajan sobre los datos del usuario que corre: un respaldo tiene los datos de un usuario, y
+restaurarlo reemplaza solo los suyos, haciéndolo dueño de lo que entra. Así un respaldo de antes de que
+hubiera usuarios se restaura en la cuenta de quien lo sube. La lista de migraciones aplicadas viaja en el
+respaldo pero no se restaura: sirve para saber cuáles le faltan a esos datos y aplicárselas.
 
 ### La IA como pieza reemplazable
 
@@ -144,8 +194,8 @@ src/
 Ejemplo: presupuestos.
 
 1. Esquemas y tipos en `shared/src/schemas/budget.ts`; exportarlos en `shared/src/index.ts`.
-2. `backend/src/modules/budgets/` con model, repository (incluido su puerto y referencias), service,
-   controller, routes e `index.ts`.
+2. `backend/src/modules/budgets/` con model (con `schema.plugin(ownedByUser)`), repository (incluido su
+   puerto y referencias), service, controller (que devuelve sus handlers por `asUser`), routes e `index.ts`.
 3. En `wiring.ts`: crear el service pasándole lo que necesita de otros módulos. En `composition.ts`:
    pasar su repositorio real y agregar el puerto a `collectionPorts`. En `testing/memory.ts`: su
    repositorio en memoria.
@@ -153,7 +203,8 @@ Ejemplo: presupuestos.
 5. Si otro módulo tiene que respetarlo (una categoría con presupuesto no se borra), agregarle esa
    consulta como dependencia.
 6. `frontend/src/features/budgets/` con `api.ts` y pantallas; textos en `es.ts`; ruta en `App.tsx`.
-7. Pruebas de sus reglas. Documentar en `API.md` y `GLOSARIO.md`.
+7. Pruebas de sus reglas, y su ruta en la prueba de `app.test.ts` que comprueba que un usuario no ve lo de
+   otro. Documentar en `API.md` y `GLOSARIO.md`.
 
 Ningún módulo existente cambia, salvo el punto 5.
 
@@ -168,12 +219,18 @@ Corren con el ejecutor de pruebas de Node (`npm test`), sin base de datos ni red
   "todo o nada" cuando una escritura falla.
 - `backend/src/app.test.ts`: la app de Express de verdad (rutas, autenticación, lectura del cuerpo,
   manejo de errores) sobre el mismo backend en memoria (`testing/memoryApp.ts`), pedida por HTTP como lo
-  hace el frontend. Incluye un Excel exportado y vuelto a leer, y el respaldo con su restauración.
+  hace el frontend. Incluye un Excel exportado y vuelto a leer, el respaldo con su restauración, y dos
+  usuarios que no ven nada del otro: ni listas, ni un dato pedido por su id, ni su respaldo, ni su Drive.
+- `core/db/ownerPlugin.test.ts`: el filtro por dueño sobre Mongoose de verdad, sin base: cada tipo de
+  consulta queda acotada al usuario, y sin usuario no hay consulta.
+- Usuarios y sesiones (`modules/auth/auth.service.test.ts`), el cifrado (`core/crypto/crypto.test.ts`) y
+  la copia a Drive de cada usuario (`modules/backup/driveBackup.test.ts`).
 
 Las variables que necesitan (`backend/memory.env`) son inventadas y no llevan secretos. Con las mismas
 piezas, `npm run demo` levanta la app con datos de mentira para probar las pantallas a mano.
 
-Lo que estas pruebas no cubren son las consultas de Mongoose: lo que hace cada repositorio real contra la
-base (ver `ROADMAP.md`).
+Lo que estas pruebas no cubren son las consultas de Mongoose contra una base de verdad: lo que hace cada
+repositorio real, los índices únicos por usuario y la migración que le pone dueño a los datos viejos (ver
+`ROADMAP.md`).
 
 Las reglas nuevas llevan prueba.

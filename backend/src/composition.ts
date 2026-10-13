@@ -1,18 +1,14 @@
-import { todayIso } from '@gastos/shared';
+import { API_PREFIX, todayIso } from '@gastos/shared';
 import type { Env } from './config/env';
+import { buildContainer, type Container } from './container';
+import { currentUserId } from './core/context/owner';
 import type { CollectionPort } from './core/db/collectionPort';
-import { migrationsPort, runMigrations } from './core/db/migrations';
+import { migrationsPort, runMissingMigrations } from './core/db/migrations';
 import { withTransaction } from './core/db/transaction';
 import { logger } from './core/logger';
 import { migrations } from './migrations';
 import { accountsPort, accountsRepository } from './modules/accounts';
-import { authStateRepository, createAuthService, type AuthService } from './modules/auth';
-import {
-  createBackupService,
-  createDriveBackup,
-  type BackupService,
-  type DriveBackup,
-} from './modules/backup';
+import { DRIVE_CALLBACK_ROUTE } from './modules/backup';
 import { cardPeriodsPort, cardPeriodsRepository } from './modules/card-periods';
 import { categoriesPort, categoriesRepository } from './modules/categories';
 import { categoryRulesPort, categoryRulesRepository } from './modules/category-rules';
@@ -23,21 +19,17 @@ import { institutionsPort, institutionsRepository } from './modules/institutions
 import { recurringsPort } from './modules/recurrings';
 import { tagsPort, tagsRepository } from './modules/tags';
 import { transactionsPort, transactionsRepository } from './modules/transactions';
+import { usersRepository } from './modules/users';
 import { createGeminiExtractor } from './providers/ai/gemini';
-import { createGoogleDriveStore } from './providers/drive/googleDrive';
+import { createGoogleDrive } from './providers/drive/googleDrive';
 import { createUnpdfReader } from './providers/pdf/unpdf';
 import { createOpenExchangeRates } from './providers/rates/openExchangeRates';
-import { wireServices, type Services } from './wiring';
-
-export interface Container extends Services {
-  auth: AuthService;
-  backup: BackupService;
-  driveBackup: DriveBackup;
-}
+import { wireServices } from './wiring';
 
 /**
- * Every collection of the app. Registering a port here is what puts a
- * collection into the backup, the restore and the integrity check.
+ * Every collection of user data, plus the list of applied migrations.
+ * Registering a port here is what puts a collection into the backup, the
+ * restore and the integrity check. `users` is left out on purpose: see its model.
  */
 const collectionPorts: readonly CollectionPort[] = [
   institutionsPort,
@@ -86,45 +78,31 @@ export function createContainer(env: Env): Container {
       schedule: (work) => {
         work().catch((error: unknown) => logger.error({ err: error }, 'Background work failed'));
       },
+      owner: currentUserId,
       onError: (error, context) => logger.warn({ err: error, ...context }, 'Document could not be read'),
     },
   );
 
-  const auth = createAuthService(
-    {
-      username: env.AUTH_USERNAME,
-      passwordHash: env.AUTH_PASSWORD_HASH,
-      jwtSecret: env.JWT_SECRET,
-      expiresDays: env.JWT_EXPIRES_DAYS,
-    },
-    authStateRepository,
-  );
-
-  const backup = createBackupService(
-    collectionPorts,
-    {
-      afterRestore: async () => {
-        await runMigrations(migrations);
-      },
-    },
-    withTransaction,
-  );
-
-  // The one place that decides where the automatic backup goes.
-  const driveStore =
-    env.DRIVE_CLIENT_ID && env.DRIVE_CLIENT_SECRET && env.DRIVE_REFRESH_TOKEN
-      ? createGoogleDriveStore({
+  // The one place that decides where each user's automatic backup goes.
+  const driveProvider =
+    env.DRIVE_CLIENT_ID && env.DRIVE_CLIENT_SECRET && env.PUBLIC_API_URL
+      ? createGoogleDrive({
           clientId: env.DRIVE_CLIENT_ID,
           clientSecret: env.DRIVE_CLIENT_SECRET,
-          refreshToken: env.DRIVE_REFRESH_TOKEN,
+          redirectUri: `${env.PUBLIC_API_URL}${API_PREFIX}${DRIVE_CALLBACK_ROUTE}`,
         })
       : null;
-  const driveBackup = createDriveBackup({
-    store: driveStore,
-    exportAll: () => backup.exportAll(),
+
+  return buildContainer({
+    services,
+    usersRepository,
+    collectionPorts,
+    runInTransaction: withTransaction,
+    driveProvider,
+    afterRestore: (applied) => runMissingMigrations(migrations, applied),
     now: () => new Date(),
     onError: (error, context) => logger.warn({ err: error, ...context }, 'Drive backup failed'),
+    secret: env.JWT_SECRET,
+    sessionDays: env.JWT_EXPIRES_DAYS,
   });
-
-  return { ...services, auth, backup, driveBackup };
 }

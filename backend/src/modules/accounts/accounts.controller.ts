@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { accountCreateSchema, accountUpdateSchema, idParamsSchema } from '@gastos/shared';
-import { noContent, ok, parse } from '../../core/http/http';
+import { asUser, noContent, ok, parse } from '../../core/http/http';
 import type { AccountsService } from './accounts.service';
 
 export function createAccountsController(service: AccountsService) {
@@ -21,5 +21,5 @@ export function createAccountsController(service: AccountsService) {
     await service.remove(parse(idParamsSchema, req.params).id);
     noContent(res);
   };
-  return { list, get, create, update, remove };
+  return asUser({ list, get, create, update, remove });
 }

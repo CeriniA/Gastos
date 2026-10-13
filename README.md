@@ -5,6 +5,8 @@ MercadoLibre/MercadoPago y resúmenes de tarjeta leídos con IA, en pesos y dól
 
 Qué hace hoy (el detalle, en `docs/ROADMAP.md`):
 
+- Varios usuarios, cada uno con sus propios datos: nadie ve los de otro. Un administrador crea los
+  usuarios; cada uno cambia su contraseña.
 - Cuentas, categorías en árbol, etiquetas, bancos y marcas de tarjeta; movimientos manuales con división
   entre categorías, productos, buscador, filtros y papelera.
 - Lectura de tickets y capturas con IA (Gemini), con revisión antes de guardar, conversión de otras
@@ -15,10 +17,13 @@ Qué hace hoy (el detalle, en `docs/ROADMAP.md`):
 - Resúmenes de tarjeta en PDF: el texto, con los datos personales tapados y aprobado por el usuario, va a la
   IA; los cierres se guardan con las compras (sin probar todavía con un resumen real).
 - Devoluciones que restan en su categoría; cuotas leídas de un resumen que crean las que faltan.
-- Copia automática del respaldo en Google Drive, una vez por día (se configura con `docs/RESPALDO_DRIVE.md`).
+- Copia automática del respaldo de cada usuario en su propio Google Drive, una vez por día. Google se
+  configura una vez (`docs/RESPALDO_DRIVE.md`) y cada usuario conecta su Drive desde la app.
+- Pago de la tarjeta como transferencia ligada a su resumen, con lo pagado y lo que falta.
+- Informe del mes por categoría, de ingresos y egresos.
 - Balance del mes por moneda, respaldo completo, exportación e importación de planillas.
 
-Falta: informes y movimientos fijos.
+Falta: el resto de los informes (por cuenta, evolución mensual, comercios) y movimientos fijos.
 
 ## Stack
 
@@ -83,15 +88,18 @@ cp frontend/.env.example frontend/.env
 npm run hash-password -w backend -- "tu contraseña"    # pegar el resultado en AUTH_PASSWORD_HASH
 ```
 
-Completar `backend/.env` siguiendo los comentarios del archivo.
+Completar `backend/.env` siguiendo los comentarios del archivo. `AUTH_USERNAME` y `AUTH_PASSWORD_HASH`
+son el primer usuario, un administrador: se crea solo la primera vez que arranca el servidor.
 
-**5. Datos iniciales y arranque**
+**5. Arranque**
 
 ```bash
-npm run seed -w backend    # categorías y cuentas de arranque; se puede repetir sin duplicar
 npm run dev:backend        # http://localhost:4000
 npm run dev:frontend       # http://localhost:5173
 ```
+
+Entrá con ese primer usuario. Arranca con las categorías, cuentas y bancos iniciales. Los demás usuarios
+se crean en **Más → Usuarios**, y cada uno cambia su contraseña en **Más → Cambiar mi contraseña**.
 
 **Probar sin tocar los datos reales**
 
@@ -100,9 +108,10 @@ npm run demo               # en vez de dev:backend: todo en memoria, se olvida a
 npm run dev:frontend
 ```
 
-No usa `backend/.env` ni la base: arranca con categorías, cuentas y algunos movimientos inventados. El
-usuario y la contraseña están en `backend/memory.env`. La IA y el lector de PDF son de mentira: cualquier
-foto o PDF que subas "lee" la misma respuesta inventada, para poder probar la revisión.
+No usa `backend/.env` ni la base: arranca con un administrador que tiene categorías, cuentas y algunos
+movimientos inventados. Su usuario y contraseña están en `backend/memory.env`; desde Más → Usuarios podés
+crear otros y comprobar que no ven nada de él. La IA, el lector de PDF y Google Drive son de mentira:
+cualquier foto o PDF que subas "lee" la misma respuesta inventada, y conectar Drive sale bien en el acto.
 
 ## Publicar en Render
 
@@ -110,10 +119,11 @@ foto o PDF que subas "lee" la misma respuesta inventada, para poder probar la re
 2. En Render: New → Blueprint → elegir el repositorio. `render.yaml` describe los dos servicios.
 3. Completar las variables que pide:
    - `MONGODB_URI`: la cadena de Atlas apuntando a la base `gastos`.
-   - `AUTH_USERNAME` y `AUTH_PASSWORD_HASH`.
+   - `AUTH_USERNAME` y `AUTH_PASSWORD_HASH`: el primer usuario, un administrador. Solo se leen la primera
+     vez; después los usuarios y las contraseñas se manejan desde la app.
    - `GEMINI_API_KEY`: la clave de Google AI Studio. Sin ella la app funciona, pero no lee fotos.
-   - `DRIVE_CLIENT_ID`, `DRIVE_CLIENT_SECRET` y `DRIVE_REFRESH_TOKEN`: la copia automática en Google Drive
-     (`docs/RESPALDO_DRIVE.md`). Sin ellas, el respaldo es solo manual.
+   - `DRIVE_CLIENT_ID`, `DRIVE_CLIENT_SECRET` y `PUBLIC_API_URL`: la copia automática en Google Drive
+     (`docs/RESPALDO_DRIVE.md`). Sin las tres, el respaldo es solo manual.
    - `CORS_ORIGIN`: la dirección del sitio estático (`https://gastos-web.onrender.com` o la que asigne Render).
    - `VITE_API_URL`: la dirección del servicio (`https://gastos-api.onrender.com`), sin `/api/v1`.
 4. Abrir el sitio en Chrome desde el celular y elegir "Agregar a pantalla de inicio".
@@ -132,8 +142,7 @@ lo avisa en pantalla.
 | `npm run format`                                   | Formatea el código                                                     |
 | `npm run build`                                    | Compila backend y frontend                                             |
 | `npm run demo`                                     | La app con datos de mentira en memoria, sin tocar la base real         |
-| `npm run seed -w backend`                          | Carga categorías y cuentas iniciales                                   |
-| `npm run hash-password -w backend`                 | Genera el hash de la contraseña                                        |
+| `npm run hash-password -w backend`                 | Genera el hash de la contraseña del primer usuario                     |
 | `npm run try-extraction -w backend -- "<carpeta>"` | Lee imágenes reales con la IA y muestra el resultado, sin guardar nada |
 
 ## Lectura con IA
@@ -155,7 +164,8 @@ envía para mejorar sus productos.
 ## Respaldo
 
 El plan gratuito no garantiza copias de seguridad. En la app, **Más → Respaldo y datos** descarga una
-copia completa en JSON y permite restaurarla. Conviene bajar una cada tanto.
+copia completa en JSON de los datos de quien está usando la app y permite restaurarla. Conviene bajar una
+cada tanto, o conectar Drive para que se haga sola.
 
 ## Documentación
 

@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CardPeriod, CardPeriodCreate, CardPeriodUpdate, CardStatement } from '@gastos/shared';
+import type {
+  CardPayment,
+  CardPeriod,
+  CardPeriodCreate,
+  CardPeriodUpdate,
+  CardStatement,
+  Transaction,
+} from '@gastos/shared';
 import { api } from '../../shared/api/client';
 
 const KEY = ['card-periods'] as const;
@@ -32,6 +39,12 @@ export function useCardPeriodMutations() {
     }),
     remove: useMutation({
       mutationFn: (id: string) => api<void>(`/card-periods/${id}`, { method: 'DELETE' }),
+      onSuccess: refresh,
+    }),
+    /** Registers a payment of the statement: a transfer from another account to the card. */
+    pay: useMutation({
+      mutationFn: ({ id, payment }: { id: string; payment: CardPayment }) =>
+        api<Transaction>(`/card-periods/${id}/payments`, { method: 'POST', body: payment }),
       onSuccess: refresh,
     }),
   };

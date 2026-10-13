@@ -12,7 +12,7 @@ import {
 import { detectImageType } from '../modules/documents/fileType';
 import { failureReason, type ExtractionCategory } from '../providers/ai/aiExtractor';
 import { createGeminiExtractor } from '../providers/ai/gemini';
-import { SEED_CATEGORIES } from './seedData';
+import { STARTER_CATEGORIES } from '../starter';
 
 /**
  * Sends real receipts and screenshots to the AI and prints what it reads,
@@ -79,8 +79,9 @@ if (paths.length === 0) {
   process.exit(1);
 }
 
-const categories: ExtractionCategory[] = (Object.keys(SEED_CATEGORIES) as CategoryKind[]).flatMap(
-  (categoryKind) => SEED_CATEGORIES[categoryKind].map((name) => ({ id: '', kind: categoryKind, path: name })),
+const categories: ExtractionCategory[] = (Object.keys(STARTER_CATEGORIES) as CategoryKind[]).flatMap(
+  (categoryKind) =>
+    STARTER_CATEGORIES[categoryKind].map((name) => ({ id: '', kind: categoryKind, path: name })),
 );
 categories.forEach((category, index) => {
   category.id = (index + 1).toString(16).padStart(24, '0');

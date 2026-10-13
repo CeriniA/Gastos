@@ -1,11 +1,9 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { ZodError } from 'zod';
 import type { ApiErrorBody, ErrorCode } from '@gastos/shared';
+import { isDuplicateKey } from '../db/mongoErrors';
 import { AppError } from '../errors/errors';
 import { logger } from '../logger';
-
-/** MongoDB's code for a unique index violation. */
-const MONGO_DUPLICATE_KEY = 11000;
 
 export const notFoundHandler: RequestHandler = (req, _res, next) => {
   next(new AppError(404, 'NOT_FOUND', `No route for ${req.method} ${req.path}`));
@@ -36,11 +34,11 @@ function mapError(error: unknown): Mapped {
       },
     };
   }
+  // MongoDB unique index violation: the database is the last line of defence.
+  if (isDuplicateKey(error)) {
+    return { status: 409, code: 'DUPLICATE', message: 'Duplicate value', details: error.keyValue };
+  }
   if (isRecord(error)) {
-    // MongoDB unique index violation: the database is the last line of defence.
-    if (error.code === MONGO_DUPLICATE_KEY) {
-      return { status: 409, code: 'DUPLICATE', message: 'Duplicate value', details: error.keyValue };
-    }
     if (error.type === 'entity.too.large' || error.code === 'LIMIT_FILE_SIZE') {
       return { status: 413, code: 'PAYLOAD_TOO_LARGE', message: 'File or request too large' };
     }

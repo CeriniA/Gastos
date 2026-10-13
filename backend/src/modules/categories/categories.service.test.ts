@@ -155,6 +155,28 @@ test('merging moves the transactions, including split parts, and deletes the sou
   );
   await assert.rejects(app.categories.get(power.id), NotFoundError);
   assert.equal(await app.transactions.countByCategory(services.id), 2);
+
+  // Merging the two categories a transaction is divided between leaves nothing to divide.
+  const three = await app.transactions.create({
+    ...base,
+    amountCents: 6000,
+    categoryId: null,
+    splits: [
+      { categoryId: services.id, amountCents: 1000 },
+      { categoryId: food.id, amountCents: 2000 },
+      { categoryId: home.id, amountCents: 3000 },
+    ],
+  });
+  await app.categories.merge(food.id, services.id);
+  const whole = await app.transactions.get(split.id);
+  assert.deepEqual([whole.categoryId, whole.splits], [services.id, []]);
+  // With a third part left, the two that met are added up and it stays divided.
+  const joined = await app.transactions.get(three.id);
+  assert.equal(joined.categoryId, null);
+  assert.deepEqual(joined.splits, [
+    { categoryId: services.id, amountCents: 3000 },
+    { categoryId: home.id, amountCents: 3000 },
+  ]);
 });
 
 test('filtering transactions by a category includes its subcategories', async () => {
