@@ -47,7 +47,7 @@ const privacy: LegalDocument = {
       title: 'Qué datos guarda',
       items: [
         'Tu nombre de usuario y tu contraseña. La contraseña se guarda cifrada con un algoritmo de un solo sentido (bcrypt): nadie puede leerla, tampoco quien administra la instalación.',
-        'Lo que vos cargás: cuentas, categorías, etiquetas, movimientos con sus montos, fechas y descripciones, productos de tus compras, cierres y vencimientos de tus tarjetas, tus movimientos fijos, las tasas de cambio y el saldo inicial de tus cuentas que cargues.',
+        'Lo que vos cargás: cuentas, categorías, etiquetas, movimientos con sus montos, fechas y descripciones, productos de tus compras, cierres y vencimientos de tus tarjetas, tus movimientos fijos, las tasas de cambio y el saldo inicial de tus cuentas que cargues, y los productos de tus tickets que corregiste y pediste recordar.',
         'Cuántos comprobantes mandaste a leer en el día, para el límite diario de lectura automática. Se guarda solo el número del día en curso, y lo ve quien administra la instalación, junto con tu límite.',
         `Las fotos de tickets y capturas que subís para que se lean, solo hasta que confirmás o descartás lo leído. En ese momento se borran. Las que no revisás se borran solas a los ${PENDING_DOCUMENT_RETENTION_DAYS} días.`,
         'El texto de un resumen que aprobás para su lectura (de una tarjeta, de una cuenta del banco o de una app), solo hasta que confirmás lo leído. El archivo (PDF, Excel o CSV) y la contraseña del PDF no se guardan nunca.',

@@ -4,6 +4,7 @@ import { after, test } from 'node:test';
 import { API_PREFIX, DATA_SCREEN_PATH, DRIVE_RESULT_PARAM, type ImportPreview } from '@gastos/shared';
 import { createApp } from './app';
 import { env } from './config/env';
+import { runAsUser } from './core/context/owner';
 import { createMemoryContainer } from './testing/memoryApp';
 
 /**
@@ -223,9 +224,15 @@ test('each user has their own data, and none of it reaches another', async () =>
     await call('POST', '/recurrings/from-transaction', { transactionId: mine.id }),
     201,
   );
+  // A receipt line he taught the app. Rules are made by confirming a review, so it goes in directly.
+  const { userId: adminId } = await data<{ userId: string }>(await call('GET', '/auth/me'));
+  const productRule = await runAsUser(adminId, () =>
+    container.productRules.save({ name: 'YERB.PLAY 1000', product: 'Yerba', group: 'pantry' }),
+  );
   await data(await call('POST', '/users', { username: 'Ana', password: USER_PASSWORD }), 201);
 
   token = await signIn('ana', USER_PASSWORD);
+  assert.deepEqual(await data<unknown[]>(await call('GET', '/product-rules')), []);
   // She starts with the categories and accounts every user starts with, and nothing of his.
   const accounts = await data<{ id: string; name: string }[]>(await call('GET', '/accounts'));
   assert.ok(accounts.length > 0);
@@ -280,6 +287,7 @@ test('each user has their own data, and none of it reaches another', async () =>
     ['DELETE', `/exchange-rates/${rate.id}`],
     ['PATCH', `/exchange-rates/${rate.id}`],
     ['DELETE', `/recurrings/${fixed.id}`],
+    ['DELETE', `/product-rules/${productRule.id}`],
     ['PATCH', `/recurrings/${fixed.id}`],
     ['POST', '/recurrings/from-transaction'],
   ] as const) {

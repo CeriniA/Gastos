@@ -139,8 +139,8 @@ function UserRow({
 
   return (
     <li className="space-y-2 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <span className="min-w-0">
+      <div className="space-y-1">
+        <span className="block">
           <span className="block break-words font-medium">
             {user.username}
             {isSelf ? <span className="text-muted"> ({es.users.you})</span> : null}
@@ -152,7 +152,7 @@ function UserRow({
             {es.users.aiUsage(user.aiReadingsToday, user.aiLimit)}
           </span>
         </span>
-        <span className="flex shrink-0 flex-wrap justify-end gap-1">
+        <span className="-ml-4 flex flex-wrap gap-1">
           <Button variant="quiet" disabled={busy} onClick={() => toggle('edit')}>
             {es.users.edit}
           </Button>
@@ -163,8 +163,7 @@ function UserRow({
                 {es.users.resetPassword}
               </Button>
               <Button
-                variant="quiet"
-                className={user.active ? 'text-expense' : ''}
+                variant={user.active ? 'quietDanger' : 'quiet'}
                 disabled={busy}
                 onClick={() => onActive(!user.active)}
               >

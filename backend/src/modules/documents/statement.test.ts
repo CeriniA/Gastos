@@ -94,6 +94,7 @@ function confirmation(accountId: string, overrides: Partial<DocumentConfirm> = {
       },
     ],
     rules: [],
+    productRules: [],
     cardPeriods: [],
     ...overrides,
   };
@@ -292,6 +293,7 @@ test('an installment of a purchase the app does not have can bring the ones stil
   const withPlan = (number: number) => ({
     transactions: [{ transaction: charged, installment: { number, total: 6 }, continuePlan: true }],
     rules: [],
+    productRules: [],
     cardPeriods: [
       {
         accountIds: [visa.id],

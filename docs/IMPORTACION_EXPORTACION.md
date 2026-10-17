@@ -64,14 +64,15 @@ banco o efectivo, y eso cambia cómo se calcula la fecha de pago.
 - No incluye borradores, proyectados, papelera, reglas, fijos, tasas de cambio, saldos iniciales ni
   períodos de tarjeta.
 - La cuota se guarda como dato (`3/6`) sin vincularla a un plan.
-- Los productos de cada movimiento no van en la planilla (pendiente: ver "Hoja de productos" abajo).
+- Los productos van en una hoja aparte del Excel, que no se importa (ver "Hoja de productos" abajo). El CSV
+  no los lleva.
 
 Para una copia exacta, usar el respaldo.
 
-### Pendiente: hoja de productos
+### Hoja de productos
 
-Pedido del usuario el 17/10/2026, todavía sin programar. La exportación a Excel sumaría una segunda hoja,
-**Productos**, con una fila por producto de cada compra:
+Desde el 17/10/2026 la exportación a Excel trae una segunda hoja, **Productos**, con una fila por producto de
+cada compra. Las columnas están definidas una sola vez, en `PRODUCT_COLUMNS` (`shared/src/importFormat.ts`):
 
 | Columna      | Ejemplo        | De dónde sale                                  |
 | ------------ | -------------- | ---------------------------------------------- |

@@ -114,8 +114,8 @@ export function ItemsEditor({
                   onChange={(event) => rename(index, event.target.value)}
                 />
                 <Button
-                  variant="quiet"
-                  className="shrink-0 px-2 text-expense"
+                  variant="quietDanger"
+                  className="shrink-0 px-2"
                   aria-label={es.items.remove}
                   onClick={() => onChange(items.filter((_, position) => position !== index))}
                 >

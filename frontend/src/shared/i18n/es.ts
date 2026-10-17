@@ -1,5 +1,6 @@
 import {
   MIN_PASSWORD_LENGTH,
+  PRODUCT_GROUP_LABELS,
   type AccountType,
   type CategoryKind,
   type Currency,
@@ -11,7 +12,6 @@ import {
   type ErrorCode,
   type ImportIssueCode,
   type InstitutionKind,
-  type ProductGroup,
   type StatementFileType,
   type StatementKind,
   type RecurringState,
@@ -464,6 +464,10 @@ export const es = {
         `${account} todavía no tiene saldo inicial: la app lo cuenta desde cero. Podés empezarlo con el del resumen.`,
       useOpening: (amount: string, date: string) => `Empezar con ${amount} el ${date}`,
     },
+    rememberProducts: (count: number) =>
+      count === 1
+        ? 'Recordar el producto que corregí para los próximos tickets'
+        : `Recordar los ${count} productos que corregí para los próximos tickets`,
     reviewTitle: 'Revisar lo leído',
     sentText: 'Texto que se mandó a la IA',
     periodsTitle: 'Fechas del resumen',
@@ -600,6 +604,30 @@ export const es = {
     nextMonth: 'Mes siguiente',
   },
 
+  remembered: {
+    title: 'Lo que la app recuerda',
+    text: 'Lo que le enseñaste al revisar tus documentos. Si algo quedó mal, olvidalo acá: la próxima vez se propone como lo lee la IA.',
+    forget: 'Olvidar',
+    categoryRulesTitle: 'Comercio → categoría',
+    categoryRulesText: 'Cada movimiento de ese comercio se propone en esa categoría.',
+    categoryRulesEmpty:
+      'Todavía nada. Al revisar un ticket, tildá "Recordar" junto a la categoría de un comercio.',
+    productRulesTitle: 'Productos corregidos',
+    productRulesText: 'Cada renglón del ticket con ese texto se propone con ese producto y ese grupo.',
+    productRulesEmpty: 'Todavía nada. Al revisar un ticket, corregí un producto y dejá tildado "Recordar".',
+    documentsTitle: 'Documentos confirmados',
+    documentsText:
+      'Se guardan sin la imagen para que el mismo archivo no se cargue dos veces. Si lo borrás, lo podés volver a subir.',
+    documentsEmpty: 'Todavía no confirmaste ningún documento.',
+    uploaded: (moment: string) => `Subido el ${moment}`,
+    keep: 'Borrar y conservar sus movimientos',
+    delete: 'Borrar y mandar sus movimientos a la papelera',
+    keepConfirm:
+      'Se borra el documento. Sus movimientos quedan como si los hubieras cargado a mano, y el archivo se puede volver a subir.',
+    deleteConfirm: (days: number) =>
+      `Se borra el documento y sus movimientos van a la papelera, de donde se pueden recuperar durante ${days} días.`,
+  },
+
   rates: {
     title: 'Tasas de cambio',
     text: 'Cuántos pesos vale un dólar, desde un día. Los informes las usan para mostrar todo en pesos o todo en dólares: cada movimiento se convierte con la tasa vigente el día en que se hizo. Cambiar una tasa no toca nada guardado.',
@@ -673,24 +701,7 @@ export const es = {
     incomplete: 'Cada producto necesita un nombre y un monto. Un descuento va con signo menos.',
   },
 
-  productGroups: {
-    pantry: 'Almacén',
-    meat: 'Carnes y pescados',
-    dairy: 'Lácteos y huevos',
-    produce: 'Frutas y verduras',
-    bakery: 'Panadería',
-    beverages: 'Bebidas',
-    alcohol: 'Bebidas con alcohol',
-    frozen: 'Congelados',
-    prepared_food: 'Comida hecha',
-    cleaning: 'Limpieza',
-    personal_care: 'Cuidado personal',
-    pharmacy: 'Farmacia',
-    baby: 'Bebés',
-    pets: 'Mascotas',
-    household: 'Hogar',
-    other: 'Otros',
-  } satisfies Record<ProductGroup, string>,
+  productGroups: PRODUCT_GROUP_LABELS,
 
   more: {
     title: 'Más',
@@ -705,6 +716,7 @@ export const es = {
     password: 'Cambiar mi contraseña',
     users: 'Usuarios',
     recurrings: 'Movimientos fijos',
+    remembered: 'Lo que la app recuerda',
     rates: 'Tasas de cambio',
   },
 

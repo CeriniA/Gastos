@@ -9,11 +9,13 @@ import {
   TRANSACTION_TYPES,
   type CategoryKind,
   type Currency,
+  type ProductGroup,
   type TransactionType,
 } from './constants';
 import { parseFlexibleDate } from './dates';
-import { centsToDecimalString, parseAmountToCents } from './money';
+import { centsToDecimalString, givenBack, parseAmountToCents } from './money';
 import { isoDateSchema } from './schemas/common';
+import type { Transaction } from './schemas/transaction';
 import { nameKey } from './text';
 
 /**
@@ -387,3 +389,72 @@ export const exportQuerySchema = z.object({
   to: isoDateSchema.optional(),
 });
 export type ExportQuery = z.infer<typeof exportQuerySchema>;
+
+/** What each product group is called in a spreadsheet and on screen. */
+export const PRODUCT_GROUP_LABELS: Record<ProductGroup, string> = {
+  pantry: 'Almacén',
+  meat: 'Carnes y pescados',
+  dairy: 'Lácteos y huevos',
+  produce: 'Frutas y verduras',
+  bakery: 'Panadería',
+  beverages: 'Bebidas',
+  alcohol: 'Bebidas con alcohol',
+  frozen: 'Congelados',
+  prepared_food: 'Comida hecha',
+  cleaning: 'Limpieza',
+  personal_care: 'Cuidado personal',
+  pharmacy: 'Farmacia',
+  baby: 'Bebés',
+  pets: 'Mascotas',
+  household: 'Hogar',
+  other: 'Otros',
+};
+
+/**
+ * The second sheet of an Excel export: one row per product of each purchase.
+ * Export only: the import reads the first sheet and never this one.
+ */
+export const PRODUCTS_SHEET_NAME = 'Productos';
+export const PRODUCT_COLUMNS = [
+  { key: 'date', header: 'Fecha' },
+  { key: 'merchant', header: 'Comercio' },
+  { key: 'product', header: 'Producto' },
+  { key: 'name', header: 'En el ticket' },
+  { key: 'group', header: 'Grupo' },
+  { key: 'quantity', header: 'Cantidad' },
+  { key: 'amount', header: 'Monto' },
+  { key: 'currency', header: 'Moneda' },
+] as const;
+
+/** One product as the products sheet shows it. A refund's lines count against, as in consumption. */
+export interface ProductSheetRow {
+  date: string;
+  merchant: string;
+  product: string;
+  name: string;
+  group: ProductGroup | null;
+  quantity: number | null;
+  amountCents: number;
+  currency: Currency;
+}
+
+/** Every product of the given purchases, in the order the purchases come. */
+export function productSheetRows(
+  transactions: readonly Pick<Transaction, 'date' | 'description' | 'currency' | 'refund' | 'items'>[],
+): ProductSheetRow[] {
+  return transactions.flatMap((transaction) =>
+    transaction.items.map((item) => {
+      const counted = givenBack(item, transaction.refund);
+      return {
+        date: transaction.date,
+        merchant: transaction.description,
+        product: item.product,
+        name: item.name,
+        group: item.group,
+        quantity: counted.quantity,
+        amountCents: counted.amountCents,
+        currency: transaction.currency,
+      };
+    }),
+  );
+}

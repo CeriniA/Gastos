@@ -215,6 +215,25 @@ Cada decisión tomada en el diseño, con su motivo. Una decisión nueva o que ca
 | El límite de IA se controla antes de reemplazar un documento que espera revisión    | Sin cupo, el pendiente queda como estaba en vez de perderse                                                                                                                                                                        |
 | El límite de IA es una pieza propia (`aiAllowance`), armada antes que los servicios | Solo necesita el repositorio de usuarios y la fecha. Así no depende de una variable que se asigna después del armado                                                                                                               |
 
+## Productos y lo que la app recuerda (17/10/2026)
+
+| Decisión                                                                                                    | Motivo                                                                                                                                           |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Los productos van en una segunda hoja del Excel, no en la primera                                           | La primera sigue siendo el formato de importación: un archivo exportado se vuelve a importar igual. El CSV no los lleva: tiene una sola tabla    |
+| Los nombres de los grupos de productos viven en `shared` (`PRODUCT_GROUP_LABELS`) y `es.ts` los toma de ahí | Los usa la pantalla y el Excel que arma el servidor: una sola lista, como los encabezados de la planilla                                         |
+| Una corrección de producto se recuerda por el texto impreso del renglón                                     | El ticket imprime lo mismo cada vez ("YERB.PLAY 1000"); el nombre genérico lo pone el usuario o la IA. Sin distinguir mayúsculas ni acentos      |
+| Recordar los productos corregidos viene tildado, y se puede destildar                                       | Corregir ya es la decisión del usuario; recordarla le ahorra hacerlo cada vez. Como toda regla, solo propone: la revisión lo muestra y se cambia |
+| Solo cuenta como corrección un renglón leído por la IA y dejado con otro producto o grupo                   | Un renglón agregado a mano no tiene un "antes": no hay nada que la IA haya leído mal                                                             |
+| Borrar un documento confirmado desde Más pregunta qué hacer con sus movimientos                             | Igual que la regla de borrado de la sección 13: conservarlos como manuales o mandarlos a la papelera. Borrarlo deja volver a subir el archivo    |
+
+## Repaso visual (17/10/2026)
+
+| Decisión                                                                                     | Motivo                                                                                               |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Un botón silencioso rojo es una variante propia (`quietDanger`), no un color agregado encima | Dos clases de color en el mismo botón: gana la que la hoja de estilos define después, y era la verde |
+| En listas con varias acciones, la información arriba y los botones abajo                     | En un celular de 375 px tres botones al costado dejaban el nombre en una columna de pocas letras     |
+| El ámbar de atención es más oscuro en modo claro (`#8a6508`)                                 | Se usa como texto, no solo como borde: necesita contraste 4,5 sobre blanco                           |
+
 ## Abiertas
 
 | Tema                                           | Cuándo se define               |

@@ -42,18 +42,20 @@ function InstitutionRow({
   }
 
   return (
-    <li className="flex items-center justify-between gap-2 py-1 pl-3 pr-1">
-      <span className={`min-w-0 break-words ${institution.archived ? 'text-muted line-through' : ''}`}>
+    <li className="space-y-1 px-3 py-2">
+      <span
+        className={`block break-words font-medium ${institution.archived ? 'text-muted line-through' : ''}`}
+      >
         {institution.name}
       </span>
-      <span className="flex shrink-0">
+      <span className="-ml-2 flex flex-wrap">
         <Button variant="quiet" className="px-2" onClick={() => setEditing(true)}>
           {es.common.rename}
         </Button>
         <Button variant="quiet" className="px-2" disabled={busy} onClick={onArchive}>
           {institution.archived ? es.common.unarchive : es.common.archive}
         </Button>
-        <Button variant="quiet" className="px-2 text-expense" disabled={busy} onClick={onDelete}>
+        <Button variant="quietDanger" className="px-2" disabled={busy} onClick={onDelete}>
           {es.common.delete}
         </Button>
       </span>

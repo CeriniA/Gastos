@@ -15,7 +15,8 @@
   --color-income-soft: #dcefe9;
   --color-expense: #b3402e;
   --color-expense-soft: #f6e1dc;
-  --color-attention: #b98a0c;
+  /* Dark enough to be read as text on white (4.5:1), not only as a border. */
+  --color-attention: #8a6508;
   --color-attention-soft: #fbf0cf;
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;

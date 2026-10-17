@@ -13,6 +13,7 @@ import {
   formatRate,
   parseAmountToCents,
   parseRate,
+  productCorrections,
   spendingCents,
   todayIso,
   type Account,
@@ -559,6 +560,8 @@ function ReviewForm({
   const [errors, setErrors] = useState<Record<number, DraftErrors>>({});
   const [periodErrors, setPeriodErrors] = useState<Record<number, PeriodErrors>>({});
   const [failure, setFailure] = useState<string | null>(null);
+  /** Products corrected here are offered for the same receipt line next time, unless the user says no. */
+  const [rememberProducts, setRememberProducts] = useState(true);
 
   const changePeriod = (index: number, changes: Partial<PeriodDraft>) => {
     setPeriods((current) =>
@@ -604,6 +607,12 @@ function ReviewForm({
   };
 
   const included = drafts.flatMap((draft, index) => (draft.include ? [index] : []));
+
+  /** The products of the ticked movements kept with another product or group than the one read. */
+  const correctedProducts = included.flatMap((index) => {
+    const kept = fromItemDrafts(drafts[index]!.items).items;
+    return kept ? productCorrections(read[index]!.items, kept) : [];
+  });
 
   /** What the ticked movements add up to in the statement's currency: purchases minus refunds. */
   const tickedCents = included.reduce((sum, index) => {
@@ -700,6 +709,7 @@ function ReviewForm({
       const parsed = documentConfirmSchema.safeParse({
         transactions: entries,
         rules,
+        productRules: rememberProducts ? correctedProducts : [],
         cardPeriods: kept.periods,
       });
       if (parsed.success) {
@@ -841,6 +851,18 @@ function ReviewForm({
           onChange={(changes) => change(index, changes)}
         />
       ))}
+
+      {correctedProducts.length > 0 ? (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="size-5"
+            checked={rememberProducts}
+            onChange={(event) => setRememberProducts(event.target.checked)}
+          />
+          {es.documents.rememberProducts(correctedProducts.length)}
+        </label>
+      ) : null}
 
       {failure ? <Notice tone="error">{failure}</Notice> : null}
       <p className="text-sm text-muted">{document.text ? es.statement.keepText : es.add.keepPhoto}</p>

@@ -15,6 +15,7 @@ const LINKS = [
   { to: '/mas/bancos', label: es.more.institutions },
   { to: '/mas/etiquetas', label: es.more.tags },
   { to: '/mas/tasas', label: es.more.rates },
+  { to: '/mas/recuerda', label: es.more.remembered },
   { to: '/mas/papelera', label: es.more.trash },
   { to: '/mas/datos', label: es.more.data },
   { to: '/mas/contrasena', label: es.more.password },

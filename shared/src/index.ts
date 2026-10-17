@@ -23,3 +23,4 @@ export * from './schemas/exchangeRate';
 export * from './schemas/consumption';
 export * from './schemas/report';
 export * from './schemas/recurring';
+export * from './schemas/productRule';

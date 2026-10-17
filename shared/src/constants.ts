@@ -37,6 +37,8 @@ export const MAX_SPLITS = 20;
 
 /** Most transactions one document can bring. */
 export const MAX_DOCUMENT_TRANSACTIONS = 500;
+/** Most product corrections one review can remember: a long receipt, every line corrected. */
+export const MAX_DOCUMENT_PRODUCT_RULES = 500;
 
 /** Transactions a list page returns at once: by default, and at most. */
 export const DEFAULT_PAGE_SIZE = 50;

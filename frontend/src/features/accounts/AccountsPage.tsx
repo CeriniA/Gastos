@@ -230,8 +230,8 @@ export function AccountsPage() {
           <ul className="mb-6 divide-y divide-line rounded-xl border border-line bg-surface">
             {items.map((account) => (
               <li key={account.id}>
-                <div className="flex items-center justify-between gap-3 p-3">
-                  <div className={`min-w-0 ${account.archived ? 'opacity-60' : ''}`}>
+                <div className="space-y-1 p-3">
+                  <div className={account.archived ? 'opacity-60' : ''}>
                     <p className="break-words font-medium">{account.name}</p>
                     <p className="text-sm text-muted">
                       {[
@@ -246,7 +246,7 @@ export function AccountsPage() {
                     </p>
                     <BalanceLine account={account} balance={balanceOf(account.id)} />
                   </div>
-                  <div className="flex shrink-0 flex-wrap justify-end">
+                  <div className="-ml-2 flex flex-wrap">
                     <Button
                       variant="quiet"
                       className="px-2"
@@ -266,8 +266,8 @@ export function AccountsPage() {
                       {account.archived ? es.common.unarchive : es.common.archive}
                     </Button>
                     <Button
-                      variant="quiet"
-                      className="px-2 text-expense"
+                      variant="quietDanger"
+                      className="px-2"
                       onClick={() => {
                         if (window.confirm(es.accounts.deleteConfirm(account.name))) {
                           void run(() => remove.mutateAsync(account.id));

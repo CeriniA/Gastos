@@ -1,8 +1,10 @@
 import {
   FINANCIAL_CHARGES_CATEGORY,
+  applyProductRule,
   nameKey,
   type Category,
   type ExtractionResult,
+  type ProductRuleInput,
   type ReviewExtraction,
 } from '@gastos/shared';
 
@@ -40,5 +42,24 @@ export function applyCategorySuggestions(
         categoryFromRule: fromRule !== null,
       };
     }),
+  };
+}
+
+/**
+ * Each receipt line the user corrected before is offered with the product and
+ * group they gave it then, instead of what the AI read. Still a suggestion:
+ * the review shows it and the user can change it again.
+ */
+export function applyProductRules(
+  extraction: ReviewExtraction,
+  rules: ReadonlyMap<string, Pick<ProductRuleInput, 'product' | 'group'>>,
+): ReviewExtraction {
+  if (rules.size === 0) return extraction;
+  return {
+    ...extraction,
+    transactions: extraction.transactions.map((transaction) => ({
+      ...transaction,
+      items: transaction.items.map((item) => applyProductRule(item, rules)),
+    })),
   };
 }

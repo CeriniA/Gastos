@@ -171,7 +171,7 @@ function ItemRow({
           >
             {recurring.active ? es.recurrings.pause : es.recurrings.resume}
           </Button>
-          <Button variant="quiet" className="text-expense" disabled={busy} onClick={onDelete}>
+          <Button variant="quietDanger" disabled={busy} onClick={onDelete}>
             {es.common.delete}
           </Button>
         </span>

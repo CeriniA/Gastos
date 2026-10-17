@@ -16,6 +16,7 @@ import { LegalPage } from './features/legal/LegalPage';
 import { MorePage } from './features/more/MorePage';
 import { RatesPage } from './features/rates/RatesPage';
 import { RecurringsPage } from './features/recurrings/RecurringsPage';
+import { RememberedPage } from './features/remembered/RememberedPage';
 import { ReportsPage } from './features/reports/ReportsPage';
 import { TagsPage } from './features/tags/TagsPage';
 import { TransactionFormPage } from './features/transactions/TransactionFormPage';
@@ -66,6 +67,7 @@ function SignedIn() {
         <Route path="mas/usuarios" element={<UsersPage />} />
         <Route path="mas/fijos" element={<RecurringsPage />} />
         <Route path="mas/tasas" element={<RatesPage />} />
+        <Route path="mas/recuerda" element={<RememberedPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

@@ -1,6 +1,10 @@
 import ExcelJS from 'exceljs';
 import {
   IMPORT_COLUMNS,
+  PRODUCTS_SHEET_NAME,
+  PRODUCT_COLUMNS,
+  PRODUCT_GROUP_LABELS,
+  type ProductSheetRow,
   centsToNumber,
   parseCsv,
   toCsv,
@@ -84,7 +88,42 @@ export function writeCsv(rows: readonly ImportRow[], fileName: string): Generate
   };
 }
 
-export async function writeXlsx(rows: readonly ImportRow[], fileName: string): Promise<GeneratedFile> {
+/**
+ * The products of each purchase, on a sheet of their own after the
+ * transactions. Amounts and quantities go in as numbers so they add up.
+ */
+function addProductsSheet(workbook: ExcelJS.Workbook, products: readonly ProductSheetRow[]): void {
+  const sheet = workbook.addWorksheet(PRODUCTS_SHEET_NAME, { views: [{ state: 'frozen', ySplit: 1 }] });
+  sheet.columns = PRODUCT_COLUMNS.map((column) => ({
+    header: column.header,
+    key: column.key,
+    width:
+      column.key === 'merchant' || column.key === 'product' || column.key === 'name'
+        ? WIDE_COLUMN
+        : NARROW_COLUMN,
+    style: column.key === 'amount' ? { numFmt: '#,##0.00' } : {},
+  }));
+  sheet.getRow(1).font = { bold: true };
+  for (const product of products) {
+    sheet.addRow({
+      date: product.date,
+      merchant: product.merchant,
+      product: product.product,
+      name: product.name,
+      group: product.group ? PRODUCT_GROUP_LABELS[product.group] : '',
+      quantity: product.quantity ?? '',
+      amount: centsToNumber(product.amountCents),
+      currency: product.currency,
+    });
+  }
+}
+
+/** The transactions, and when there are any, the products of each purchase on a second sheet. */
+export async function writeXlsx(
+  rows: readonly ImportRow[],
+  fileName: string,
+  products: readonly ProductSheetRow[] = [],
+): Promise<GeneratedFile> {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Movimientos', { views: [{ state: 'frozen', ySplit: 1 }] });
   sheet.columns = IMPORT_COLUMNS.map((column) => ({
@@ -105,6 +144,7 @@ export async function writeXlsx(rows: readonly ImportRow[], fileName: string): P
     if (row.toAmountCents !== null) record.toAmount = centsToNumber(row.toAmountCents);
     sheet.addRow(record);
   }
+  if (products.length > 0) addProductsSheet(workbook, products);
   const buffer = await workbook.xlsx.writeBuffer();
   return { fileName, contentType: XLSX_TYPE, content: Buffer.from(buffer as ArrayBuffer) };
 }

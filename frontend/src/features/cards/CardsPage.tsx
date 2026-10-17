@@ -207,7 +207,7 @@ function PeriodRow({
         >
           {es.common.edit}
         </Button>
-        <Button variant="quiet" className="px-0 text-expense" disabled={busy} onClick={onDelete}>
+        <Button variant="quietDanger" className="px-0" disabled={busy} onClick={onDelete}>
           {es.common.delete}
         </Button>
       </div>

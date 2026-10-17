@@ -22,6 +22,7 @@ import { createDocumentsRouter } from './modules/documents';
 import { createExchangeRatesRouter } from './modules/exchange-rates';
 import { createInstallmentPlansRouter } from './modules/installment-plans';
 import { createInstitutionsRouter } from './modules/institutions';
+import { createProductRulesRouter } from './modules/product-rules';
 import { createRecurringsRouter } from './modules/recurrings';
 import { createReportsRouter } from './modules/reports';
 import { createSpreadsheetRouter } from './modules/spreadsheet';
@@ -73,6 +74,7 @@ export function createApp(container: Container, env: Env): Express {
   api.use('/tags', json, createTagsRouter(container.tags));
   api.use('/transactions', json, createTransactionsRouter(container.transactions));
   api.use('/category-rules', json, createCategoryRulesRouter(container.categoryRules));
+  api.use('/product-rules', createProductRulesRouter(container.productRules));
   api.use('/consumption', createConsumptionRouter(container.consumption));
   api.use('/reports', createReportsRouter(container.reports));
   api.use('/documents', createDocumentsRouter(container.documents));

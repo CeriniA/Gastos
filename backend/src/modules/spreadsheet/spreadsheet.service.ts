@@ -5,6 +5,7 @@ import {
   nameKey,
   parseImportRecord,
   pathOf,
+  productSheetRows,
   CATEGORY_PATH_SEPARATOR,
   type Account,
   type Category,
@@ -296,7 +297,8 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
     /**
      * Writes confirmed transactions in the import format. A transaction split
      * across categories becomes one row per part; the JSON backup is the copy
-     * that keeps everything exactly.
+     * that keeps everything exactly. An Excel file also carries a second
+     * sheet with the products of each purchase; a CSV has room for one table only.
      */
     async exportTransactions(query: ExportQuery): Promise<GeneratedFile> {
       const [transactions, accounts, categories, tags] = await Promise.all([
@@ -308,45 +310,44 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
       const accountName = new Map(accounts.map((account) => [account.id, account.name]));
       const tagName = new Map(tags.map((tag) => [tag.id, tag.name]));
 
-      const rows: ImportRow[] = transactions
-        .filter((transaction) => transaction.status === 'confirmed')
-        .flatMap((transaction) => {
-          const base = {
-            date: transaction.date,
-            type: transaction.type,
-            refund: transaction.refund,
-            currency: transaction.currency,
-            account: accountName.get(transaction.accountId) ?? '',
-            description: transaction.description,
-            tags: transaction.tagIds.flatMap((id) => tagName.get(id) ?? []),
-            note: transaction.note,
-            installment: transaction.installment
-              ? { number: transaction.installment.number, total: transaction.installment.total }
-              : null,
-            paymentDate: transaction.paymentDate === transaction.date ? null : transaction.paymentDate,
-            toAccount: transaction.toAccountId ? (accountName.get(transaction.toAccountId) ?? null) : null,
-            toAmountCents: transaction.toAmountCents,
-          };
-          if (transaction.splits.length === 0) {
-            return [
-              {
-                ...base,
-                amountCents: transaction.amountCents,
-                categoryPath: transaction.categoryId ? pathOf(transaction.categoryId, categories) : [],
-              },
-            ];
-          }
-          return transaction.splits.map((split) => ({
-            ...base,
-            amountCents: split.amountCents,
-            categoryPath: pathOf(split.categoryId, categories),
-          }));
-        });
+      const confirmed = transactions.filter((transaction) => transaction.status === 'confirmed');
+      const rows: ImportRow[] = confirmed.flatMap((transaction) => {
+        const base = {
+          date: transaction.date,
+          type: transaction.type,
+          refund: transaction.refund,
+          currency: transaction.currency,
+          account: accountName.get(transaction.accountId) ?? '',
+          description: transaction.description,
+          tags: transaction.tagIds.flatMap((id) => tagName.get(id) ?? []),
+          note: transaction.note,
+          installment: transaction.installment
+            ? { number: transaction.installment.number, total: transaction.installment.total }
+            : null,
+          paymentDate: transaction.paymentDate === transaction.date ? null : transaction.paymentDate,
+          toAccount: transaction.toAccountId ? (accountName.get(transaction.toAccountId) ?? null) : null,
+          toAmountCents: transaction.toAmountCents,
+        };
+        if (transaction.splits.length === 0) {
+          return [
+            {
+              ...base,
+              amountCents: transaction.amountCents,
+              categoryPath: transaction.categoryId ? pathOf(transaction.categoryId, categories) : [],
+            },
+          ];
+        }
+        return transaction.splits.map((split) => ({
+          ...base,
+          amountCents: split.amountCents,
+          categoryPath: pathOf(split.categoryId, categories),
+        }));
+      });
 
       const stamp = deps.today();
       return query.format === 'csv'
         ? writeCsv(rows, `gastos-movimientos-${stamp}.csv`)
-        : writeXlsx(rows, `gastos-movimientos-${stamp}.xlsx`);
+        : writeXlsx(rows, `gastos-movimientos-${stamp}.xlsx`, productSheetRows(confirmed));
     },
 
     /** An empty spreadsheet with the right headers, to fill in by hand. */

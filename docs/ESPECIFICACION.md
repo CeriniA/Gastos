@@ -319,6 +319,12 @@ un ticket se corrige lo que leyó la IA. Son opcionales y no tienen que sumar el
 la diferencia (descuentos, recargos o renglones que no son productos) pero deja guardar. Un descuento se
 carga con monto negativo.
 
+**Productos corregidos (hecho, 17/10/2026).** Si en la revisión de un ticket el usuario cambia el producto o el
+grupo de un renglón que leyó la IA, la app ofrece "Recordar los productos que corregí" (viene tildado). En los
+próximos tickets, el renglón con el mismo texto impreso (sin distinguir mayúsculas ni acentos) se propone con
+ese producto y ese grupo. Sigue siendo una propuesta: la revisión lo muestra y se cambia. Recordar otra vez el
+mismo texto reemplaza lo anterior. Se olvida en Más → Lo que la app recuerda.
+
 **Consumo (hecho).** La otra pestaña de Informes muestra qué se compró en el mes, a partir de los productos
 leídos de los tickets: total por moneda, grupos (lácteos, almacén, limpieza…) con su porcentaje y, al
 abrir un grupo, cada producto con cuántas veces se compró y la cantidad. Un buscador muestra todas las
@@ -329,23 +335,24 @@ detalle o con productos cargados a mano; un pago de MercadoPago sin detalle no a
 
 Diseño para celular primero. Barra inferior: **Inicio, Movimientos, +, Informes, Más**.
 
-| Pantalla                 | Qué muestra                                                                       | Etapa |
-| ------------------------ | --------------------------------------------------------------------------------- | ----- |
-| Login                    | Usuario y contraseña; aviso si el servidor está despertando                       | 1     |
-| Inicio                   | Balance del mes por moneda, últimos movimientos                                   | 1     |
-| Movimientos              | Lista por mes con buscador y filtros; tocar uno lo edita                          | 1     |
-| Agregar                  | Carga manual; foto o captura; resumen de tarjeta o de cuenta (PDF, Excel o CSV)   | 1 a 4 |
-| Más                      | Cuentas, tarjetas, fijos, categorías, bancos, etiquetas, tasas, papelera, datos   | 1 a 4 |
-| Cuentas                  | En Más: cada cuenta con su saldo de hoy; su saldo inicial se edita                | 1 y 4 |
-| Contraseña               | En Más: cada usuario cambia la suya                                               | 1     |
-| Usuarios                 | En Más, solo para el administrador: crear, editar, cambiar contraseña, desactivar | 1     |
-| Pendientes               | Bandeja única de todo lo que espera una decisión                                  | 2     |
-| Revisión                 | Imagen y datos extraídos                                                          | 2     |
-| Tarjetas                 | Compras desde el último cierre, cada resumen con lo cargado, alta de cierres      | 3     |
-| Movimientos fijos        | En Más: cada fijo y cómo está este mes, sugerencias, los marcados como no fijos   | 4     |
-| Tasas de cambio          | En Más: pesos por dólar desde cada día, para ver los informes en una moneda       | 4     |
-| Privacidad y condiciones | `/privacidad` y `/condiciones`: páginas públicas, se leen sin iniciar sesión      | 1     |
-| Informes                 | Ver sección 10                                                                    | 4     |
+| Pantalla                 | Qué muestra                                                                                                | Etapa |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------- | ----- |
+| Login                    | Usuario y contraseña; aviso si el servidor está despertando                                                | 1     |
+| Inicio                   | Balance del mes por moneda, últimos movimientos                                                            | 1     |
+| Movimientos              | Lista por mes con buscador y filtros; tocar uno lo edita                                                   | 1     |
+| Agregar                  | Carga manual; foto o captura; resumen de tarjeta o de cuenta (PDF, Excel o CSV)                            | 1 a 4 |
+| Más                      | Cuentas, tarjetas, fijos, categorías, bancos, etiquetas, tasas, papelera, datos                            | 1 a 4 |
+| Cuentas                  | En Más: cada cuenta con su saldo de hoy; su saldo inicial se edita                                         | 1 y 4 |
+| Contraseña               | En Más: cada usuario cambia la suya                                                                        | 1     |
+| Usuarios                 | En Más, solo para el administrador: crear, editar, cambiar contraseña, desactivar                          | 1     |
+| Pendientes               | Bandeja única de todo lo que espera una decisión                                                           | 2     |
+| Revisión                 | Imagen y datos extraídos                                                                                   | 2     |
+| Tarjetas                 | Compras desde el último cierre, cada resumen con lo cargado, alta de cierres                               | 3     |
+| Movimientos fijos        | En Más: cada fijo y cómo está este mes, sugerencias, los marcados como no fijos                            | 4     |
+| Tasas de cambio          | En Más: pesos por dólar desde cada día, para ver los informes en una moneda                                | 4     |
+| Lo que la app recuerda   | En Más: comercio → categoría, productos corregidos y documentos confirmados; cada uno se olvida o se borra | 2 y 4 |
+| Privacidad y condiciones | `/privacidad` y `/condiciones`: páginas públicas, se leen sin iniciar sesión                               | 1     |
+| Informes                 | Ver sección 10                                                                                             | 4     |
 
 Toda pantalla contempla: cargando, lista vacía con indicación de qué hacer, error con reintento y
 servidor despertando.
@@ -362,6 +369,7 @@ MongoDB. Los nombres están en inglés; ver `GLOSARIO.md`.
 | `transactions`     | Movimientos, con ítems y divisiones adentro        | `accounts`, `categories`, `tags`, `documents`, `installmentPlans`, `cardPeriods`, `recurrings` | 1     |
 | `documents`        | Archivos subidos y su extracción                   | `accounts`                                                                                     | 2     |
 | `categoryRules`    | Comercio → categoría                               | `categories`                                                                                   | 2     |
+| `productRules`     | Renglón de ticket → producto y grupo               |                                                                                                | 4     |
 | `installmentPlans` | Compras en cuotas                                  | `accounts`                                                                                     | 3     |
 | `cardPeriods`      | Períodos de tarjeta                                | `accounts`, `documents`                                                                        | 3     |
 | `recurrings`       | Movimientos fijos, y comercios que no lo son       | `accounts`, `categories`                                                                       | 4     |

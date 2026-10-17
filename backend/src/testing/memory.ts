@@ -26,6 +26,10 @@ import type { DocumentsRepository, StoredFile } from '../modules/documents/docum
 import type { InstallmentPlansRepository } from '../modules/installment-plans/installmentPlans.repository';
 import type { InstitutionsRepository } from '../modules/institutions/institutions.repository';
 import type { ExchangeRatesRepository } from '../modules/exchange-rates/exchangeRates.repository';
+import type {
+  ProductRulesRepository,
+  StoredProductRule,
+} from '../modules/product-rules/productRules.repository';
 import type { RecurringsRepository } from '../modules/recurrings/recurrings.repository';
 import type { TagsRepository } from '../modules/tags/tags.repository';
 import { duplicateKey, installmentKey } from '../modules/transactions/duplicateKey';
@@ -56,6 +60,7 @@ interface Store {
   documents: (DocumentDetail & { sha256: string; files: StoredFile[] })[];
   exchangeRates: ExchangeRate[];
   recurrings: Recurring[];
+  productRules: StoredProductRule[];
 }
 
 /** What the reports read of a transaction. */
@@ -114,6 +119,7 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
     documents: [],
     exchangeRates: [],
     recurrings: [],
+    productRules: [],
   });
   /**
    * Each user has their own arrays, like each has their own documents in the
@@ -803,6 +809,27 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
     },
   };
 
+  const productRules: ProductRulesRepository = {
+    async findAll() {
+      return [...store.productRules].sort((a, b) => a.nameKey.localeCompare(b.nameKey));
+    },
+    async upsert(data) {
+      const index = store.productRules.findIndex((rule) => rule.nameKey === data.nameKey);
+      const current = store.productRules[index];
+      const next: StoredProductRule = current
+        ? { ...current, ...data }
+        : { ...data, id: nextId(), ...stamps };
+      if (current) store.productRules[index] = next;
+      else store.productRules.push(next);
+      return next;
+    },
+    async delete(id) {
+      const before = store.productRules.length;
+      store.productRules = store.productRules.filter((rule) => rule.id !== id);
+      return store.productRules.length < before;
+    },
+  };
+
   const withoutBytes = (document: Store['documents'][number]): DocumentDetail => {
     const { sha256: _sha256, files, ...detail } = document;
     return {
@@ -898,6 +925,7 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
       exchangeRates,
       installmentPlans,
       institutions,
+      productRules,
       recurrings,
       tags,
       transactions,

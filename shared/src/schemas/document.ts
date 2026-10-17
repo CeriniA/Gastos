@@ -10,12 +10,14 @@ import {
   type DocumentErrorCode,
   type DocumentKind,
   type DocumentStatus,
+  MAX_DOCUMENT_PRODUCT_RULES,
   MAX_DOCUMENT_TRANSACTIONS,
   MAX_INSTALLMENTS,
   TEXT_LIMITS,
 } from '../constants';
 import { cardPeriodCreateSchema } from './cardPeriod';
 import { categoryRuleInputSchema } from './categoryRule';
+import { productRuleInputSchema } from './productRule';
 import { objectIdSchema } from './common';
 import type { ReviewExtraction } from './extraction';
 import { transactionCreateSchema } from './transaction';
@@ -96,6 +98,8 @@ export const documentConfirmSchema = z.object({
   transactions: z.array(documentConfirmEntrySchema).min(1).max(MAX_DOCUMENT_TRANSACTIONS),
   /** Merchant rules the user agreed to remember while reviewing. */
   rules: z.array(categoryRuleInputSchema).max(100).default([]),
+  /** Products the user corrected and agreed to remember for the next receipts. */
+  productRules: z.array(productRuleInputSchema).max(MAX_DOCUMENT_PRODUCT_RULES).default([]),
   /** Closing and due dates read from a card statement that the user chose to keep. */
   cardPeriods: z.array(cardPeriodCreateSchema).max(MAX_STATEMENT_PERIODS).default([]),
 });

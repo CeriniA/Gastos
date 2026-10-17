@@ -10,6 +10,11 @@ import {
 import type { CategoriesRepository } from './modules/categories/categories.repository';
 import { createCategoriesService, type CategoriesService } from './modules/categories/categories.service';
 import type { CategoryRulesRepository } from './modules/category-rules/categoryRules.repository';
+import type { ProductRulesRepository } from './modules/product-rules/productRules.repository';
+import {
+  createProductRulesService,
+  type ProductRulesService,
+} from './modules/product-rules/productRules.service';
 import {
   createCategoryRulesService,
   type CategoryRulesService,
@@ -58,6 +63,7 @@ export interface Repositories {
   exchangeRates: ExchangeRatesRepository;
   installmentPlans: InstallmentPlansRepository;
   institutions: InstitutionsRepository;
+  productRules: ProductRulesRepository;
   recurrings: RecurringsRepository;
   tags: TagsRepository;
   transactions: TransactionsRepository;
@@ -95,6 +101,7 @@ export interface Services {
   exchangeRates: ExchangeRatesService;
   installmentPlans: InstallmentPlansService;
   institutions: InstitutionsService;
+  productRules: ProductRulesService;
   recurrings: RecurringsService;
   reports: ReportsService;
   tags: TagsService;
@@ -164,6 +171,8 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     countAccounts: accounts.countByInstitution,
   });
 
+  const productRules: ProductRulesService = createProductRulesService(repositories.productRules);
+
   const categoryRules: CategoryRulesService = createCategoryRulesService(repositories.categoryRules, {
     listCategories: (options) => categories.list(options),
   });
@@ -212,6 +221,8 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     listCategories: categories.list,
     ruleLookup: () => categoryRules.lookup(),
     saveRule: categoryRules.save,
+    productRuleLookup: () => productRules.lookup(),
+    saveProductRule: productRules.save,
     createTransactions: (entries, options) => transactions.createMany(entries, 'document', options),
     countLiveTransactions: transactions.countLiveByDocument,
     findSameDayAmounts: transactions.findSameDayAmounts,
@@ -269,9 +280,10 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     exchangeRates,
     installmentPlans,
     institutions,
+    productRules,
     recurrings,
+    spreadsheet,
     tags,
     transactions,
-    spreadsheet,
   };
 }

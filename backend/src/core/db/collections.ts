@@ -10,6 +10,7 @@ export const COLLECTIONS = {
   cardPeriods: 'cardPeriods',
   recurrings: 'recurrings',
   categoryRules: 'categoryRules',
+  productRules: 'productRules',
   exchangeRates: 'exchangeRates',
   migrations: 'migrations',
   users: 'users',

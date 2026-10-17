@@ -9,13 +9,15 @@ import { es } from '../i18n/es';
 
 /** The small set of building blocks every screen is made of. */
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'quiet';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'quiet' | 'quietDanger';
 
 const BUTTON_STYLES: Record<ButtonVariant, string> = {
   primary: 'bg-income text-surface',
   secondary: 'bg-surface text-ink border border-line',
   danger: 'bg-surface text-expense border border-expense',
   quiet: 'text-income',
+  /** A quiet button that deletes or switches off: red, like the danger one. */
+  quietDanger: 'text-expense',
 };
 
 export function Button({

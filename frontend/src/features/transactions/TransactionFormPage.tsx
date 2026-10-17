@@ -405,8 +405,8 @@ export function TransactionFormPage() {
                         />
                       </div>
                       <Button
-                        variant="quiet"
-                        className="shrink-0 px-2 text-expense"
+                        variant="quietDanger"
+                        className="shrink-0 px-2"
                         aria-label={es.transactions.split.removePart}
                         onClick={() => splitFields.remove(index)}
                       >
@@ -511,8 +511,8 @@ export function TransactionFormPage() {
                   <p className="text-muted">{es.installments.editHint}</p>
                   {planId ? (
                     <Button
-                      variant="quiet"
-                      className="px-0 text-expense"
+                      variant="quietDanger"
+                      className="px-0"
                       disabled={removePlan.isPending}
                       onClick={() => void deletePlan(planId)}
                     >

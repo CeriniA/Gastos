@@ -243,6 +243,8 @@ Corren con el ejecutor de pruebas de Node (`npm test`), sin base de datos ni red
   dirección de las transferencias y saldo desde el saldo inicial. La lectura de la respuesta de la IA, en
   `providers/ai/normalize.test.ts`.
 - Usuarios (`modules/users/users.service.test.ts`): renombrar, cambiar el tipo y el límite diario de IA.
+- Productos corregidos (`modules/product-rules/productRules.service.test.ts`): se recuerdan al confirmar y se
+  ofrecen en el ticket siguiente. La hoja "Productos" del Excel, en `modules/spreadsheet/spreadsheet.service.test.ts`.
 - Usuarios y sesiones (`modules/auth/auth.service.test.ts`), el cifrado (`core/crypto/crypto.test.ts`) y
   la copia a Drive de cada usuario (`modules/backup/driveBackup.test.ts`).
 

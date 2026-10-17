@@ -84,8 +84,8 @@ export function PendingPage() {
                           : es.documents.reread}
                     </Button>
                     <Button
-                      variant="quiet"
-                      className="text-expense"
+                      variant="quietDanger"
+
                       onClick={() => discardDocument(document.id)}
                     >
                       {es.documents.discard}

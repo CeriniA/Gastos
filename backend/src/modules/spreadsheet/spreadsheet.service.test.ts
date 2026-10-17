@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { IMPORT_COLUMNS, toCsv, type ImportPreview, type ImportRow } from '@gastos/shared';
+import ExcelJS from 'exceljs';
+import {
+  IMPORT_COLUMNS,
+  PRODUCTS_SHEET_NAME,
+  PRODUCT_COLUMNS,
+  toCsv,
+  type ImportPreview,
+  type ImportRow,
+} from '@gastos/shared';
 import { ValidationError } from '../../core/errors/errors';
 import { createMemoryBackend } from '../../testing/memory';
 
@@ -352,4 +360,67 @@ test('the export splits a divided transaction into one row per category and hono
   // Imported back, the parts of the divided transaction are known too: nothing would be counted twice.
   const again = await app.spreadsheet.preview({ content: everything.content, fileName: 'movimientos.csv' });
   assert.deepEqual([again.validRows, again.duplicateRows], [3, 3]);
+});
+
+test('an Excel export carries the products of each purchase on a second sheet, and still imports', async () => {
+  const { app, bank } = await setup();
+  const purchase = {
+    type: 'expense' as const,
+    date: '2026-10-05',
+    currency: 'ARS' as const,
+    accountId: bank.id,
+    categoryId: null,
+    description: 'Coto',
+    note: '',
+    tagIds: [],
+    splits: [],
+    toAccountId: null,
+    toAmountCents: null,
+    paymentDate: null,
+    original: null,
+  };
+  await app.transactions.create({
+    ...purchase,
+    refund: false,
+    amountCents: 7600,
+    items: [
+      { name: 'LECHE ENT 1L', amountCents: 2400, product: 'Leche', group: 'dairy', quantity: 2 },
+      { name: 'YERBA 1KG', amountCents: 5200, product: 'Yerba', group: 'pantry', quantity: null },
+    ],
+  });
+  // A product given back counts against, as in consumption.
+  await app.transactions.create({
+    ...purchase,
+    date: '2026-10-06',
+    refund: true,
+    amountCents: 1200,
+    items: [{ name: 'LECHE ENT 1L', amountCents: 1200, product: 'Leche', group: 'dairy', quantity: 1 }],
+  });
+
+  const file = await app.spreadsheet.exportTransactions({ format: 'xlsx' });
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(file.content as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+  assert.deepEqual(
+    workbook.worksheets.map((sheet) => sheet.name),
+    ['Movimientos', PRODUCTS_SHEET_NAME],
+  );
+  const products: unknown[][] = [];
+  workbook.getWorksheet(PRODUCTS_SHEET_NAME)!.eachRow((row) => {
+    products.push((row.values as unknown[]).slice(1));
+  });
+  assert.deepEqual(products, [
+    PRODUCT_COLUMNS.map((column) => column.header),
+    ['2026-10-05', 'Coto', 'Leche', 'LECHE ENT 1L', 'Lácteos y huevos', 2, 24, 'ARS'],
+    ['2026-10-05', 'Coto', 'Yerba', 'YERBA 1KG', 'Almacén', '', 52, 'ARS'],
+    ['2026-10-06', 'Coto', 'Leche', 'LECHE ENT 1L', 'Lácteos y huevos', -1, -12, 'ARS'],
+  ]);
+
+  // The import reads the first sheet only: the file goes back in as two transactions.
+  const preview = await app.spreadsheet.preview({ content: file.content, fileName: file.fileName });
+  assert.equal(preview.rows.length, 2);
+  assert.ok(preview.rows.every((entry) => entry.issues.length === 0));
+
+  // A CSV has room for one table: no products.
+  const csvFile = await app.spreadsheet.exportTransactions({ format: 'csv' });
+  assert.doesNotMatch(csvFile.content.toString('utf8'), /YERBA/);
 });

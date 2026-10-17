@@ -165,6 +165,7 @@ test("an account's statement is read as one and its transfers keep their directi
       },
     ],
     rules: [],
+    productRules: [],
     cardPeriods: [],
   });
   assert.equal((await app.accounts.balance(wallet.id)).balanceCents, 100000);

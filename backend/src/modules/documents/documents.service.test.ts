@@ -87,6 +87,7 @@ function confirmation(
       },
     ],
     rules: [],
+    productRules: [],
     cardPeriods: [],
     ...overrides,
   };
@@ -516,6 +517,7 @@ test('a receipt in another currency is stored in the account currency, with what
   ) => ({
     transactions: [{ ...base, transaction: { ...base.transaction, date, amountCents, original } }],
     rules: [],
+    productRules: [],
     cardPeriods: [],
   });
 
@@ -587,7 +589,12 @@ test('a receipt can be uploaded again once all its transactions were deleted', a
   const first = await app.documents.upload({ kind: 'receipt' }, [photo('luz')]);
   await app.documents.processQueue();
   const both = confirmation(bank.id, power.id).transactions[0]!;
-  await app.documents.confirm(first.id, { transactions: [both, both], rules: [], cardPeriods: [] });
+  await app.documents.confirm(first.id, {
+    transactions: [both, both],
+    rules: [],
+    productRules: [],
+    cardPeriods: [],
+  });
   const [one, two] = app.store.transactions;
 
   // While one of its transactions still counts, the upload is a duplicate.

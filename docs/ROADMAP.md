@@ -23,23 +23,20 @@ Las versiones de `package.json` se escribieron sin acceso al registro de npm; la
 
 Para retomar. Se borra o se reescribe al empezar la próxima sesión.
 
-**Subido (commit y push del usuario):** todo hasta `b58f5a3`. Funciona en Render desde el 13/10/2026.
+**Subido (push del 17/10/2026):** todo hasta `c611087`: usuarios con límite de IA, la etapa 4, resúmenes de
+cuenta, saldos y la documentación al día. Falta confirmar en el celular que Render lo publicó.
 
-**Con commit, sin push:**
-
-- `d48d0e8`: usuarios (renombrar, cambiar el tipo, límite diario de IA) y la etapa 4 entera (informes por
-  cuenta, mes por mes, por comercio y proyección; tasas de cambio y vista en una moneda; movimientos fijos).
-- `2743d8a`: resumen de cuenta (banco, MercadoPago, una app) en PDF, Excel o CSV; saldo de cada cuenta con
-  saldo inicial y control contra el saldo del resumen; las correcciones de la revisión de `d48d0e8`.
-- La puesta al día de la documentación, en el commit que sigue a `2743d8a`.
+**Hecho después, con commit y sin push (el que sigue a `c611087`):** la hoja "Productos" en el Excel exportado, recordar los productos corregidos
+para los próximos tickets (colección nueva `productRules`, sin migración: arranca vacía) y la pantalla Más → Lo
+que la app recuerda (reglas de categoría, productos corregidos y documentos confirmados). 215 pruebas.
 
 **Para subirlo:**
 
-1. Push. En Render no hace falta ninguna variable nueva: `AI_DAILY_READINGS` es opcional (30 si no está;
+1. Commit y push de lo que falta. En Render no hace falta ninguna variable nueva: `AI_DAILY_READINGS` es opcional (30 si no está;
    `render.yaml` ya la trae).
 2. Al arrancar corren solas las migraciones nuevas: `2026-10-17-recurring-merchant`,
    `2026-10-17-account-opening-balance`, `2026-10-17-recurring-name-index` (rehace un índice) y
-   `2026-10-17-user-ai-limit`. Conviene bajar un respaldo antes (Más → Respaldo y datos).
+   `2026-10-17-user-ai-limit`. Si el despliegue de `c611087` salió bien, ya corrieron; lo nuevo no trae ninguna.
 3. Después: Más → Usuarios muestra "Lecturas con IA hoy"; Informes tiene seis pestañas; Más → Cuentas muestra
    el saldo de cada cuenta; Agregar → Leer un resumen ofrece "Banco o app".
 
@@ -55,11 +52,10 @@ Para retomar. Se borra o se reescribe al empezar la próxima sesión.
 
 **Lo próximo que se puede programar:**
 
-- Hoja "Productos" en la exportación a Excel (pedido del 17/10/2026; diseño en
-  `IMPORTACION_EXPORTACION.md`, sección "Pendiente: hoja de productos").
+- Las mejoras visuales propuestas (sección de abajo), las que el usuario elija.
+
 - Ajustar el tapado y las instrucciones con el primer resumen real, de tarjeta y de cuenta.
-- Recordar una corrección de producto o grupo para el próximo ticket; comparar precios en el tiempo.
-- Lista de reglas de categoría y de documentos confirmados en Más (la API ya existe).
+- Comparar el precio de un mismo producto a lo largo del tiempo.
 - Uso sin conexión: está en la segunda versión; el usuario decidió no adelantarlo por ahora.
 
 **Cómo se trabaja (recordatorio para el asistente):**
@@ -111,6 +107,36 @@ Al recorrer la demo, antes del commit:
 14. "Se taparon 1 dato" y "Se taparon 0 datos": textos corregidos.
 15. Se colaron caracteres invisibles (una marca de orden de bytes) en el código fuente; el lint los marcó y se
     cambiaron por su forma escrita.
+
+En el repaso visual (17/10/2026, demo en tamaño celular, modo claro y oscuro):
+
+16. **Cuentas:** los tres botones al costado dejaban la información en una columna finita ("Mercad / oPago", el
+    saldo en ocho renglones). Lo empeoró la línea del saldo agregada ese día. Ahora los botones van debajo.
+17. **Bancos y tarjetas:** lo mismo, peor, desde antes: "Banc / o / Ciud / ad". Mismo arreglo. También en
+    Usuarios.
+18. **Los botones "Borrar" y "Desactivar" se veían verdes, no rojos**, en 13 lugares: el color rojo agregado
+    encima perdía contra el verde del botón. Ahora hay una variante propia, `quietDanger`.
+19. **El ámbar de "atención" como texto** ("Cambió mucho", "Esperando a la IA") tenía contraste 3,1 en modo claro;
+    la norma pide 4,5. Pasó de `#b98a0c` a `#8a6508` (5,3).
+
+## Mejoras visuales propuestas (17/10/2026)
+
+Del mismo repaso. No son errores: son cambios de diseño que conviene decidir antes de hacer.
+
+1. **Bordes de los campos para escribir muy suaves** (contraste 1,3; la norma pide 3 para el borde de un control).
+   Al sol, en el celular, cuesta ver dónde se escribe. Un borde más oscuro solo para los campos.
+2. **Barra de abajo sin íconos**, y la pestaña activa se distingue solo por el color. Ícono más una marca debajo
+   de la activa.
+3. **Dos selectores de mes distintos**: en Movimientos es una barra con las flechas adentro; en Informes, dos
+   botones cuadrados. Usar uno solo.
+4. **La categoría se corta con "…"** en Inicio y Movimientos, porque va después de la fecha y la cuenta. Ponerla
+   primero, o en su propio renglón.
+5. **Movimientos sin separación por día**: encabezados "Hoy", "Ayer", "15 de octubre", con el total del día.
+6. **Más tiene 13 opciones seguidas**: agruparlas (Mis cuentas, Configuración, Datos, Mi usuario).
+7. **Informes:** el selector "Mostrar" ocupa lugar en todas las pestañas; un control chico al lado del mes
+   alcanza. Y los egresos, que es lo que más se mira, podrían ir antes que los ingresos.
+8. **Agregar:** "Elegir de la galería" ocupa dos renglones al lado de "Sacar foto"; los dos botones quedan de
+   distinto alto.
 
 ## Resúmenes de cuenta y saldos (17/10/2026)
 
@@ -224,8 +250,11 @@ poner grupo editando el movimiento.
 
 Falta:
 
-- Recordar una corrección de producto o grupo para el próximo ticket (hoy se corrige a mano cada vez).
 - Comparar el precio de un mismo producto a lo largo del tiempo.
+
+Hecho (17/10/2026): recordar el producto y el grupo corregidos de un renglón para los próximos tickets
+(`productRules`), la hoja "Productos" en el Excel exportado y la pantalla Más → Lo que la app recuerda (reglas de
+categoría, productos corregidos y documentos confirmados).
 
 ## Deuda conocida
 

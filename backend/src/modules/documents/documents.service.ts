@@ -30,6 +30,7 @@ import {
   type DuplicateHint,
   type Installment,
   type IsoDate,
+  type ProductRuleInput,
   type StatementPreview,
   type StatementUpload,
   type TransactionCreate,
@@ -42,7 +43,7 @@ import type { DocumentsRepository, StoredFile } from './documents.repository';
 import { detectImageType } from './fileType';
 import { dateInstallmentsOnClosing, tidyStatementText } from './statement';
 import { decodeText, rowsToText, statementFileType } from './statementFile';
-import { applyCategorySuggestions } from './suggestions';
+import { applyCategorySuggestions, applyProductRules } from './suggestions';
 
 const MINUTE_MS = 60_000;
 
@@ -65,6 +66,9 @@ export interface DocumentDependencies {
   listCategories(options?: WriteOptions): Promise<Category[]>;
   /** Category id per normalised merchant name, from the user's rules. */
   ruleLookup(): Promise<Map<string, string>>;
+  /** Product and group the user taught for each printed receipt line, by its normalised text. */
+  productRuleLookup(): Promise<Map<string, Pick<ProductRuleInput, 'product' | 'group'>>>;
+  saveProductRule(rule: ProductRuleInput, options: WriteOptions): Promise<unknown>;
   saveRule(rule: CategoryRuleInput, options: WriteOptions): Promise<unknown>;
   createTransactions(
     entries: readonly {
@@ -243,11 +247,12 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
       return;
     }
     try {
-      const [files, text, categories, rules] = await Promise.all([
+      const [files, text, categories, rules, productRules] = await Promise.all([
         repository.findFiles(document.id),
         repository.findText(document.id),
         deps.listCategories(),
         deps.ruleLookup(),
+        deps.productRuleLookup(),
       ]);
       if (files.length === 0 && !text)
         throw extractionFailure('unreadable', 'The document has nothing stored to read');
@@ -272,7 +277,10 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
 
       await repository.update(document.id, {
         status: 'ready',
-        extraction: applyCategorySuggestions(dateInstallmentsOnClosing(checked.data), categories, rules),
+        extraction: applyProductRules(
+          applyCategorySuggestions(dateInstallmentsOnClosing(checked.data), categories, rules),
+          productRules,
+        ),
         promptVersion: deps.extractor.promptVersion,
         errorCode: null,
         errorDetail: null,
@@ -555,6 +563,7 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
         }
         const created = await deps.createTransactions(entries, options);
         for (const rule of input.rules) await deps.saveRule(rule, options);
+        for (const rule of input.productRules) await deps.saveProductRule(rule, options);
         await repository.update(id, { status: 'confirmed', clearFiles: true }, options);
         return { created };
       });

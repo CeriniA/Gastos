@@ -103,7 +103,7 @@ function RateRow({
         <Button variant="quiet" onClick={() => setEditing(true)}>
           {es.common.edit}
         </Button>
-        <Button variant="quiet" className="text-expense" disabled={busy} onClick={onDelete}>
+        <Button variant="quietDanger" disabled={busy} onClick={onDelete}>
           {es.common.delete}
         </Button>
       </span>
