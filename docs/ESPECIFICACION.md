@@ -292,8 +292,11 @@ cada moneda por separado o todo en una (sección 3). Todas cuentan igual que el 
 de pago, las devoluciones restan, las transferencias no son ingreso ni egreso y la papelera no entra. El
 buscador con filtros está en Movimientos y la exportación a Excel en Más → Respaldo y datos.
 
-**Por cuenta.** Para el mes, cada cuenta que tuvo movimientos con sus ingresos, sus egresos y las
-transferencias que recibió y que envió (pagar la tarjeta, comprar dólares), en su moneda.
+**Por cuenta.** Para el mes, cada cuenta en uso, se haya movido o no (y las archivadas que se movieron), con
+su **saldo al final del mes** (hoy, si es el mes actual) y lo que entró y salió: ingresos, egresos y las
+transferencias que recibió y que envió (pagar la tarjeta, comprar dólares), en su moneda. Una cuenta sin
+movimientos muestra su saldo y "Sin movimientos este mes". Antes del día de su saldo inicial no se sabe qué
+tenía: el informe lo dice en vez de mostrar un número (pedido del usuario, 17/10/2026).
 
 **Meses.** Los 12 meses que terminan en el elegido, del más nuevo al más viejo: ingresos, egresos y balance
 de cada uno, con barras para comparar y el egreso promedio de los meses con movimientos.

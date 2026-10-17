@@ -121,11 +121,18 @@ export interface AccountActivity {
   /** Transfers that reached it, and that left it: paying the card, buying dollars. */
   transfersInCents: number;
   transfersOutCents: number;
+  /**
+   * What the account had at the end of the month (today, for this month).
+   * Null for a day before its opening balance: what it had then is not known.
+   */
+  closingBalanceCents: number | null;
 }
 
 export interface AccountReport {
   month: string;
-  /** Only accounts that moved in the month, by name. */
+  /** The day the closing balances are worked out for: the month's last day, or today. */
+  balanceOn: IsoDate;
+  /** Every account that is not archived, moved in the month or not, and the archived ones that moved; by name. */
   accounts: AccountActivity[];
   consolidated: Consolidation | null;
 }

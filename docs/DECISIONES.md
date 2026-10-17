@@ -234,6 +234,14 @@ Cada decisión tomada en el diseño, con su motivo. Una decisión nueva o que ca
 | En listas con varias acciones, la información arriba y los botones abajo                     | En un celular de 375 px tres botones al costado dejaban el nombre en una columna de pocas letras     |
 | El ámbar de atención es más oscuro en modo claro (`#8a6508`)                                 | Se usa como texto, no solo como borde: necesita contraste 4,5 sobre blanco                           |
 
+## Informe por cuenta con saldos (17/10/2026)
+
+| Decisión                                                                                                       | Motivo                                                                                                                                     |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| El informe por cuenta lista todas las cuentas en uso, con su saldo al final del mes, aunque no se hayan movido | El usuario cargó el saldo inicial de MercadoPago y no la veía en Informes: el saldo también es parte de cómo terminó el mes                |
+| Antes del día del saldo inicial, el saldo es desconocido, no cero                                              | Qué tenía la cuenta antes de ese día no se sabe; un cero sería inventado                                                                   |
+| El saldo cuenta por fecha del movimiento; lo que entró y salió, por fecha de pago                              | Como en el resto: el saldo es cuándo se movió la plata en esa cuenta, los informes cuentan por mes de pago. El texto del informe lo aclara |
+
 ## Abiertas
 
 | Tema                                           | Cuándo se define               |

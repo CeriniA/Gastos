@@ -43,6 +43,8 @@ export interface ReportsDeps {
   listAccounts: () => Promise<Account[]>;
   /** The user's pesos-per-dollar rates, oldest first. */
   listRates: () => Promise<ExchangeRate[]>;
+  /** What an account had on a day: its opening balance plus its movements up to that day. */
+  accountBalance: (accountId: string, on: IsoDate) => Promise<number>;
   /** What the fixed items still bring to a month. */
   expectedRecurrings: (month: MonthKey) => Promise<ProjectedEntry[]>;
   today: () => IsoDate;
@@ -207,8 +209,25 @@ export function createReportsService(deps: ReportsDeps) {
         deps.listAccounts(),
         setup(target),
       ]);
+      // The balance at the end of the month; for this month, today's.
+      const today = deps.today();
+      const balanceOn = lastDayOfMonth(month) < today ? lastDayOfMonth(month) : today;
       const byId = new Map(accounts.map((account) => [account.id, account]));
       const activity = new Map<string, AccountActivity>();
+      const empty = (account: Account, currency: Currency): AccountActivity => ({
+        accountId: account.id,
+        name: account.name,
+        currency,
+        incomeCents: 0,
+        expenseCents: 0,
+        transfersInCents: 0,
+        transfersOutCents: 0,
+        closingBalanceCents: null,
+      });
+      // Every account in use is listed, moved in the month or not: its balance is worth seeing.
+      for (const account of accounts.filter((candidate) => !candidate.archived)) {
+        activity.set(account.id, empty(account, target ?? account.currency));
+      }
       const add = (
         accountId: string,
         field: 'incomeCents' | 'expenseCents' | 'transfersInCents' | 'transfersOutCents',
@@ -219,15 +238,7 @@ export function createReportsService(deps: ReportsDeps) {
         if (!account) return;
         const shown = convert.show(cents, account.currency, row.date, row.id);
         if (!shown) return;
-        const entry = activity.get(accountId) ?? {
-          accountId,
-          name: account.name,
-          currency: shown.currency,
-          incomeCents: 0,
-          expenseCents: 0,
-          transfersInCents: 0,
-          transfersOutCents: 0,
-        };
+        const entry = activity.get(accountId) ?? empty(account, shown.currency);
         entry[field] += shown.cents;
         activity.set(accountId, entry);
       };
@@ -240,8 +251,17 @@ export function createReportsService(deps: ReportsDeps) {
             add(row.toAccountId, 'transfersInCents', row.toAmountCents ?? row.amountCents, row);
         }
       }
+      for (const entry of activity.values()) {
+        const account = byId.get(entry.accountId)!;
+        // Before the day its opening balance was taken, what it had is not known.
+        if (account.openingBalance && account.openingBalance.date > balanceOn) continue;
+        const cents = await deps.accountBalance(account.id, balanceOn);
+        entry.closingBalanceCents =
+          convert.show(cents, account.currency, balanceOn, `balance:${account.id}`)?.cents ?? null;
+      }
       return {
         month,
+        balanceOn,
         accounts: [...activity.values()].sort((a, b) => a.name.localeCompare(b.name)),
         consolidated: convert.consolidation(),
       };

@@ -126,14 +126,54 @@ test('by account: each account with its income, expenses and the transfers in an
       entry.expenseCents,
       entry.transfersInCents,
       entry.transfersOutCents,
+      entry.closingBalanceCents,
     ]),
     [
-      ['Banco', 'ARS', 90000, 700, 0, 25000],
-      ['Billetera', 'ARS', 0, 0, 5000, 0],
-      ['Caja USD', 'USD', 0, 0, 15, 0],
+      // Its balance also counts the expense of September: a balance is everything up to the day.
+      ['Banco', 'ARS', 90000, 700, 0, 25000, 63301],
+      ['Billetera', 'ARS', 0, 0, 5000, 0, 5000],
+      ['Caja USD', 'USD', 0, 0, 15, 0, 15],
     ],
   );
+  assert.equal(report.balanceOn, '2026-10-10', 'this month: today');
   assert.equal(report.consolidated, null);
+});
+
+test('by account: every account in use is listed with its balance, even without movements', async () => {
+  const { app, bank, food, add } = await setup();
+  const wallet = await app.accounts.create({
+    name: 'MercadoPago',
+    type: 'wallet',
+    currency: 'ARS',
+    openingBalance: { amountCents: 85000, date: '2026-10-01' },
+  });
+  const old = await app.accounts.create({ name: 'Vieja', type: 'cash', currency: 'ARS' });
+  await app.accounts.update(old.id, { archived: true });
+  await add({ amountCents: 1000, categoryId: food.id, date: '2026-09-20' });
+
+  const october = await app.reports.byAccount('2026-10');
+  assert.deepEqual(
+    october.accounts.map((entry) => [entry.name, entry.expenseCents, entry.closingBalanceCents]),
+    [
+      ['Banco', 0, -1000],
+      ['Caja USD', 0, 0],
+      ['MercadoPago', 0, 85000],
+    ],
+    'an archived account without movements is left out',
+  );
+
+  // At the end of September: the bank had spent; MercadoPago's opening balance is from October, unknown before.
+  const september = await app.reports.byAccount('2026-09');
+  assert.equal(september.balanceOn, '2026-09-30');
+  assert.deepEqual(
+    september.accounts
+      .filter((entry) => [bank.id, wallet.id].includes(entry.accountId))
+      .map((entry) => [entry.name, entry.expenseCents, entry.closingBalanceCents]),
+    [
+      ['Banco', 1000, -1000],
+      ['MercadoPago', 0, null],
+    ],
+  );
 });
 
 test('month by month: income and expenses of each month, the empty ones too', async () => {

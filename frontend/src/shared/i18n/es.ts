@@ -562,13 +562,17 @@ export const es = {
     loadRate: 'Cargar una tasa de cambio',
     convertedWith: 'Cada movimiento se convierte con tu tasa de cambio del día en que se hizo.',
     accounts: {
-      empty: 'Este mes ninguna cuenta tuvo movimientos pagados.',
+      empty: 'No tenés cuentas en uso. Creá una en Más → Cuentas.',
+      balanceToday: 'Saldo hoy',
+      balanceOn: (date: string) => `Saldo al ${date}`,
+      balanceUnknown: 'Sin saldo ese día: su saldo inicial es de un día posterior.',
+      noMovements: 'Sin movimientos este mes.',
       income: 'Ingresos',
       expense: 'Egresos',
       transfersIn: 'Transferencias recibidas',
       transfersOut: 'Transferencias enviadas',
       scope:
-        'Las transferencias son plata que pasó de una cuenta a otra (pagar la tarjeta, comprar dólares): no son ingreso ni egreso.',
+        'El saldo es el saldo inicial de la cuenta más todos sus movimientos hasta ese día. Lo que entró y salió se cuenta en el mes en que se paga. Las transferencias son plata que pasó de una cuenta a otra (pagar la tarjeta, comprar dólares): no son ingreso ni egreso.',
     },
     evolution: {
       empty: 'No hay ingresos ni egresos pagados en estos meses.',

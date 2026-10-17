@@ -265,6 +265,7 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     listCategories: () => categories.list(),
     listAccounts: () => accounts.list(),
     listRates: () => exchangeRates.list(),
+    accountBalance: async (accountId, on) => (await accounts.balance(accountId, on)).balanceCents,
     expectedRecurrings: (month) => recurrings.expected(month),
     today,
   });
