@@ -135,7 +135,11 @@ export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
 export const TRANSACTION_SOURCES = ['manual', 'document', 'import', 'installment'] as const;
 export type TransactionSource = (typeof TRANSACTION_SOURCES)[number];
 
-export const DOCUMENT_KINDS = ['receipt', 'screenshot', 'card_statement'] as const;
+/**
+ * A receipt, a screenshot, a credit card statement, or the statement of any
+ * other account: a bank, MercadoPago or any app's list of movements.
+ */
+export const DOCUMENT_KINDS = ['receipt', 'screenshot', 'card_statement', 'account_statement'] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 
 export const DOCUMENT_STATUSES = ['processing', 'ready', 'confirmed', 'discarded', 'error'] as const;
@@ -144,6 +148,19 @@ export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
 /** What can be uploaded as images. Card statements arrive as the text of their PDF instead. */
 export const UPLOADABLE_DOCUMENT_KINDS = ['receipt', 'screenshot'] as const;
 export type UploadableDocumentKind = (typeof UPLOADABLE_DOCUMENT_KINDS)[number];
+
+/** What arrives as the text of a file (PDF, Excel or CSV) the user approves before it is read. */
+export const STATEMENT_KINDS = ['card_statement', 'account_statement'] as const;
+export type StatementKind = (typeof STATEMENT_KINDS)[number];
+
+/**
+ * The files a statement can come in. Banks and apps let their movements be
+ * downloaded as PDF, Excel or CSV; all three become text the same way.
+ */
+export const STATEMENT_FILE_TYPES = ['pdf', 'xlsx', 'csv'] as const;
+export type StatementFileType = (typeof STATEMENT_FILE_TYPES)[number];
+/** Most rows of a spreadsheet statement turned into text: a year of daily movements fits. */
+export const MAX_STATEMENT_ROWS = 5000;
 
 export const DOCUMENT_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export type DocumentImageType = (typeof DOCUMENT_IMAGE_TYPES)[number];

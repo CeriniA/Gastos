@@ -1,24 +1,15 @@
 import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import {
-  DEFAULT_AI_DAILY_READINGS,
-  DEFAULT_TIMEZONE,
   nameKey,
-  todayIso,
-  type IsoDate,
   type PasswordChange,
   type User,
   type UserCreate,
   type UserRole,
   type UserUpdate,
 } from '@gastos/shared';
-import {
-  AiLimitError,
-  ConflictError,
-  DuplicateError,
-  NotFoundError,
-  fieldError,
-} from '../../core/errors/errors';
+import { ConflictError, DuplicateError, NotFoundError, fieldError } from '../../core/errors/errors';
+import type { AiAllowance } from './aiAllowance';
 import type { UserRecord, UsersRepository } from './users.repository';
 
 /** bcrypt work factor: slow enough to resist guessing, fast enough for one login. */
@@ -31,10 +22,8 @@ export interface UsersOptions {
   hashCost?: number;
   /** Runs once a user exists: gives them the starting categories and accounts. */
   onCreated?: (user: User) => Promise<void>;
-  /** Today's calendar day: the AI limit counts per day. */
-  today?: () => IsoDate;
-  /** Documents a user can send to the AI per day when the admin gave them no limit of their own. */
-  aiDailyReadings?: number;
+  /** Each user's daily AI limit, which the admin sees next to them. */
+  aiAllowance: AiAllowance;
 }
 
 /** A user and the number their open sessions must carry to stay valid. */
@@ -47,10 +36,9 @@ export interface UserSession {
  * Who can use the app and how they prove it. Passwords are only ever compared
  * and replaced here; nothing else sees a hash.
  */
-export function createUsersService(repository: UsersRepository, options: UsersOptions = {}) {
+export function createUsersService(repository: UsersRepository, options: UsersOptions) {
   const hashCost = options.hashCost ?? PASSWORD_HASH_COST;
-  const today = options.today ?? (() => todayIso(DEFAULT_TIMEZONE));
-  const defaultLimit = options.aiDailyReadings ?? DEFAULT_AI_DAILY_READINGS;
+  const { aiAllowance } = options;
   // Compared against when the username does not exist, so a wrong username
   // takes as long as a wrong password and cannot be told apart by timing.
   const decoyHash = bcrypt.hashSync(randomBytes(DECOY_BYTES).toString('hex'), hashCost);
@@ -59,8 +47,8 @@ export function createUsersService(repository: UsersRepository, options: UsersOp
     const { passwordHash: _hash, sessionVersion: _version, driveToken: _drive, aiUsage, ...user } = record;
     return {
       ...user,
-      aiLimit: user.aiDailyLimit ?? defaultLimit,
-      aiReadingsToday: aiUsage?.day === today() ? aiUsage.count : 0,
+      aiLimit: aiAllowance.limitOf(user),
+      aiReadingsToday: aiAllowance.readingsToday({ aiUsage }),
     };
   }
 
@@ -175,12 +163,6 @@ export function createUsersService(repository: UsersRepository, options: UsersOp
     /** Signs the user out of every device, including the one that asks. */
     async closeSessions(id: string): Promise<void> {
       await repository.update(id, {}, { closeSessions: true });
-    },
-
-    /** Counts one document sent to the AI today, or refuses once the user reached their limit. */
-    async takeAiReading(id: string): Promise<void> {
-      const limit = (await find(id)).aiDailyLimit ?? defaultLimit;
-      if (!(await repository.takeAiReading(id, today(), limit))) throw new AiLimitError(limit);
     },
 
     /** The user's sealed permission to write in their Drive, or null. */

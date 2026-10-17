@@ -8,6 +8,7 @@ import {
   MAX_DOCUMENT_BYTES,
   MAX_DOCUMENT_FILES,
   MAX_STATEMENT_PAGES,
+  MAX_STATEMENT_ROWS,
   MAX_STATEMENT_TEXT_LENGTH,
   MAX_UPLOAD_BYTES,
   extractionResultSchema,
@@ -40,11 +41,10 @@ import { PdfReadError, type PdfFailure, type PdfTextReader } from '../../provide
 import type { DocumentsRepository, StoredFile } from './documents.repository';
 import { detectImageType } from './fileType';
 import { dateInstallmentsOnClosing, tidyStatementText } from './statement';
+import { decodeText, rowsToText, statementFileType } from './statementFile';
 import { applyCategorySuggestions } from './suggestions';
 
 const MINUTE_MS = 60_000;
-/** Every PDF file starts with these bytes, whatever its name says. */
-const PDF_SIGNATURE = '%PDF-';
 
 /** The field and the message each reason a PDF could not be read is reported with. */
 const PDF_FAILURE_FIELDS: Record<PdfFailure, { path: string; message: string }> = {
@@ -59,6 +59,8 @@ export interface DocumentDependencies {
   /** Null when no AI key is configured: uploads are refused with a clear reason. */
   extractor: AiExtractor | null;
   pdfReader: PdfTextReader;
+  /** The rows of an Excel file's first sheet, each as its cells. */
+  readSpreadsheet(content: Buffer): Promise<{ cells: unknown[] }[]>;
   listAccounts(): Promise<Account[]>;
   listCategories(options?: WriteOptions): Promise<Category[]>;
   /** Category id per normalised merchant name, from the user's rules. */
@@ -343,13 +345,17 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
           'DUPLICATE',
         );
       }
+    }
+    // Counted before anything is replaced: past the daily limit, the pending
+    // document the new upload would replace stays as it was.
+    await deps.takeAiReading();
+    if (existing) {
       await deps.runInTransaction(async (session) => {
         await detach(existing.id, { session });
         await repository.delete(existing.id, { session });
       });
     }
 
-    await deps.takeAiReading();
     const created = await repository.create({
       ...data,
       fileName: data.fileName.slice(0, TEXT_LIMITS.description) || 'document',
@@ -416,40 +422,65 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
     },
 
     /**
-     * First step of reading a card statement: the PDF's text, with the
-     * personal data that has a recognisable shape already hidden. Nothing is
-     * stored and nothing goes to the AI: the user reads it, hides what is
-     * left (a name, an address) and sends it with uploadStatement.
+     * First step of reading a statement (a card's, a bank's, an app's): the
+     * text of its PDF, Excel or CSV file, with the personal data that has a
+     * recognisable shape already hidden. Nothing is stored and nothing goes
+     * to the AI: the user reads it, hides what is left (a name, an address)
+     * and sends it with uploadStatement.
      */
     async previewStatement(content: Buffer | null, password: string | undefined): Promise<StatementPreview> {
       if (!deps.extractor) throw extractionFailure('not_configured', 'No AI key configured');
-      if (!content) throw fieldError('file', 'Attach the statement PDF');
-      if (content.toString('latin1', 0, PDF_SIGNATURE.length) !== PDF_SIGNATURE)
-        throw fieldError('file', 'Only PDF files are accepted');
+      if (!content) throw fieldError('file', 'Attach the statement file');
+      const fileType = statementFileType(content);
+      if (fileType === 'old_excel')
+        throw fieldError('file', 'Old Excel files (.xls) are not accepted: save it as .xlsx or CSV');
+      if (fileType === null) throw fieldError('file', 'Only PDF, Excel (.xlsx) and CSV files are accepted');
 
       let pages: string[];
-      try {
-        ({ pages } = await deps.pdfReader.read(content, { password, maxPages: MAX_STATEMENT_PAGES }));
-      } catch (error) {
-        if (!(error instanceof PdfReadError)) throw error;
-        if (error.reason === 'unreadable') deps.onError(error, { step: 'statement_preview' });
-        const { path, message } = PDF_FAILURE_FIELDS[error.reason];
-        throw fieldError(path, message);
+      if (fileType === 'pdf') {
+        try {
+          ({ pages } = await deps.pdfReader.read(content, { password, maxPages: MAX_STATEMENT_PAGES }));
+        } catch (error) {
+          if (!(error instanceof PdfReadError)) throw error;
+          if (error.reason === 'unreadable') deps.onError(error, { step: 'statement_preview' });
+          const { path, message } = PDF_FAILURE_FIELDS[error.reason];
+          throw fieldError(path, message);
+        }
+      } else if (fileType === 'xlsx') {
+        let rows: { cells: unknown[] }[];
+        try {
+          rows = await deps.readSpreadsheet(content);
+        } catch (error) {
+          deps.onError(error, { step: 'statement_preview' });
+          throw fieldError('file', 'The spreadsheet could not be read');
+        }
+        if (rows.length > MAX_STATEMENT_ROWS)
+          throw fieldError('file', 'The file has too many rows for a statement');
+        pages = [rowsToText(rows)];
+      } else {
+        pages = [decodeText(content)];
       }
       const text = tidyStatementText(pages);
       // A scanned statement is a picture inside a PDF: there is no text to read.
-      if (!/\p{L}/u.test(text)) throw fieldError('file', 'The PDF has no text: it is a scanned image');
+      if (!/\p{L}/u.test(text)) {
+        throw fieldError(
+          'file',
+          fileType === 'pdf' ? 'The PDF has no text: it is a scanned image' : 'The file has no text',
+        );
+      }
       const redacted = redactPersonalData(text);
       if (redacted.text.length > MAX_STATEMENT_TEXT_LENGTH)
-        throw fieldError('file', 'The PDF has too much text for a statement');
-      return { text: redacted.text, pages: pages.length, hidden: redacted.hidden };
+        throw fieldError('file', 'The file has too much text for a statement');
+      return { text: redacted.text, pages: pages.length, hidden: redacted.hidden, fileType };
     },
 
     /** Second step: the text the user approved is stored and read in the background, like an image. */
-    async uploadStatement(input: StatementUpload): Promise<DocumentSummary> {
+    async uploadStatement(
+      input: Omit<StatementUpload, 'kind'> & Partial<Pick<StatementUpload, 'kind'>>,
+    ): Promise<DocumentSummary> {
       if (!deps.extractor) throw extractionFailure('not_configured', 'No AI key configured');
       return store({
-        kind: 'card_statement',
+        kind: input.kind ?? 'card_statement',
         fileName: input.fileName,
         sha256: createHash('sha256').update(input.text).digest('hex'),
         accountId: input.accountId ?? null,

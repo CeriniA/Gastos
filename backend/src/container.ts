@@ -1,4 +1,4 @@
-import type { IsoDate, User } from '@gastos/shared';
+import type { User } from '@gastos/shared';
 import { currentUserId, runAsUser } from './core/context/owner';
 import { createSecretBox } from './core/crypto/secretBox';
 import { createTicketOffice } from './core/crypto/signedTicket';
@@ -12,7 +12,12 @@ import {
   type BackupService,
   type DriveBackup,
 } from './modules/backup';
-import { createUsersService, type UsersRepository, type UsersService } from './modules/users';
+import {
+  createUsersService,
+  type AiAllowance,
+  type UsersRepository,
+  type UsersService,
+} from './modules/users';
 import type { BackupStoreProvider } from './providers/drive/googleDrive';
 import { giveStarterData } from './starter';
 import type { Services } from './wiring';
@@ -51,10 +56,8 @@ export interface ContainerParts {
   sessionDays: number;
   /** Tests lower it so they do not spend their time hashing. */
   passwordHashCost?: number;
-  /** Today's calendar day: the AI limit counts per day. */
-  today: () => IsoDate;
-  /** Documents a user sends to the AI per day unless the admin gives them another limit. */
-  aiDailyReadings: number;
+  /** Each user's daily AI limit: the same one the services were wired with. */
+  aiAllowance: AiAllowance;
 }
 
 /**
@@ -69,8 +72,7 @@ export function buildContainer(parts: ContainerParts): Container {
   const users = createUsersService(parts.usersRepository, {
     hashCost: parts.passwordHashCost,
     onCreated: welcome,
-    today: parts.today,
-    aiDailyReadings: parts.aiDailyReadings,
+    aiAllowance: parts.aiAllowance,
   });
   const auth = createAuthService({ jwtSecret: secret, expiresDays: parts.sessionDays }, users);
 

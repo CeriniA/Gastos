@@ -1,4 +1,4 @@
-import type { Recurring } from '@gastos/shared';
+import type { CategoryKind, Currency, Recurring } from '@gastos/shared';
 import { createCollectionPort } from '../../core/db/collectionPort';
 import { COLLECTIONS } from '../../core/db/collections';
 import { idString, toObjectId, toObjectIdOrNull } from '../../core/db/ids';
@@ -51,8 +51,12 @@ export const recurringsRepository = {
     return doc ? toRecurring(doc) : null;
   },
 
-  async findByNameKey(nameKey: string): Promise<Recurring | null> {
-    const doc = await RecurringModel.findOne({ nameKey }).lean<RecurringDoc>();
+  async findByName(key: {
+    nameKey: string;
+    type: CategoryKind;
+    currency: Currency;
+  }): Promise<Recurring | null> {
+    const doc = await RecurringModel.findOne(key).lean<RecurringDoc>();
     return doc ? toRecurring(doc) : null;
   },
 

@@ -45,6 +45,12 @@ export const extractedTransactionSchema = z.object({
   /** Must be one of the user's existing categories; the model cannot invent one. */
   suggestedCategoryId: objectIdSchema.nullable(),
   installment: z.object({ number: z.number().int().min(1), total: z.number().int().min(1) }).nullable(),
+  /**
+   * A transfer read from an account's statement: true when the money came
+   * IN to that account from another of the user's, false when it went out.
+   * Missing on documents read before account statements existed.
+   */
+  incoming: z.boolean().optional(),
   items: z.array(extractedItemSchema).max(MAX_TRANSACTION_ITEMS),
   uncertainFields: z.array(z.enum(UNCERTAIN_FIELDS)).max(UNCERTAIN_FIELDS.length),
 });
@@ -58,13 +64,22 @@ export const extractedStatementSchema = z.object({
   totalCents: z.number().int().nullable(),
   minimumPaymentCents: z.number().int().nullable(),
   currency: currencyCodeSchema.nullable(),
+  /**
+   * An account's statement: the days it covers and the balance at its start
+   * and end, so the app can check that the movements add up. Negative when
+   * the account is overdrawn. Missing on card statements.
+   */
+  fromDate: isoDateSchema.nullish(),
+  toDate: isoDateSchema.nullish(),
+  openingBalanceCents: z.number().int().nullish(),
+  closingBalanceCents: z.number().int().nullish(),
 });
 export type ExtractedStatement = z.infer<typeof extractedStatementSchema>;
 
 export const extractionResultSchema = z.object({
   documentKind: z.enum(DOCUMENT_KINDS),
   transactions: z.array(extractedTransactionSchema).max(MAX_DOCUMENT_TRANSACTIONS),
-  /** Card statements only (stage 3). */
+  /** Statements only: a card's dates and totals, or an account's period and balances. */
   statement: extractedStatementSchema.nullable(),
   warnings: z.array(z.string().max(MAX_WARNING_LENGTH)).max(MAX_WARNINGS),
 });

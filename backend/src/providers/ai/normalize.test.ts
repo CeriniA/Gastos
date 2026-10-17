@@ -227,3 +227,45 @@ test('only an expense is kept as a financial charge', () => {
     [true, false, false],
   );
 });
+
+test("an account's statement keeps its balances' sign and each transfer's direction", () => {
+  const reply = JSON.stringify({
+    transactions: [
+      { type: 'transfer', incoming: true, date: '2026-10-02', amount: '1000.00', currency: 'ARS' },
+      { type: 'transfer', date: '2026-10-03', amount: '500.00', currency: 'ARS' },
+      { type: 'expense', incoming: true, date: '2026-10-04', amount: '300.00', currency: 'ARS' },
+    ],
+    statement: {
+      fromDate: '01/10/2026',
+      toDate: '2026-10-09',
+      openingBalance: '-1500.50',
+      closingBalance: 0,
+      currency: 'ARS',
+    },
+    warnings: [],
+  });
+  const result = normalizeExtraction(reply, { ...context, kind: 'account_statement' });
+  assert.equal(extractionResultSchema.safeParse(result).success, true);
+  assert.deepEqual(
+    result.transactions.map((transaction) => [transaction.type, transaction.incoming]),
+    [
+      ['transfer', true],
+      ['transfer', false],
+      // Only a transfer has a direction.
+      ['expense', false],
+    ],
+  );
+  assert.deepEqual(
+    [
+      result.statement?.fromDate,
+      result.statement?.toDate,
+      result.statement?.openingBalanceCents,
+      result.statement?.closingBalanceCents,
+      result.statement?.closingDate,
+    ],
+    ['2026-10-01', '2026-10-09', -150050, 0, null],
+  );
+  // A card's statement has no direction on its lines.
+  const card = normalizeExtraction(reply, { ...context, kind: 'card_statement' });
+  assert.equal(card.transactions[0]?.incoming, undefined);
+});

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   centsToDecimalString,
+  averageCents,
   convertBetween,
   convertCents,
   isNear,
@@ -94,4 +95,9 @@ test('an amount is near another when it is within a share of it', () => {
   assert.equal(isNear(12000, 10000, 0.2), true);
   assert.equal(isNear(12001, 10000, 0.2), false);
   assert.equal(isNear(7999, 10000, 0.2), false);
+});
+
+test('an average is in whole cents, and zero for nothing', () => {
+  assert.equal(averageCents([100, 200, 201]), 167);
+  assert.equal(averageCents([]), 0);
 });

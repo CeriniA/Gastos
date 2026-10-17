@@ -32,6 +32,7 @@ import { useCategories } from '../categories/api';
 import { optionLabel, orderedTree } from '../categories/tree';
 import { useLastRate, useReferenceRate } from '../transactions/api';
 import { ItemsEditor, fromItemDrafts, toItemDrafts, type ItemDraft } from '../transactions/ItemsEditor';
+import { BalanceCheck } from './BalanceCheck';
 import { DocumentImage } from './DocumentImage';
 import {
   StatementSection,
@@ -118,6 +119,30 @@ function withAccount(
   return { ...draft, accountId };
 }
 
+/** A transfer read from an account's statement as money that arrived in it. */
+const isIncoming = (transaction: ReviewTransaction) =>
+  transaction.type === 'transfer' && transaction.incoming === true;
+
+/**
+ * What the ticked movements add to one account's balance: income and what
+ * arrives add, expenses and what leaves take away. A refund gives back.
+ */
+function netFor(accountId: string, drafts: readonly Draft[]): number {
+  return drafts.reduce((sum, draft) => {
+    const cents = parseAmountToCents(draft.amount);
+    if (!draft.include || cents === null) return sum;
+    let net = sum;
+    if (draft.accountId === accountId) {
+      if (draft.type === 'income') net += cents;
+      else if (draft.type === 'expense') net -= spendingCents({ refund: draft.refund, amountCents: cents });
+      else net -= cents;
+    }
+    if (draft.type === 'transfer' && draft.toAccountId === accountId)
+      net += parseAmountToCents(draft.toAmount) ?? cents;
+    return net;
+  }, 0);
+}
+
 /** An installment that is not the last one: the ones still to come could be created. */
 const canContinue = (transaction: ReviewTransaction) =>
   transaction.installment !== null && transaction.installment.number < transaction.installment.total;
@@ -145,6 +170,8 @@ function toDraft(
     sameCurrency: false,
     items: toItemDrafts(transaction.items),
   };
+  // A transfer that came INTO the statement's account: that account is where it arrived.
+  if (accountId && isIncoming(transaction)) return { ...draft, toAccountId: accountId };
   return accountId ? withAccount(draft, transaction, accounts, accountId) : draft;
 }
 
@@ -503,6 +530,7 @@ function ReviewForm({
   const { confirm, discard, retry } = useDocumentMutations();
   const read = document.extraction?.transactions ?? [];
   const statement = document.extraction?.statement ?? null;
+  const isAccountStatement = document.kind === 'account_statement';
   const statementCurrency = statement?.currency ?? DEFAULT_CURRENCY;
   // A statement's lines in dollars go to the same card's dollar account, when there is one.
   const card = sameCard(
@@ -519,11 +547,14 @@ function ReviewForm({
       return { ...draft, include: !repeated, continuePlan: draft.continuePlan && !repeated };
     }),
   );
+  // Closing and due dates belong to a card's statement only.
   const [periods, setPeriods] = useState<PeriodDraft[]>(() =>
-    toPeriodDrafts(
-      statement,
-      card.map((account) => account.id),
-    ),
+    isAccountStatement
+      ? []
+      : toPeriodDrafts(
+          statement,
+          card.map((account) => account.id),
+        ),
   );
   const [errors, setErrors] = useState<Record<number, DraftErrors>>({});
   const [periodErrors, setPeriodErrors] = useState<Record<number, PeriodErrors>>({});
@@ -545,14 +576,17 @@ function ReviewForm({
   const setAccountForAll = (accountId: string) => {
     // On a statement the choice is a card: its dollar lines go to its dollar
     // account, and its dates are offered for that card unless some were already ticked.
-    const chosen = statement
-      ? sameCard(
-          accounts.find((account) => account.id === accountId),
-          accounts,
-        )
-      : [];
+    const chosen =
+      statement && !isAccountStatement
+        ? sameCard(
+            accounts.find((account) => account.id === accountId),
+            accounts,
+          )
+        : [];
     setDrafts((current) =>
       current.map((draft, index) => {
+        // On an account's statement, what came in from another account arrived in this one.
+        if (isAccountStatement && isIncoming(read[index]!)) return { ...draft, toAccountId: accountId };
         const twin = chosen.find((account) => account.currency === read[index]!.currency);
         return withAccount(draft, read[index]!, accounts, twin?.id ?? accountId);
       }),
@@ -734,6 +768,10 @@ function ReviewForm({
   };
 
   const activeAccounts = accounts.filter((account) => !account.archived);
+  // The account a bank's or an app's statement is about: the one chosen on upload, or the first one used.
+  const statementAccount = accounts.find(
+    (account) => account.id === (document.accountId ?? drafts.find((draft) => draft.accountId)?.accountId),
+  );
 
   return (
     <div className="space-y-4">
@@ -757,6 +795,14 @@ function ReviewForm({
           cards={activeAccounts.filter((account) => account.type === 'credit_card')}
           ticked={{ cents: tickedCents, currency: statementCurrency }}
           onChange={changePeriod}
+        />
+      ) : null}
+
+      {isAccountStatement && statement ? (
+        <BalanceCheck
+          account={statementAccount}
+          statement={statement}
+          tickedCents={statementAccount ? netFor(statementAccount.id, drafts) : 0}
         />
       ) : null}
 

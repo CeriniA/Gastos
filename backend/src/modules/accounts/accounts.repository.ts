@@ -1,4 +1,4 @@
-import type { Account, AccountType, Currency } from '@gastos/shared';
+import type { Account, AccountType, Currency, OpeningBalance } from '@gastos/shared';
 import { createCollectionPort } from '../../core/db/collectionPort';
 import { COLLECTIONS } from '../../core/db/collections';
 import { idString, toObjectId, toObjectIdOrNull } from '../../core/db/ids';
@@ -13,6 +13,10 @@ function toAccount(doc: AccountDoc): Account {
     currency: doc.currency,
     bankId: idString(doc.bankId ?? null),
     networkId: idString(doc.networkId ?? null),
+    // Stored before balances existed means none was given.
+    openingBalance: doc.openingBalance
+      ? { amountCents: doc.openingBalance.amountCents, date: doc.openingBalance.date }
+      : null,
     archived: doc.archived,
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
@@ -48,6 +52,7 @@ export const accountsRepository = {
       currency: Currency;
       bankId: string | null;
       networkId: string | null;
+      openingBalance: OpeningBalance | null;
     },
     options: WriteOptions = {},
   ): Promise<Account> {
@@ -68,6 +73,7 @@ export const accountsRepository = {
       archived: boolean;
       bankId: string | null;
       networkId: string | null;
+      openingBalance: OpeningBalance | null;
     }>,
   ): Promise<Account | null> {
     const { bankId, networkId, ...rest } = changes;

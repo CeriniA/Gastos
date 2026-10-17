@@ -111,6 +111,7 @@ test('the preview is the tidied text with personal data hidden, and nothing is s
     text: `Titular: ${REDACTION_MARK}\n\nTarjeta ${REDACTION_MARK}\n\n02/10 SUPERMERCADO 2.500,00`,
     pages: 2,
     hidden: 2,
+    fileType: 'pdf',
   });
   assert.deepEqual(app.pdf.passwords, ['clave']);
   assert.equal(app.store.documents.length, 0);
@@ -121,7 +122,8 @@ test('a PDF that cannot be previewed says why, on the field to fix', async () =>
   const { app } = await setup();
   assert.equal(await issuePathOf(app.documents.previewStatement(null, undefined)), 'file');
   assert.equal(
-    await issuePathOf(app.documents.previewStatement(Buffer.from('not a pdf'), undefined)),
+    // Neither a PDF, nor an Excel file, nor text: a program or an image.
+    await issuePathOf(app.documents.previewStatement(Buffer.from([0x4d, 0x5a, 0, 0, 0x90]), undefined)),
     'file',
   );
 

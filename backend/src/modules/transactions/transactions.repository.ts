@@ -34,6 +34,12 @@ export interface PaymentDateRow {
   paymentDate: string;
 }
 
+/** What a movement does to the balance of the accounts it touches. */
+export type AccountMove = Pick<
+  Transaction,
+  'type' | 'refund' | 'amountCents' | 'accountId' | 'toAccountId' | 'toAmountCents'
+>;
+
 export interface ChargeRow {
   date: string;
   paymentDate: string;
@@ -576,6 +582,39 @@ export const transactionsRepository = {
             total: doc.installment.total,
           }
         : null,
+    }));
+  },
+
+  /**
+   * The confirmed live movements of an account between two days (both
+   * included; no start means from the first one), as origin or as destination.
+   */
+  async findAccountMoves(
+    accountId: string,
+    range: { from: string | null; to: string },
+  ): Promise<AccountMove[]> {
+    const id = toObjectId(accountId);
+    const docs = await TransactionModel.find(
+      {
+        deletedAt: null,
+        status: 'confirmed',
+        date: { ...(range.from ? { $gte: range.from } : {}), $lte: range.to },
+        $or: [{ accountId: id }, { toAccountId: id }],
+      },
+      { type: 1, refund: 1, amountCents: 1, accountId: 1, toAccountId: 1, toAmountCents: 1 },
+    ).lean<
+      Pick<
+        TransactionDoc,
+        'type' | 'refund' | 'amountCents' | 'accountId' | 'toAccountId' | 'toAmountCents'
+      >[]
+    >();
+    return docs.map((doc) => ({
+      type: doc.type,
+      refund: doc.refund ?? false,
+      amountCents: doc.amountCents,
+      accountId: doc.accountId.toString(),
+      toAccountId: idString(doc.toAccountId),
+      toAmountCents: doc.toAmountCents ?? null,
     }));
   },
 

@@ -1,5 +1,6 @@
 import {
   impliedRate,
+  spendingCents,
   TRASH_RETENTION_DAYS,
   descendantIds,
   transactionShapeIssues,
@@ -389,6 +390,24 @@ export function createTransactionsService(repository: TransactionsRepository, de
 
     /** What the reports and the fixed items read of the transactions paid in a range of days. */
     listReportRows: (range: { from: string; to: string }) => repository.findReportRows(range),
+
+    /**
+     * What an account's confirmed movements add to its balance between two
+     * days: income and what reaches it add, expenses and what leaves it take
+     * away. A refund gives back what its purchase took.
+     */
+    async netMovement(accountId: string, range: { from: string | null; to: string }): Promise<number> {
+      let net = 0;
+      for (const move of await repository.findAccountMoves(accountId, range)) {
+        if (move.accountId === accountId) {
+          if (move.type === 'income') net += move.amountCents;
+          else net -= move.type === 'expense' ? spendingCents(move) : move.amountCents;
+        }
+        if (move.type === 'transfer' && move.toAccountId === accountId)
+          net += move.toAmountCents ?? move.amountCents;
+      }
+      return net;
+    },
 
     /** Marks a transaction as one of a fixed item's (null takes the mark away). */
     async markRecurring(id: string, recurringId: string | null, options: WriteOptions = {}): Promise<void> {

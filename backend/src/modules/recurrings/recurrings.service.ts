@@ -16,6 +16,8 @@ import {
   sumCents,
   type Account,
   type Category,
+  type CategoryKind,
+  type Currency,
   type IsoDate,
   type MonthKey,
   type ProjectedEntry,
@@ -92,18 +94,21 @@ function monthOf(
  * or in the month before (this month's may still be on its way). Merchants
  * that already are a fixed item, or that the user said are not, are left out.
  */
+/** An income or an expense: what a fixed item can be. */
+type FiledRow = ReportRow & { type: CategoryKind };
+const isFiled = (row: ReportRow): row is FiledRow => row.type !== 'transfer';
+
 function suggestionsFor(
   rows: readonly ReportRow[],
   recurrings: readonly Recurring[],
   month: MonthKey,
 ): RecurringSuggestion[] {
   const known = new Set(recurrings.map((recurring) => recurring.merchantKey));
-  const groups = new Map<string, ReportRow[]>();
-  for (const row of rows) {
+  const groups = new Map<string, FiledRow[]>();
+  for (const row of rows.filter(isFiled)) {
     const key = nameKey(row.description);
     const candidate =
       row.status === 'confirmed' &&
-      row.type !== 'transfer' &&
       !row.refund &&
       row.installment === null &&
       row.recurringId === null &&
@@ -116,7 +121,7 @@ function suggestionsFor(
 
   const suggestions: RecurringSuggestion[] = [];
   for (const group of groups.values()) {
-    const byMonth = new Map<MonthKey, ReportRow[]>();
+    const byMonth = new Map<MonthKey, FiledRow[]>();
     for (const row of group) {
       const paid = monthKeyOf(row.paymentDate);
       byMonth.set(paid, [...(byMonth.get(paid) ?? []), row]);
@@ -131,7 +136,7 @@ function suggestionsFor(
       run += 1;
       cursor = addMonthsToKey(cursor, -1);
     }
-    if (run < RECURRING_MIN_MONTHS || latest.type === 'transfer') continue;
+    if (run < RECURRING_MIN_MONTHS) continue;
     suggestions.push({
       transactionId: latest.id,
       name: latest.description,
@@ -159,9 +164,14 @@ export function createRecurringsService(repository: RecurringsRepository, deps: 
     });
   }
 
-  async function checkName(name: string, ownId?: string): Promise<string> {
+  /** The normalised name, refused when another item of the same kind and currency has it. */
+  async function checkName(
+    name: string,
+    of: { type: CategoryKind; currency: Currency },
+    ownId?: string,
+  ): Promise<string> {
     const key = nameKey(name);
-    const holder = await repository.findByNameKey(key);
+    const holder = await repository.findByName({ nameKey: key, ...of });
     if (holder && holder.id !== ownId) throw new DuplicateError('Recurring', 'name');
     return key;
   }
@@ -241,7 +251,7 @@ export function createRecurringsService(repository: RecurringsRepository, deps: 
         const recurring = await repository.create(
           {
             name,
-            nameKey: await checkName(name),
+            nameKey: await checkName(name, { type, currency: transaction.currency }),
             type,
             expectedAmountCents: transaction.amountCents,
             currency: transaction.currency,
@@ -263,13 +273,20 @@ export function createRecurringsService(repository: RecurringsRepository, deps: 
     async update(id: string, changes: RecurringUpdate): Promise<Recurring> {
       const current = await get(id);
       const record: Parameters<RecurringsRepository['update']>[1] = { ...changes };
-      if (changes.name !== undefined) record.nameKey = await checkName(changes.name, id);
       if (changes.accountId !== undefined) {
         const account = (await deps.listAccounts()).find((candidate) => candidate.id === changes.accountId);
         if (!account) throw fieldError('accountId', 'Account does not exist');
         if (account.archived) throw fieldError('accountId', 'Account is archived');
         // A fixed item is in its account's currency, like a transaction.
         record.currency = account.currency;
+      }
+      // A new name, or a new currency, has to be free among the items of its kind and currency.
+      if (changes.name !== undefined || record.currency !== undefined) {
+        record.nameKey = await checkName(
+          changes.name ?? current.name,
+          { type: current.type, currency: record.currency ?? current.currency },
+          id,
+        );
       }
       if (changes.categoryId) {
         const category = (await deps.listCategories()).find(

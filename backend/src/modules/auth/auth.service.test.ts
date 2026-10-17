@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import jwt from 'jsonwebtoken';
 import { codeOf } from '../../testing/assertions';
 import { createMemoryUsers } from '../../testing/memoryApp';
-import { createUsersService } from '../users';
+import { createAiAllowance, createUsersService, type UsersRepository } from '../users';
 import { createAuthService } from './auth.service';
 
 /** Users and their sessions together, as they run in the app, over users kept in memory. */
@@ -11,11 +11,23 @@ import { createAuthService } from './auth.service';
 const SECRET = 's'.repeat(40);
 const PASSWORD = 'clave-larga';
 const FAST_HASH_COST = 4;
+/** Sessions do not depend on the AI limit; any one will do. */
+const DAILY_READINGS = 30;
+
+/** Users kept in memory, with the options every users service needs. */
+function usersOver(repository: UsersRepository = createMemoryUsers()) {
+  const aiAllowance = createAiAllowance(repository, {
+    today: () => '2026-10-10',
+    dailyReadings: DAILY_READINGS,
+  });
+  return { repository, options: { hashCost: FAST_HASH_COST, aiAllowance } };
+}
 
 async function setup() {
   const welcomed: string[] = [];
-  const users = createUsersService(createMemoryUsers(), {
-    hashCost: FAST_HASH_COST,
+  const { repository, options } = usersOver();
+  const users = createUsersService(repository, {
+    ...options,
     onCreated: async (user) => {
       welcomed.push(user.username);
     },
@@ -114,7 +126,8 @@ test('an admin creates users, resets their password and switches them off', asyn
 });
 
 test('the first user comes from the configuration, once', async () => {
-  const users = createUsersService(createMemoryUsers(), { hashCost: FAST_HASH_COST });
+  const { repository, options } = usersOver();
+  const users = createUsersService(repository, options);
   const first = await users.ensureFirst({ username: 'dueño', passwordHash: 'hash-de-la-configuracion' });
   assert.equal(first?.role, 'admin');
   assert.equal(await users.ensureFirst({ username: 'otro', passwordHash: 'x' }), null);

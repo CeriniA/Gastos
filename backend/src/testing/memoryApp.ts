@@ -2,7 +2,7 @@ import type { Env } from '../config/env';
 import { buildContainer } from '../container';
 import type { CollectionPort } from '../core/db/collectionPort';
 import { currentUserId } from '../core/context/owner';
-import type { UserRecord, UsersRepository, UsersService } from '../modules/users';
+import { createAiAllowance, type UserRecord, type UsersRepository } from '../modules/users';
 import type { BackupStoreProvider } from '../providers/drive/googleDrive';
 import { createMemoryBackend, type MemoryBackendOptions } from './memory';
 
@@ -67,12 +67,16 @@ export interface MemoryContainerOptions extends MemoryBackendOptions {
  * memory, so a file exported here can only be restored here.
  */
 export function createMemoryContainer(env: Env, today?: string, options: MemoryContainerOptions = {}) {
-  // The users are built with the container, after the services that ask them about the AI limit.
-  let users: UsersService | null = null;
+  const usersRepository = createMemoryUsers();
+  // The calendar is the backend's, which is built next: asked only once a document is uploaded.
+  const aiAllowance = createAiAllowance(usersRepository, {
+    today: () => backend.calendar.today,
+    dailyReadings: env.AI_DAILY_READINGS,
+  });
   const backend = createMemoryBackend(today, {
     ...options,
     requireUser: true,
-    takeAiReading: () => users!.takeAiReading(currentUserId()),
+    takeAiReading: () => aiAllowance.take(currentUserId()),
   });
   const { store } = backend;
 
@@ -93,7 +97,7 @@ export function createMemoryContainer(env: Env, today?: string, options: MemoryC
 
   const container = buildContainer({
     services: backend,
-    usersRepository: createMemoryUsers(),
+    usersRepository,
     collectionPorts,
     runInTransaction: backend.runInTransaction,
     driveProvider: options.driveProvider ?? null,
@@ -103,9 +107,7 @@ export function createMemoryContainer(env: Env, today?: string, options: MemoryC
     secret: env.JWT_SECRET,
     sessionDays: env.JWT_EXPIRES_DAYS,
     passwordHashCost: FAST_HASH_COST,
-    today: () => backend.calendar.today,
-    aiDailyReadings: env.AI_DAILY_READINGS,
+    aiAllowance,
   });
-  users = container.users;
   return { container, backend };
 }

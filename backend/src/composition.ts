@@ -19,7 +19,7 @@ import { institutionsPort, institutionsRepository } from './modules/institutions
 import { recurringsPort, recurringsRepository } from './modules/recurrings';
 import { tagsPort, tagsRepository } from './modules/tags';
 import { transactionsPort, transactionsRepository } from './modules/transactions';
-import { usersRepository } from './modules/users';
+import { createAiAllowance, usersRepository } from './modules/users';
 import { createGeminiExtractor } from './providers/ai/gemini';
 import { createGoogleDrive } from './providers/drive/googleDrive';
 import { createUnpdfReader } from './providers/pdf/unpdf';
@@ -52,9 +52,8 @@ const collectionPorts: readonly CollectionPort[] = [
  */
 export function createContainer(env: Env): Container {
   const today = () => todayIso(env.APP_TIMEZONE);
-  // The users service is built with the container, after the services that
-  // need it; by the time anybody uploads a document it exists.
-  let container: Container | null = null;
+  // Built first: the documents service counts against it and the users service shows it.
+  const aiAllowance = createAiAllowance(usersRepository, { today, dailyReadings: env.AI_DAILY_READINGS });
 
   // The one line that decides which AI reads the documents.
   const extractor = env.GEMINI_API_KEY
@@ -86,7 +85,7 @@ export function createContainer(env: Env): Container {
         work().catch((error: unknown) => logger.error({ err: error }, 'Background work failed'));
       },
       owner: currentUserId,
-      takeAiReading: () => container!.users.takeAiReading(currentUserId()),
+      takeAiReading: () => aiAllowance.take(currentUserId()),
       onError: (error, context) => logger.warn({ err: error, ...context }, 'Document could not be read'),
     },
   );
@@ -101,7 +100,7 @@ export function createContainer(env: Env): Container {
         })
       : null;
 
-  container = buildContainer({
+  return buildContainer({
     services,
     usersRepository,
     collectionPorts,
@@ -112,8 +111,6 @@ export function createContainer(env: Env): Container {
     onError: (error, context) => logger.warn({ err: error, ...context }, 'Drive backup failed'),
     secret: env.JWT_SECRET,
     sessionDays: env.JWT_EXPIRES_DAYS,
-    today,
-    aiDailyReadings: env.AI_DAILY_READINGS,
+    aiAllowance,
   });
-  return container;
 }

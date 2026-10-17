@@ -5,7 +5,13 @@ import {
   CURRENCIES,
   DEFAULT_CURRENCY,
   accountCreateSchema,
+  centsToDecimalString,
+  formatDate,
+  formatMoney,
+  parseAmountToCents,
   type Account,
+  type AccountBalance,
+  type OpeningBalance,
   type AccountType,
   type Currency,
   type Institution,
@@ -17,7 +23,15 @@ import { useAction } from '../../shared/ui/useAction';
 import { QueryState } from '../../shared/ui/QueryState';
 import { Button, Card, Field, Notice, PageTitle, Select, TextInput } from '../../shared/ui/ui';
 import { useInstitutions } from '../institutions/api';
-import { useAccountMutations, useAccounts } from './api';
+import { useAccountBalances, useAccountMutations, useAccounts } from './api';
+
+/** What the editor saves. */
+interface AccountChanges {
+  name: string;
+  bankId: string | null;
+  networkId: string | null;
+  openingBalance: OpeningBalance | null;
+}
 
 interface FormValues {
   name: string;
@@ -64,15 +78,27 @@ function AccountEditor({
   account: Account;
   institutions: readonly Institution[];
   busy: boolean;
-  onSave: (changes: { name: string; bankId: string | null; networkId: string | null }) => Promise<boolean>;
+  onSave: (changes: AccountChanges) => Promise<boolean>;
   onClose: () => void;
 }) {
   const [name, setName] = useState(account.name);
+  const [openingAmount, setOpeningAmount] = useState(
+    account.openingBalance ? centsToDecimalString(account.openingBalance.amountCents) : '',
+  );
+  const [openingDate, setOpeningDate] = useState(account.openingBalance?.date ?? '');
+  const [openingError, setOpeningError] = useState<string | undefined>(undefined);
   const [bankId, setBankId] = useState(account.bankId ?? '');
   const [networkId, setNetworkId] = useState(account.networkId ?? '');
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    const done = await onSave({ name, bankId: bankId || null, networkId: networkId || null });
+    // An empty amount means no opening balance: the account counts from zero.
+    const cents = openingAmount.trim() === '' ? null : parseAmountToCents(openingAmount);
+    if (openingAmount.trim() !== '' && (cents === null || !openingDate)) {
+      setOpeningError(es.accounts.openingInvalid);
+      return;
+    }
+    const openingBalance = cents === null ? null : { amountCents: cents, date: openingDate };
+    const done = await onSave({ name, bankId: bankId || null, networkId: networkId || null, openingBalance });
     if (done) onClose();
   };
   return (
@@ -103,6 +129,31 @@ function AccountEditor({
           </Field>
         ) : null}
       </div>
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-muted">{es.accounts.opening}</legend>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={es.accounts.openingAmount} error={openingError}>
+            <TextInput
+              inputMode="decimal"
+              placeholder="0,00"
+              className="amount"
+              value={openingAmount}
+              onChange={(event) => {
+                setOpeningAmount(event.target.value);
+                setOpeningError(undefined);
+              }}
+            />
+          </Field>
+          <Field label={es.accounts.openingDate}>
+            <TextInput
+              type="date"
+              value={openingDate}
+              onChange={(event) => setOpeningDate(event.target.value)}
+            />
+          </Field>
+        </div>
+        <p className="text-sm text-muted">{es.accounts.openingHint}</p>
+      </fieldset>
       <div className="flex gap-2">
         <Button type="submit" className="flex-1" disabled={busy || !name.trim()}>
           {es.common.save}
@@ -115,8 +166,28 @@ function AccountEditor({
   );
 }
 
+/** Today's balance, and since when it counts. */
+function BalanceLine({ account, balance }: { account: Account; balance: AccountBalance | undefined }) {
+  if (!balance) return null;
+  const negative = balance.balanceCents < 0;
+  return (
+    <p className="text-sm">
+      <span className={`amount font-semibold ${negative ? 'text-expense' : ''}`}>
+        {es.accounts.balance(formatMoney(balance.balanceCents, balance.currency))}
+      </span>
+      <span className="text-muted">
+        {' · '}
+        {account.openingBalance
+          ? es.accounts.balanceSince(formatDate(account.openingBalance.date))
+          : es.accounts.balanceFromZero}
+      </span>
+    </p>
+  );
+}
+
 export function AccountsPage() {
   const accounts = useAccounts();
+  const balances = useAccountBalances();
   const institutions = useInstitutions();
   const { create, update, remove } = useAccountMutations();
   const { failure, run } = useAction();
@@ -129,6 +200,8 @@ export function AccountsPage() {
   const busy = create.isPending || update.isPending || remove.isPending;
 
   const nameOf = (id: string | null) => all.find((institution) => institution.id === id)?.name;
+  const balanceOf = (id: string): AccountBalance | undefined =>
+    balances.data?.find((balance) => balance.accountId === id);
 
   const submit = form.handleSubmit(async (values) => {
     const parsed = accountCreateSchema.safeParse({
@@ -171,6 +244,7 @@ export function AccountsPage() {
                         .filter(Boolean)
                         .join(', ')}
                     </p>
+                    <BalanceLine account={account} balance={balanceOf(account.id)} />
                   </div>
                   <div className="flex shrink-0 flex-wrap justify-end">
                     <Button

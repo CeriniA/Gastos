@@ -172,6 +172,27 @@ test('each document sent to the AI counts against the daily limit; past it nothi
   assert.equal(app.store.documents.length, 1);
 });
 
+test('past the daily limit, uploading again a document waiting for review leaves it as it was', async () => {
+  const allowance = { left: 1 };
+  const app = createMemoryBackend('2026-10-10', {
+    takeAiReading: async () => {
+      if (allowance.left === 0) throw new AiLimitError(1);
+      allowance.left -= 1;
+    },
+  });
+  app.ai.result = extraction(read());
+  const first = await app.documents.upload({ kind: 'receipt' }, [photo('ticket')]);
+  await app.documents.processQueue();
+  assert.equal((await app.documents.get(first.id)).status, 'ready');
+
+  // The same file again would replace it, but there are no readings left today.
+  assert.equal(await codeOf(app.documents.upload({ kind: 'receipt' }, [photo('ticket')])), 'AI_LIMIT');
+  const kept = await app.documents.get(first.id);
+  assert.equal(kept.status, 'ready');
+  assert.equal(kept.extraction?.transactions.length, 1);
+  assert.ok((await app.documents.getFile(first.id, 0)).content.length > 0, 'its image is still there');
+});
+
 test('uploading a file again reads it again, unless it is already counted', async () => {
   const { app, bank, power } = await setup();
   app.ai.result = extraction(read());

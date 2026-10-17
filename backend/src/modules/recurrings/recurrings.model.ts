@@ -47,7 +47,8 @@ const schema = new Schema<RecurringDoc>(
   { timestamps: true },
 );
 
-uniquePerUser(schema, { nameKey: 1 });
+// Netflix in pesos and Netflix in dollars are two fixed items, as their merchant is matched by kind and currency.
+uniquePerUser(schema, { nameKey: 1, type: 1, currency: 1 });
 schema.plugin(ownedByUser);
 
 export const RecurringModel = model<RecurringDoc>('Recurring', schema, COLLECTIONS.recurrings);

@@ -16,13 +16,14 @@ movimientos", "el respaldo") se refiere a los del usuario que está usando la ap
 
 Formas de cargar un movimiento:
 
-| Vía                                   | Etapa |
-| ------------------------------------- | ----- |
-| Carga manual                          | 1     |
-| Importación de planilla (Excel o CSV) | 1     |
-| Foto de ticket                        | 2     |
-| Captura de MercadoLibre o MercadoPago | 2     |
-| Resumen de tarjeta en PDF             | 3     |
+| Vía                                                                 | Etapa |
+| ------------------------------------------------------------------- | ----- |
+| Carga manual                                                        | 1     |
+| Importación de planilla (Excel o CSV)                               | 1     |
+| Foto de ticket                                                      | 2     |
+| Captura de MercadoLibre o MercadoPago                               | 2     |
+| Resumen de tarjeta en PDF                                           | 3     |
+| Resumen de cuenta (banco, MercadoPago, una app) en PDF, Excel o CSV | 4     |
 
 **Regla general: la app propone y el usuario decide.** Ninguna sugerencia (categoría, duplicado,
 movimiento fijo, unión de dos movimientos) se aplica sin confirmación.
@@ -90,6 +91,14 @@ archiva en Más → Bancos y tarjetas. Uno en uso no se borra: se archiva.
 Una tarjeta con saldo en pesos y en dólares son **dos cuentas** (por ejemplo "Visa" y "Visa USD") con el
 mismo banco y marca. Comparten cierres: al cargar uno, la app ofrece aplicarlo a las dos.
 
+**Saldo (hecho, 17/10/2026).** Más → Cuentas muestra el saldo de hoy de cada cuenta. Cada una puede tener un
+**saldo inicial**: lo que tenía un día según el banco o la app (en una tarjeta, lo que se debe, con signo
+menos). El saldo es ese monto más los movimientos confirmados desde ese día: los ingresos y las
+transferencias que llegan suman, los egresos y las que salen restan, y una devolución devuelve. Sin saldo
+inicial, la cuenta arranca en cero con su primer movimiento. Las cuotas proyectadas y la papelera no
+cuentan. Se calcula, no se guarda. Al revisar un resumen de cuenta, la app compara este saldo con el del
+resumen (sección 6).
+
 ## 5. Categorías y etiquetas
 
 **Categorías**: árbol de hasta **tres niveles**, con listas separadas para ingresos y egresos. Se arman
@@ -144,7 +153,24 @@ fuerza nada: queda la sugerencia de la IA.
   recuerdan solo en su teléfono. Recién cuando aprieta "Mandar a la IA" se guarda ese texto y se lee como
   cualquier documento. El PDF no se guarda nunca. Un PDF escaneado, sin texto, se rechaza con aviso.
 - Formatos: JPG, PNG y WEBP, hasta 10 imágenes por documento (un ticket largo en varias fotos). Los
-  resúmenes de tarjeta llegan en PDF (ver abajo).
+  resúmenes llegan en PDF, Excel (`.xlsx`) o CSV.
+- **Resumen de cuenta** (hecho, 17/10/2026): los movimientos de una cuenta del banco, de MercadoPago, de
+  Ualá o de cualquier app, también el de la cuenta de débito. Mismo camino que el de tarjeta: el archivo se
+  pasa a texto (un Excel, fila por fila; un CSV, tal cual), se tapan los datos (también CBU, CVU y alias) y
+  el usuario lo aprueba. Un Excel viejo (`.xls`) se rechaza con el pedido de guardarlo como `.xlsx` o CSV.
+  - La IA lee ingresos, egresos y transferencias. Lo que decide el tipo es **adónde fue la plata**, no cómo
+    se pagó: pagar un servicio o a una persona por transferencia es un egreso; recibir de otro, un ingreso;
+    solo la plata que pasa entre dos cuentas del usuario (cargar MercadoPago desde el banco, pagar la
+    tarjeta, comprar dólares, sacar del cajero) es transferencia. Ante la duda propone egreso o ingreso y lo
+    marca como dudoso.
+  - Una transferencia que entró a la cuenta llega con esa cuenta como destino, y el usuario elige de cuál
+    salió; una que salió, al revés.
+  - Lo que ya está cargado (el ticket del súper pagado con débito o QR, la otra punta de una transferencia
+    ya cargada) aparece como repetido y sin marcar: misma fecha, monto y moneda, en cualquier cuenta.
+  - Impuestos y comisiones del banco van a "Cargos financieros", como en la tarjeta.
+  - **Control del saldo**: si el resumen trae el saldo final, la revisión lo compara con el saldo de la
+    cuenta en la app ese día más lo marcado, y muestra la diferencia. Si la cuenta no tiene saldo inicial,
+    ofrece empezarlo con el saldo inicial del resumen.
 - Un documento descartado se borra entero y se puede volver a subir. Lo mismo vale para uno confirmado
   cuyos movimientos se borraron todos: ya no cuenta para nada, así que no bloquea una nueva subida. Uno confirmado se conserva, sin
   imágenes, para que su huella impida cargarlo dos veces.
@@ -253,7 +279,8 @@ servicios, suscripciones. Se ven en Más → Movimientos fijos.
 - **Aviso**: el Inicio avisa cuántos fijos no aparecieron o cambiaron mucho este mes.
 - **Proyección**: los fijos activos que todavía no llegaron entran en "Próximos" de Informes (sección 10).
 - Se edita el nombre, el monto esperado, el día, la cuenta (y con ella la moneda) y la categoría; se pausa o
-  se borra. Borrarlo no toca los movimientos: solo pierden la marca. Una cuenta con un fijo no se borra; una
+  se borra. El nombre no se repite entre fijos del mismo tipo y moneda: "Netflix" en pesos y en dólares son
+  dos. Borrarlo no toca los movimientos: solo pierden la marca. Una cuenta con un fijo no se borra; una
   categoría borrada deja al fijo sin categoría, y una unida a otra lo lleva con ella.
 
 ## 10. Informes (hecho)
@@ -463,4 +490,5 @@ Lo que queda del lado del usuario, porque la app no puede hacerlo por él:
 ## 18. Segunda versión
 
 Presupuestos por categoría, notificaciones de vencimiento, compartir hacia la app desde Android, uso
-sin conexión, saldos por cuenta, conservar comprobantes de forma permanente.
+sin conexión, conservar comprobantes de forma permanente. (Los saldos por cuenta se adelantaron el
+17/10/2026, a pedido del usuario.)

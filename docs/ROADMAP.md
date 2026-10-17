@@ -27,7 +27,7 @@ Para retomar. Se borra o se reescribe al empezar la próxima sesión.
 usuario, pago de tarjeta, informe por categoría, política de privacidad y condiciones. Funciona en Render
 desde el 13/10/2026.
 
-**Hecho el 17/10/2026, con commit y sin push:**
+**Hecho el 17/10/2026, en el commit `d48d0e8` (sin push):**
 
 1. Usuarios: el administrador renombra a un usuario, le cambia el tipo (no el suyo propio) y le fija un
    límite diario de lecturas con IA (Más → Usuarios → Editar). Ahí también se ve cuántas lleva hoy cada uno.
@@ -43,16 +43,36 @@ desde el 13/10/2026.
 5. Migración `2026-10-17-recurring-merchant`: completa dos campos nuevos de los fijos. No hay fijos guardados
    todavía, así que normalmente no cambia nada.
 
+**Hecho después, el mismo día, sin commit:**
+
+1. Resumen de cuenta: los movimientos de una cuenta del banco, de MercadoPago o de cualquier app (también
+   la de débito), en PDF, Excel o CSV. Agregar → Leer un resumen → "Banco o app". Las transferencias entre
+   cuentas propias se proponen con su dirección; lo ya cargado (el ticket del súper) sale como repetido.
+2. Saldo de cada cuenta en Más → Cuentas, con saldo inicial editable. La revisión de un resumen de cuenta
+   compara su saldo final con el de la app y ofrece usar el saldo inicial del resumen.
+3. El tapado también cubre CBU, CVU y alias. Instrucciones a la IA versión 9.
+4. Política de privacidad actualizada: resúmenes de cualquier cuenta, Excel y CSV, saldo inicial.
+5. Migración `2026-10-17-account-opening-balance`.
+6. Correcciones de la revisión de `d48d0e8`: el límite de IA se controla antes de reemplazar un pendiente; el
+   nombre de un fijo es único por tipo y moneda (migración `2026-10-17-recurring-name-index`, que rehace el
+   índice); el promedio de Meses usa `averageCents`; `AI_DAILY_READINGS` en `.env.example` y `render.yaml`; el
+   límite de IA es una pieza propia (`aiAllowance`), sin variable asignada después. Migración
+   `2026-10-17-user-ai-limit` para los campos nuevos de usuarios.
+7. Repaso propio: el chequeo de "es PDF" tenía el punto sin escapar; un lector de Excel recibía un nombre de
+   archivo inventado; un aviso hablaba de "PDF" para cualquier archivo; dos pruebas tenían líneas sin sentido.
+
 **Para subirlo:**
 
-1. `npm run check` pasó el 17/10/2026 (201 pruebas).
-2. Commit hecho el 17/10/2026.
-3. Push. En Render no hace falta ninguna variable nueva: `AI_DAILY_READINGS` es opcional (30 si no está).
-4. Después del despliegue: Más → Usuarios muestra "Lecturas con IA hoy" de cada uno; Informes tiene seis
-   pestañas.
+1. `npm run check` pasó el 17/10/2026 (210 pruebas).
+2. Commit de lo que falta y push. En Render no hace falta ninguna variable nueva: `AI_DAILY_READINGS` es
+   opcional (30 si no está).
+3. Después del despliegue: Más → Usuarios muestra "Lecturas con IA hoy" de cada uno; Informes tiene seis
+   pestañas; Más → Cuentas muestra el saldo de cada cuenta.
 
-**No probado contra una base real:** las consultas nuevas (informes, fijos, tasas, el contador de lecturas)
-están probadas sobre el backend en memoria y por HTTP. Contra MongoDB Atlas corren por primera vez al subir.
+**No probado contra una base real:** las consultas nuevas (informes, fijos, tasas, saldos, el contador de
+lecturas) están probadas sobre el backend en memoria y por HTTP. Contra MongoDB Atlas corren por primera vez
+al subir. La lectura de un resumen de cuenta está probada con una IA simulada: falta uno real de MercadoPago
+y uno de un banco.
 
 **Pendiente del usuario (no es código):**
 
@@ -61,13 +81,13 @@ están probadas sobre el backend en memoria y por HTTP. Contra MongoDB Atlas cor
 - Configurar Google una vez con `docs/RESPALDO_DRIVE.md` y probar "Copiar ahora" con un Drive de verdad.
 - Que el amigo pruebe un resumen real: qué quedó sin tapar en el texto, si la suma da igual al total y si
   los intereses, impuestos y comisiones salen en "Cargos financieros".
-- Decidir el margen de días para la misma compra cargada por dos vías (ver abajo).
+- Probar un resumen real de MercadoPago y de un banco (en Excel o CSV si se puede): si las transferencias
+  entre cuentas propias salen como transferencia y si el saldo final coincide.
+- Cargar el saldo inicial de cada cuenta (Más → Cuentas → Editar), o usar el que ofrece el primer resumen.
 
 **Lo próximo que se puede programar:**
 
-- Ajustar el tapado y las instrucciones con el primer resumen real.
-- La misma compra cargada por dos vías (ticket y resumen): detectarla y proponer unirla. Falta definir el
-  margen de días (abierto en `DECISIONES.md`; se propuso 3, con mismo monto y cuenta).
+- Ajustar el tapado y las instrucciones con el primer resumen real, de tarjeta y de cuenta.
 - Recordar una corrección de producto o grupo para el próximo ticket; comparar precios en el tiempo.
 - Uso sin conexión: está en la segunda versión; el usuario decidió no adelantarlo por ahora.
 
@@ -254,7 +274,8 @@ Falta:
 
 - Probarlo con un resumen real y ajustar el tapado y las instrucciones.
 - PDF escaneado (sin texto): hoy se rechaza con aviso.
-- Detección de la misma compra cargada por dos vías (ticket y resumen) y propuesta de unión.
+- La misma compra cargada por dos vías (ticket y resumen): resuelta el 17/10/2026 sin unir. El renglón del
+  resumen con la misma fecha, monto y moneda que algo ya cargado sale como repetido y sin marcar.
 
 Hecho (13/10/2026): pagar la tarjeta como transferencia desde otra cuenta, ligada a su resumen, con lo
 pagado y lo que falta a la vista.
@@ -276,4 +297,4 @@ Falta: nada pendiente de programar. Queda usarla y ajustar los números de la re
 ## Segunda versión
 
 Presupuestos por categoría, notificaciones de vencimiento, compartir hacia la app desde Android, uso
-sin conexión, saldos por cuenta, conservar comprobantes de forma permanente.
+sin conexión, conservar comprobantes de forma permanente. Los saldos por cuenta se adelantaron el 17/10/2026.

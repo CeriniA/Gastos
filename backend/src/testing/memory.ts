@@ -628,6 +628,16 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
         .sort((a, b) => a.paymentDate.localeCompare(b.paymentDate) || a.date.localeCompare(b.date))
         .map(toReportRow);
     },
+    async findAccountMoves(accountId, range) {
+      return store.transactions
+        .filter((transaction) => transaction.deletedAt === null && transaction.status === 'confirmed')
+        .filter(
+          (transaction) => (!range.from || transaction.date >= range.from) && transaction.date <= range.to,
+        )
+        .filter(
+          (transaction) => transaction.accountId === accountId || transaction.toAccountId === accountId,
+        );
+    },
     async setRecurring(id, recurringId) {
       store.transactions = store.transactions.map((transaction) =>
         transaction.id === id ? { ...transaction, recurringId } : transaction,
@@ -748,8 +758,15 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
     async findById(id) {
       return store.recurrings.find((recurring) => recurring.id === id) ?? null;
     },
-    async findByNameKey(key) {
-      return store.recurrings.find((recurring) => keys.get(recurring.id) === key) ?? null;
+    async findByName(key) {
+      return (
+        store.recurrings.find(
+          (recurring) =>
+            keys.get(recurring.id) === key.nameKey &&
+            recurring.type === key.type &&
+            recurring.currency === key.currency,
+        ) ?? null
+      );
     },
     async create(record) {
       const { nameKey, ...rest } = record;

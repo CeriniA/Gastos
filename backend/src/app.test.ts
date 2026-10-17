@@ -243,6 +243,10 @@ test('each user has their own data, and none of it reaches another', async () =>
   );
   assert.deepEqual(report.currencies, []);
   assert.deepEqual(await data<unknown[]>(await call('GET', '/exchange-rates')), []);
+  const balances = await data<{ accountId: string; balanceCents: number }[]>(
+    await call('GET', '/accounts/balances'),
+  );
+  assert.ok(balances.every((balance) => balance.accountId !== mine.accountId && balance.balanceCents === 0));
   const recurrings = await data<{ items: unknown[]; ignored: unknown[] }>(await call('GET', '/recurrings'));
   assert.deepEqual([recurrings.items, recurrings.ignored], [[], []]);
   for (const path of [
@@ -272,6 +276,7 @@ test('each user has their own data, and none of it reaches another', async () =>
     ['DELETE', `/transactions/${mine.id}`],
     ['GET', `/accounts/${mine.accountId}`],
     ['DELETE', `/accounts/${mine.accountId}`],
+    ['GET', `/accounts/${mine.accountId}/balance`],
     ['DELETE', `/exchange-rates/${rate.id}`],
     ['PATCH', `/exchange-rates/${rate.id}`],
     ['DELETE', `/recurrings/${fixed.id}`],

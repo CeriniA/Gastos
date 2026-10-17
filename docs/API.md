@@ -61,17 +61,20 @@ y `POST /documents/:id/retry`) cuenta uno para el usuario. Pasado su límite res
 se guarda nada; al día siguiente vuelve a cero. El límite es `aiDailyLimit` del usuario, o, si es `null`, el
 de la instalación (`AI_DAILY_READINGS`, 30 si no se configura); `aiLimit` es el que rige. `0` deja al
 usuario sin IA. Volver a subir un documento que todavía se está leyendo no cuenta, y los reintentos solos
-cuando la IA no tiene cupo tampoco.
+cuando la IA no tiene cupo tampoco. Pasado el límite, volver a subir un documento que espera revisión lo deja
+como estaba: el límite se controla antes de reemplazar nada.
 
 ## Cuentas
 
-| Método | Ruta            | Descripción                                                           |
-| ------ | --------------- | --------------------------------------------------------------------- |
-| GET    | `/accounts`     | Todas, incluidas las archivadas                                       |
-| POST   | `/accounts`     | `{ name, type, currency, bankId?, networkId? }`                       |
-| GET    | `/accounts/:id` |                                                                       |
-| PATCH  | `/accounts/:id` | `{ name?, archived?, bankId?, networkId? }`. Tipo y moneda no cambian |
-| DELETE | `/accounts/:id` | `IN_USE` si tiene movimientos, cierres o planes de cuotas             |
+| Método | Ruta                                  | Descripción                                                                                     |
+| ------ | ------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| GET    | `/accounts`                           | Todas, incluidas las archivadas                                                                 |
+| POST   | `/accounts`                           | `{ name, type, currency, bankId?, networkId?, openingBalance? }`                                |
+| GET    | `/accounts/balances?on=YYYY-MM-DD`    | Saldo de cada cuenta no archivada: `[{ accountId, currency, balanceCents, on }]`. Sin `on`, hoy |
+| GET    | `/accounts/:id/balance?on=YYYY-MM-DD` | El saldo de una cuenta ese día                                                                  |
+| GET    | `/accounts/:id`                       |                                                                                                 |
+| PATCH  | `/accounts/:id`                       | `{ name?, archived?, bankId?, networkId?, openingBalance? }`. Tipo y moneda no cambian          |
+| DELETE | `/accounts/:id`                       | `IN_USE` si tiene movimientos, cierres o planes de cuotas                                       |
 
 `bankId` apunta a un banco o emisor y `networkId` a una marca de tarjeta (solo tarjetas de crédito), los dos
 de `/institutions`.
@@ -248,8 +251,8 @@ segundo plano.
 | ------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | GET    | `/documents?status=pending\|all`           | `pending` (por defecto): procesando, listos para revisar y con error                                                                                                                                                                                                                                                                                                                                                                   |
 | POST   | `/documents`                               | `multipart/form-data`: `kind` (`receipt` o `screenshot`), `accountId` opcional y de 1 a 10 imágenes en `files` (JPG, PNG o WEBP, 5 MB cada una). Responde `202`                                                                                                                                                                                                                                                                        |
-| POST   | `/documents/statement/preview`             | `multipart/form-data`: el PDF de un resumen en `file` (hasta 5 MB y 20 páginas) y `password` opcional. Devuelve `{ text, pages, hidden }`: el texto con los datos personales reconocibles tapados. No guarda nada ni llama a la IA                                                                                                                                                                                                     |
-| POST   | `/documents/statement`                     | `{ text, fileName, accountId? }`: el texto que el usuario aprobó (hasta 100.000 caracteres). Crea un documento `card_statement` sin imágenes. Responde `202`                                                                                                                                                                                                                                                                           |
+| POST   | `/documents/statement/preview`             | `multipart/form-data`: el archivo de un resumen en `file`, PDF (hasta 20 páginas), Excel `.xlsx` o CSV (hasta 5 MB), y `password` opcional para un PDF. Devuelve `{ text, pages, hidden, fileType }`: el texto con los datos personales reconocibles tapados. No guarda nada ni llama a la IA                                                                                                                                          |
+| POST   | `/documents/statement`                     | `{ kind?, text, fileName, accountId? }`: el texto que el usuario aprobó (hasta 100.000 caracteres). `kind` es `card_statement` (por defecto) o `account_statement` (un banco, MercadoPago, una app). Crea el documento sin imágenes. Responde `202`                                                                                                                                                                                    |
 | GET    | `/documents/:id`                           | Detalle con `extraction` (lo leído, con la categoría sugerida ya resuelta), `text` (el texto de un resumen, hasta confirmarlo) y `duplicateHints`: por cada movimiento, `existing`, `repeated` o `null`                                                                                                                                                                                                                                |
 | GET    | `/documents/:id/files/:index`              | Una de las imágenes. Deja de existir al confirmar                                                                                                                                                                                                                                                                                                                                                                                      |
 | POST   | `/documents/:id/retry`                     | Vuelve a leer ya un documento con error, ya leído o esperando a la IA (descarta el resultado anterior y la espera)                                                                                                                                                                                                                                                                                                                     |
@@ -265,13 +268,25 @@ de pendientes.
 Estados: `processing` → `ready` → `confirmed`, o `error` (con `errorCode`: `rate_limited`, `unavailable`,
 `not_configured`, `blocked`, `unreadable`).
 
-Resumen de tarjeta: el PDF se lee en memoria y se descarta. Si no se puede usar, la respuesta es `VALIDATION`
-sobre `file` (no es PDF, demasiadas páginas, imagen escaneada sin texto, demasiado texto, no se pudo abrir)
+Resumen: el archivo se lee en memoria y se descarta. Se reconoce por sus primeros bytes, no por el nombre. Si
+no se puede usar, la respuesta es `VALIDATION` sobre `file` (no es PDF, Excel ni CSV; es un Excel viejo `.xls`;
+demasiadas páginas o filas; imagen escaneada sin texto; demasiado texto; no se pudo abrir)
 o sobre `password` (falta o es incorrecta). La extracción de un resumen trae `statement` con `closingDate`,
 `dueDate`, `nextClosingDate`, `nextDueDate`, `totalCents`, `minimumPaymentCents` y `currency`. Las cuotas
 mayores a la primera vienen fechadas el día del cierre. Un cierre que ya existe para esa tarjeta hace fallar
 la confirmación con `DUPLICATE`. En `duplicateHints`, `existing` también marca una cuota ("3 de 6") que ya
 está guardada por el mismo monto, aunque sea en otra fecha.
+
+Resumen de cuenta (`account_statement`): trae ingresos, egresos y transferencias. Cada transferencia trae
+`incoming`: `true` si la plata entró a esa cuenta desde otra del usuario, `false` si salió. Su `statement`
+trae `fromDate`, `toDate`, `openingBalanceCents` y `closingBalanceCents` (con signo) y `currency`; los campos
+de tarjeta vienen en `null`.
+
+**Saldo de una cuenta.** `openingBalance` es `{ amountCents, date }` (con signo: negativo es deuda) o `null`.
+El saldo de un día es ese monto más los movimientos confirmados desde `date` hasta ese día, incluidos: los
+ingresos y lo que llega suman; los egresos y lo que sale restan; una devolución devuelve. Sin saldo inicial
+cuenta desde cero, con todos los movimientos. Las cuotas proyectadas y la papelera no entran. Se calcula,
+no se guarda.
 
 Subir un archivo (o el mismo texto de un resumen) ya confirmado y con movimientos vigentes responde `DUPLICATE`, con el documento existente en
 `details`. En cualquier otro caso el archivo se lee de nuevo. Sin
@@ -349,6 +364,9 @@ mismo tipo, moneda y descripción (sin distinguir mayúsculas ni acentos) que no
 fecha de pago. Una `suggestion` es `{ transactionId, name, type, amountCents, currency, months }`: un
 comercio pagado exactamente una vez por mes, por un monto parecido (20 %), al menos 3 meses seguidos que
 terminan este mes o el anterior. Ninguna se aplica sola: se acepta con `from-transaction`.
+
+El nombre de un fijo es único por tipo y moneda: "Netflix" en pesos y "Netflix" en dólares son dos. Uno
+repetido, también al cambiarle la cuenta a una de otra moneda, responde `DUPLICATE`.
 
 Marcar un movimiento sin descripción, o una transferencia, responde `VALIDATION`. Si su comercio ya es un fijo,
 el movimiento se suma a ese. Un fijo marcado como "no es fijo" queda en `ignored`; borrarlo vuelve a

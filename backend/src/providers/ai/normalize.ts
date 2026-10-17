@@ -47,6 +47,7 @@ const rawSchema = z.object({
           categoryId: z.string().nullish(),
           installmentNumber: z.number().nullish(),
           installmentTotal: z.number().nullish(),
+          incoming: z.boolean().nullish(),
           items: z
             .array(
               z
@@ -74,6 +75,10 @@ const rawSchema = z.object({
       total: looseAmount,
       minimumPayment: looseAmount,
       currency: z.string().nullish(),
+      fromDate: z.string().nullish(),
+      toDate: z.string().nullish(),
+      openingBalance: looseAmount,
+      closingBalance: looseAmount,
     })
     .passthrough()
     .nullish(),
@@ -98,6 +103,12 @@ function toCents(value: string | number | null | undefined): number | null {
   if (value === null || value === undefined || value === '') return null;
   const cents = parseAmountToCents(value);
   return cents !== null && cents !== 0 ? Math.abs(cents) : null;
+}
+
+/** A balance keeps its sign (an overdrawn account) and may be zero. */
+function toSignedCents(value: string | number | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  return parseAmountToCents(value);
 }
 
 /** "2", "1,5" or 0.75: units, kilos or litres. Anything else is unknown. */
@@ -131,6 +142,31 @@ function toStatement(raw: RawStatement | null | undefined): ExtractedStatement |
     currency: toCurrency(raw.currency),
   };
 }
+
+/** An account's statement: the days it covers and its balances at the start and end. */
+function toAccountStatement(raw: RawStatement | null | undefined): ExtractedStatement | null {
+  if (!raw) return null;
+  return {
+    closingDate: null,
+    dueDate: null,
+    nextClosingDate: null,
+    nextDueDate: null,
+    totalCents: null,
+    minimumPaymentCents: null,
+    currency: toCurrency(raw.currency),
+    fromDate: toDate(raw.fromDate),
+    toDate: toDate(raw.toDate),
+    openingBalanceCents: toSignedCents(raw.openingBalance),
+    closingBalanceCents: toSignedCents(raw.closingBalance),
+  };
+}
+
+const STATEMENT_READERS: Partial<
+  Record<DocumentKind, (raw: RawStatement | null | undefined) => ExtractedStatement | null>
+> = {
+  card_statement: toStatement,
+  account_statement: toAccountStatement,
+};
 
 function oneOf<T extends string>(values: readonly T[], candidate: string | null | undefined): T | null {
   const normalised = (candidate ?? '').trim();
@@ -198,6 +234,9 @@ export function normalizeExtraction(
       description: (raw.description ?? '').trim().slice(0, TEXT_LIMITS.description),
       suggestedCategoryId,
       installment: validInstallment ? { number: number!, total: total! } : null,
+      ...(context.kind === 'account_statement'
+        ? { incoming: type === 'transfer' && raw.incoming === true }
+        : {}),
       items: (raw.items ?? [])
         .flatMap((item) => {
           const name = (item.name ?? '').trim().slice(0, TEXT_LIMITS.description);
@@ -221,7 +260,7 @@ export function normalizeExtraction(
   return {
     documentKind: context.kind,
     transactions: transactions.slice(0, MAX_DOCUMENT_TRANSACTIONS),
-    statement: context.kind === 'card_statement' ? toStatement(parsed.data.statement) : null,
+    statement: STATEMENT_READERS[context.kind]?.(parsed.data.statement) ?? null,
     warnings: warnings.slice(0, MAX_WARNINGS),
   };
 }

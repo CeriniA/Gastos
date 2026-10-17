@@ -12,6 +12,8 @@ import {
   type ImportIssueCode,
   type InstitutionKind,
   type ProductGroup,
+  type StatementFileType,
+  type StatementKind,
   type RecurringState,
   type TransactionType,
   type UncertainField,
@@ -198,6 +200,15 @@ export const es = {
   },
 
   accounts: {
+    balance: (amount: string) => `Saldo hoy: ${amount}`,
+    balanceSince: (date: string) => `desde el saldo inicial del ${date}`,
+    balanceFromZero: 'sin saldo inicial: cuenta desde cero',
+    opening: 'Saldo inicial',
+    openingAmount: 'Monto',
+    openingDate: 'Al día',
+    openingHint:
+      'Lo que tenía la cuenta ese día, según el banco o la app. Desde ahí la app suma y resta tus movimientos. En una tarjeta, lo que debés va con signo menos. Vacío: cuenta desde cero.',
+    openingInvalid: 'Escribí el monto (con signo menos si es deuda) y el día.',
     title: 'Cuentas',
     empty: 'Todavía no hay cuentas. Creá la primera para empezar a cargar movimientos.',
     name: 'Nombre',
@@ -328,6 +339,7 @@ export const es = {
       receipt: 'Ticket o factura',
       screenshot: 'Captura de una app',
       card_statement: 'Resumen de tarjeta',
+      account_statement: 'Resumen de cuenta',
     } satisfies Record<DocumentKind, string>,
     account: 'Cuenta con la que pagaste',
     accountLater: 'La elijo al revisar',
@@ -352,26 +364,49 @@ export const es = {
       `Se subieron ${ok} de ${total}. Las demás ya estaban subidas o no se pudieron leer.`,
     manualTitle: 'A mano',
     manual: 'Cargar un movimiento',
-    statementTitle: 'Resumen de tarjeta',
+    statementTitle: 'Un resumen',
     statementText:
-      'Subí el PDF del resumen. Antes de mandarlo a la IA vas a ver el texto y podés tapar lo que quieras.',
-    statement: 'Leer un resumen en PDF',
+      'De una tarjeta de crédito, de una cuenta del banco, de MercadoPago o de cualquier app: en PDF, Excel o CSV. Antes de mandarlo a la IA vas a ver el texto y podés tapar lo que quieras.',
+    statement: 'Leer un resumen',
   },
 
   statement: {
-    title: 'Resumen de tarjeta',
+    title: 'Leer un resumen',
     intro:
-      'La app saca el texto del PDF y tapa los números de tarjeta, documentos, mails y lo que sigue a "Titular:" o "Domicilio:". A la IA solo le llega el texto que apruebes, nunca el PDF.',
-    file: 'PDF del resumen',
-    choose: 'Elegir el PDF',
+      'La app saca el texto del archivo y tapa los números de tarjeta y de cuenta, CBU, alias, documentos, mails y lo que sigue a "Titular:" o "Domicilio:". A la IA solo le llega el texto que apruebes, nunca el archivo.',
+    kind: 'De qué es',
+    kinds: {
+      card_statement: 'Tarjeta de crédito',
+      account_statement: 'Banco o app',
+    } satisfies Record<StatementKind, string>,
+    kindHints: {
+      card_statement: 'El resumen mensual de una tarjeta: compras, cuotas, intereses, cierre y vencimiento.',
+      account_statement:
+        'Los movimientos de una cuenta del banco, de MercadoPago, Ualá o cualquier app: lo que entró y lo que salió. Para el débito, el de la cuenta del banco.',
+    } satisfies Record<StatementKind, string>,
+    file: 'Archivo del resumen',
+    fileHint: 'PDF, Excel (.xlsx) o CSV, como lo baja el banco o la app.',
+    choose: 'Elegir el archivo',
     chosen: (name: string) => `Elegido: ${name}`,
     password: 'Contraseña del PDF',
     passwordHint: 'Solo si el banco lo protege (a veces es el DNI). No se guarda.',
-    account: 'Tarjeta',
-    read: 'Leer el PDF',
-    reading: 'Leyendo el PDF…',
-    found: (pages: number, hidden: number) =>
-      `${pages === 1 ? '1 página' : `${pages} páginas`}. Se taparon ${hidden === 1 ? '1 dato' : `${hidden} datos`}.`,
+    accounts: { card_statement: 'Tarjeta', account_statement: 'Cuenta' } satisfies Record<
+      StatementKind,
+      string
+    >,
+    read: 'Leer el archivo',
+    reading: 'Leyendo el archivo…',
+    found: (fileType: StatementFileType, pages: number, hidden: number) =>
+      [
+        fileType === 'pdf' ? (pages === 1 ? '1 página.' : `${pages} páginas.`) : null,
+        hidden === 0
+          ? 'No hizo falta tapar ningún dato.'
+          : hidden === 1
+            ? 'Se tapó 1 dato.'
+            : `Se taparon ${hidden} datos.`,
+      ]
+        .filter(Boolean)
+        .join(' '),
     check:
       'Leé el texto antes de mandarlo. Si queda tu nombre, tu dirección u otro dato tuyo, borralo o agregalo abajo para taparlo siempre.',
     words: 'Tapar siempre',
@@ -383,8 +418,8 @@ export const es = {
     text: 'Texto que se manda a la IA',
     send: 'Mandar a la IA',
     sending: 'Mandando…',
-    another: 'Elegir otro PDF',
-    keepText: 'El texto no se conserva después de confirmar. El PDF no se guarda nunca.',
+    another: 'Elegir otro archivo',
+    keepText: 'El texto no se conserva después de confirmar. El archivo no se guarda nunca.',
   },
 
   documents: {
@@ -417,6 +452,18 @@ export const es = {
       blocked: 'El servicio de lectura rechazó la imagen.',
       unreadable: 'No se pudo entender la imagen. Probá con una foto más nítida.',
     } satisfies Record<DocumentErrorCode, string>,
+    balance: {
+      title: 'Saldo de la cuenta',
+      chooseAccount: 'Elegí a qué cuenta corresponde el resumen para comparar su saldo.',
+      statement: (date: string) => `Saldo según el resumen, el ${date}`,
+      inApp: (account: string) => `Saldo de ${account} en la app, con lo marcado`,
+      matches: 'Coinciden: no falta ni sobra ningún movimiento.',
+      differs: (amount: string) =>
+        `Diferencia: ${amount}. Puede faltar un movimiento, estar dos veces, o la cuenta no tener cargado su saldo inicial.`,
+      noOpening: (account: string) =>
+        `${account} todavía no tiene saldo inicial: la app lo cuenta desde cero. Podés empezarlo con el del resumen.`,
+      useOpening: (amount: string, date: string) => `Empezar con ${amount} el ${date}`,
+    },
     reviewTitle: 'Revisar lo leído',
     sentText: 'Texto que se mandó a la IA',
     periodsTitle: 'Fechas del resumen',
@@ -560,7 +607,7 @@ export const es = {
     validFrom: 'Desde el',
     arsPerUsd: 'Pesos por dólar',
     arsPerUsdHint: 'La cotización que elijas: oficial, MEP, la de tu tarjeta.',
-    row: (rate: string) => `$ ${rate} por dólar`,
+    row: (rate: string) => `${rate} pesos por dólar`,
     newTitle: 'Nueva tasa',
     invalid: 'Escribí cuántos pesos vale un dólar, por ejemplo 1250,50.',
     deleteConfirm: 'Se borra la tasa. Los informes dejan de usarla.',
@@ -786,15 +833,21 @@ export const es = {
     'A purchase in installments cannot be split': 'Una compra en cuotas no se divide entre categorías.',
     'Installments are for credit cards': 'Las cuotas son para tarjetas de crédito.',
     'A transfer cannot have products': 'Una transferencia no lleva productos.',
-    'Attach the statement PDF': 'Elegí el PDF del resumen.',
-    'Only PDF files are accepted': 'El archivo no es un PDF.',
+    'Attach the statement file': 'Elegí el archivo del resumen.',
+    'Only PDF, Excel (.xlsx) and CSV files are accepted':
+      'El archivo tiene que ser PDF, Excel (.xlsx) o CSV.',
+    'Old Excel files (.xls) are not accepted: save it as .xlsx or CSV':
+      'Es un Excel viejo (.xls). Abrilo y guardalo como .xlsx o CSV, o bajalo de nuevo en otro formato.',
+    'The spreadsheet could not be read': 'No se pudo abrir el Excel. Probá bajarlo de nuevo o en CSV.',
+    'The file has too many rows for a statement': 'El archivo tiene demasiadas filas para ser un resumen.',
+    'The file has no text': 'El archivo está vacío.',
     'The PDF is protected with a password': 'El PDF tiene contraseña: escribila abajo.',
     'The PDF password is wrong': 'La contraseña del PDF no es correcta.',
     'The PDF has too many pages for a statement': 'El PDF tiene demasiadas páginas para ser un resumen.',
     'The PDF could not be read': 'No se pudo abrir el PDF. Probá descargarlo de nuevo del banco.',
     'The PDF has no text: it is a scanned image':
       'El PDF es una imagen escaneada, sin texto. Podés sacar capturas solo de la parte de los consumos y subirlas como "Captura de una app".',
-    'The PDF has too much text for a statement': 'El PDF tiene demasiado texto para ser un resumen.',
+    'The file has too much text for a statement': 'El archivo tiene demasiado texto para ser un resumen.',
     'Only a card statement brings closing dates': 'Solo un resumen de tarjeta trae fechas de cierre.',
     'Only an expense can be a refund': 'Solo un egreso puede ser una devolución.',
     'A refund is not paid in installments': 'Una devolución no va en cuotas.',

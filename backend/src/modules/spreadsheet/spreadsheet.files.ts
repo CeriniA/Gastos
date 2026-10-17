@@ -48,6 +48,11 @@ export async function readTable(content: Buffer, fileName: string): Promise<Tabl
   if (isCsv(fileName)) {
     return parseCsv(content.toString('utf8')).map((cells, index) => ({ line: index + 1, cells }));
   }
+  return readWorkbook(content);
+}
+
+/** The rows of an Excel file's first sheet that have something in them. */
+export async function readWorkbook(content: Buffer): Promise<TableRow[]> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(content as unknown as Parameters<typeof workbook.xlsx.load>[0]);
   const sheet = workbook.worksheets[0];

@@ -1,6 +1,8 @@
 import {
   nameKey,
   type Account,
+  type AccountBalance,
+  type IsoDate,
   type AccountCreate,
   type AccountType,
   type AccountUpdate,
@@ -17,6 +19,12 @@ export interface AccountUsage {
   countCardPeriods(accountId: string): Promise<number>;
   /** The bank or card brand with that id, or null. */
   findInstitution(institutionId: string): Promise<Institution | null>;
+  /**
+   * What the confirmed movements of an account add to it between two days,
+   * both included: income and transfers in add, expenses and transfers out take away.
+   */
+  netMovement(accountId: string, range: { from: IsoDate | null; to: IsoDate }): Promise<number>;
+  today(): IsoDate;
 }
 
 export function createAccountsService(repository: AccountsRepository, usage: AccountUsage) {
@@ -59,6 +67,18 @@ export function createAccountsService(repository: AccountsRepository, usage: Acc
     await checkInstitution('networkId', 'network', next.networkId, previous.networkId);
   }
 
+  /** Its opening balance plus what its confirmed movements added from that day on. */
+  async function balanceOf(account: Account, on: IsoDate): Promise<AccountBalance> {
+    const opening = account.openingBalance;
+    const moved = await usage.netMovement(account.id, { from: opening?.date ?? null, to: on });
+    return {
+      accountId: account.id,
+      currency: account.currency,
+      balanceCents: (opening?.amountCents ?? 0) + moved,
+      on,
+    };
+  }
+
   return {
     list: () => repository.findAll(),
     get,
@@ -66,10 +86,15 @@ export function createAccountsService(repository: AccountsRepository, usage: Acc
 
     /** Bank and brand may be left out: most accounts are created without them. */
     async create(
-      input: Omit<AccountCreate, 'bankId' | 'networkId'> &
-        Partial<Pick<AccountCreate, 'bankId' | 'networkId'>>,
+      input: Omit<AccountCreate, 'bankId' | 'networkId' | 'openingBalance'> &
+        Partial<Pick<AccountCreate, 'bankId' | 'networkId' | 'openingBalance'>>,
     ): Promise<Account> {
-      const data = { ...input, bankId: input.bankId ?? null, networkId: input.networkId ?? null };
+      const data = {
+        ...input,
+        bankId: input.bankId ?? null,
+        networkId: input.networkId ?? null,
+        openingBalance: input.openingBalance ?? null,
+      };
       await assertNameFree(data.name);
       await checkInstitutions(data.type, data);
       return repository.create({ ...data, nameKey: nameKey(data.name) });
@@ -91,9 +116,21 @@ export function createAccountsService(repository: AccountsRepository, usage: Acc
         ...(input.archived !== undefined ? { archived: input.archived } : {}),
         ...(input.bankId !== undefined ? { bankId: input.bankId } : {}),
         ...(input.networkId !== undefined ? { networkId: input.networkId } : {}),
+        ...(input.openingBalance !== undefined ? { openingBalance: input.openingBalance } : {}),
       });
       if (!updated) throw new NotFoundError('Account', id);
       return updated;
+    },
+
+    /** How much an account has on a day, today by default. */
+    async balance(id: string, on: IsoDate = usage.today()): Promise<AccountBalance> {
+      return balanceOf(await get(id), on);
+    },
+
+    /** The balance of every account that is not archived. */
+    async balances(on: IsoDate = usage.today()): Promise<AccountBalance[]> {
+      const accounts = (await repository.findAll()).filter((account) => !account.archived);
+      return Promise.all(accounts.map((account) => balanceOf(account, on)));
     },
 
     /** An account with history can only be archived, never deleted. */

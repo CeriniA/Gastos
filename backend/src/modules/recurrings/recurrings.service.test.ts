@@ -116,7 +116,7 @@ test('each month a fixed item arrived, changed a lot, is late or is still to com
 });
 
 test('only an income or expense with a description is fixed, and deleting one keeps its transactions', async () => {
-  const { app, bank, services, add } = await setup();
+  const { app, bank, add } = await setup();
   const cash = await app.accounts.create({ name: 'Efectivo', type: 'cash', currency: 'ARS' });
   const transfer = await add({ type: 'transfer', categoryId: null, toAccountId: cash.id });
   const blank = await add({ description: '' });
@@ -143,10 +143,29 @@ test('only an income or expense with a description is fixed, and deleting one ke
   await app.categories.remove(other.id);
   assert.equal((await app.recurrings.overview()).items[0]?.recurring.categoryId, null);
   assert.equal(await codeOf(app.recurrings.update(fixed.id, { categoryId: 'f'.repeat(24) })), 'VALIDATION');
-  assert.ok(services.id);
 
   await app.recurrings.remove(fixed.id);
   assert.deepEqual((await app.recurrings.overview()).items, []);
   const kept = app.store.transactions.find((transaction) => transaction.id === paid.id);
   assert.deepEqual([kept?.deletedAt, kept?.recurringId], [null, null]);
+});
+
+test('the same name is two fixed items in two currencies, but one in the same currency', async () => {
+  const { app, bank, add } = await setup();
+  const dollars = await app.accounts.create({ name: 'Caja USD', type: 'cash', currency: 'USD' });
+  const pesos = await app.recurrings.fromTransaction({ transactionId: (await add({})).id, ignore: false });
+  const usd = await app.recurrings.fromTransaction({
+    transactionId: (await add({ accountId: dollars.id, currency: 'USD', categoryId: null })).id,
+    ignore: false,
+  });
+  assert.deepEqual(
+    [pesos.name, pesos.currency, usd.name, usd.currency],
+    ['Netflix', 'ARS', 'Netflix', 'USD'],
+  );
+  assert.notEqual(pesos.id, usd.id);
+
+  // Moving the dollar one to a peso account would make two "Netflix" in pesos.
+  assert.equal(await codeOf(app.recurrings.update(usd.id, { accountId: bank.id })), 'DUPLICATE');
+  // Its own name, written another way, is still its own.
+  assert.equal((await app.recurrings.update(usd.id, { name: 'NETFLIX' })).name, 'NETFLIX');
 });

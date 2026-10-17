@@ -7,6 +7,9 @@ export function createAccountsRouter(service: AccountsService): Router {
   const router = Router();
   router.get('/', controller.list);
   router.post('/', controller.create);
+  // Before '/:id', so "balances" is not read as an id.
+  router.get('/balances', controller.balances);
+  router.get('/:id/balance', controller.balance);
   router.get('/:id', controller.get);
   router.patch('/:id', controller.update);
   router.delete('/:id', controller.remove);

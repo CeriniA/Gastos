@@ -4,6 +4,8 @@ import {
   MAX_PDF_PASSWORD_LENGTH,
   MAX_STATEMENT_PERIODS,
   MAX_STATEMENT_TEXT_LENGTH,
+  STATEMENT_KINDS,
+  type StatementFileType,
   UPLOADABLE_DOCUMENT_KINDS,
   type DocumentErrorCode,
   type DocumentKind,
@@ -42,13 +44,17 @@ export const statementPreviewSchema = z.object({
  */
 export interface StatementPreview {
   text: string;
+  /** Pages of a PDF, sheets of an Excel file, 1 for a CSV. */
   pages: number;
+  fileType: StatementFileType;
   /** How many pieces of personal data were hidden. */
   hidden: number;
 }
 
 /** The statement's text as the user approved it: the only thing that is stored and sent to the AI. */
 export const statementUploadSchema = z.object({
+  /** A credit card's statement, or any other account's (bank, MercadoPago, an app). */
+  kind: z.enum(STATEMENT_KINDS).default('card_statement'),
   text: z.string().trim().min(1).max(MAX_STATEMENT_TEXT_LENGTH),
   /** The PDF's name, so the pending tray can tell statements apart. */
   fileName: z.string().trim().max(TEXT_LIMITS.description).default(''),

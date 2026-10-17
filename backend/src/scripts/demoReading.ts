@@ -103,6 +103,58 @@ export function demoReading(input: ExtractionInput): ExtractionResult {
     };
   }
 
+  if (input.kind === 'account_statement') {
+    const fromDate = addDays(today, -10);
+    return {
+      documentKind: 'account_statement',
+      statement: {
+        closingDate: null,
+        dueDate: null,
+        nextClosingDate: null,
+        nextDueDate: null,
+        totalCents: null,
+        minimumPaymentCents: null,
+        currency: 'ARS',
+        fromDate,
+        toDate: today,
+        openingBalanceCents: cents('200000'),
+        closingBalanceCents: cents('1631619,50'),
+      },
+      warnings: [],
+      transactions: [
+        // Already loaded by the demo: shown as repeated.
+        line({ date: today, amountCents: cents('12500'), merchant: 'YPF', description: 'Nafta' }),
+        line({
+          date: addDays(today, -1),
+          amountCents: cents('42000'),
+          merchant: 'Super',
+          description: 'Super',
+        }),
+        line({
+          date: addDays(today, -5),
+          amountCents: cents('30000'),
+          merchant: 'Edesur',
+          description: 'Transferencia a Edesur',
+        }),
+        line({
+          type: 'transfer',
+          incoming: true,
+          date: addDays(today, -8),
+          amountCents: cents('100000'),
+          merchant: 'Banco Demo',
+          description: 'Ingreso de dinero',
+        }),
+        line({
+          type: 'income',
+          date: addDays(today, -1),
+          amountCents: cents('1520'),
+          merchant: 'Mercado Pago',
+          description: 'Rendimientos',
+        }),
+      ],
+    };
+  }
+
   const closingDate = addDays(today, -5);
   const dueDate = addDays(today, 7);
   return {

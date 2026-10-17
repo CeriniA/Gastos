@@ -35,7 +35,9 @@ import {
 import type { RecurringsRepository } from './modules/recurrings/recurrings.repository';
 import { createRecurringsService, type RecurringsService } from './modules/recurrings/recurrings.service';
 import { createReportsService, type ReportsService } from './modules/reports/reports.service';
+import { readWorkbook } from './modules/spreadsheet/spreadsheet.files';
 import { createSpreadsheetService, type SpreadsheetService } from './modules/spreadsheet/spreadsheet.service';
+
 import type { TagsRepository } from './modules/tags/tags.repository';
 import { createTagsService, type TagsService } from './modules/tags/tags.service';
 import type { TransactionsRepository } from './modules/transactions/transactions.repository';
@@ -129,6 +131,8 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
       (await installmentPlans.countByAccount(id)) +
       (await recurrings.countByAccount(id)),
     findInstitution: (id) => institutions.find(id),
+    netMovement: (id, range) => transactions.netMovement(id, range),
+    today,
   });
 
   const cardPeriods: CardPeriodsService = createCardPeriodsService(repositories.cardPeriods, {
@@ -203,6 +207,7 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
   const documents: DocumentsService = createDocumentsService(repositories.documents, {
     extractor: runtime.extractor,
     pdfReader: runtime.pdfReader,
+    readSpreadsheet: readWorkbook,
     listAccounts: accounts.list,
     listCategories: categories.list,
     ruleLookup: () => categoryRules.lookup(),

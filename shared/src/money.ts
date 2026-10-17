@@ -129,6 +129,11 @@ export function sumCents(values: readonly number[]): number {
   return values.reduce((total, value) => total + value, 0);
 }
 
+/** The average of some amounts, in whole cents. Zero when there are none. */
+export function averageCents(values: readonly number[]): number {
+  return values.length === 0 ? 0 : Math.round(sumCents(values) / values.length);
+}
+
 /** What a transaction adds to spending: a purchase adds, a refund of one takes it back. */
 export function spendingCents(transaction: { refund: boolean; amountCents: number }): number {
   return transaction.refund ? -transaction.amountCents : transaction.amountCents;

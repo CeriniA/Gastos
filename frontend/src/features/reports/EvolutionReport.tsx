@@ -1,5 +1,6 @@
 import {
   DEFAULT_EVOLUTION_MONTHS,
+  averageCents,
   formatMoney,
   formatMonth,
   type Currency,
@@ -35,9 +36,8 @@ function CurrencyCard({ data, currency }: { data: Evolution; currency: Currency 
   const largest = Math.max(
     ...months.map(({ totals }) => Math.max(totals?.incomeCents ?? 0, totals?.expenseCents ?? 0)),
   );
-  const withData = months.filter(({ totals }) => totals);
-  const spent = withData.reduce((total, { totals }) => total + (totals?.expenseCents ?? 0), 0);
-  const average = Math.round(spent / Math.max(withData.length, 1));
+  // Only months with something in them: an empty month is not a month of spending nothing.
+  const average = averageCents(months.flatMap(({ totals }) => (totals ? [totals.expenseCents] : [])));
 
   return (
     <Card>

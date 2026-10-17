@@ -5,7 +5,7 @@ import type { ExtractionInput } from './aiExtractor';
  * Bump when the instructions change, so each document records which wording
  * read it and results can be compared across versions.
  */
-export const PROMPT_VERSION = 8;
+export const PROMPT_VERSION = 9;
 
 /** What each product group covers, so the model files lines consistently. */
 const GROUP_HINTS: Record<ProductGroup, string> = {
@@ -50,11 +50,30 @@ const KIND_HINTS: Record<ExtractionInput['kind'], string> = {
     'Lines in dollars keep the currency "USD"; lines in pesos are "ARS".',
     'Also return "statement": closingDate ("cierre", "cierre actual"), dueDate ("vencimiento", "vencimiento actual"), nextClosingDate ("próximo cierre"), nextDueDate ("próximo vencimiento"), total (the balance to pay in pesos: "saldo actual", "total a pagar"), minimumPayment ("pago mínimo") and currency (of that total). Dates as "YYYY-MM-DD", amounts in the same format as "amount" below, each null if not printed.',
   ].join(' '),
+  account_statement: [
+    'The document is the list of movements of ONE account of the user: a bank account, a wallet or a payment app (for example MercadoPago, Ualá, Naranja X), copied from its PDF, Excel or CSV file and given after these instructions. Personal data was replaced by "***"; ignore it. Spreadsheet cells are separated by " | ".',
+    'Return one transaction for each movement. What decides the type is WHERE the money went, not how it was sent:',
+    '- Paying a service, a shop, a tax or a person is "expense", even when it was paid by transfer ("Transferencia enviada a Edesur", "Pago de servicios", "Pago con QR", "Débito automático").',
+    '- Money received from another person or a company is "income" (a salary, a sale, "Transferencia recibida de ..."). Interest and yields earned ("rendimientos", "intereses ganados") are "income" too.',
+    '- Only money moved between two accounts of the user is "transfer": adding money to this wallet from another account of the same user ("Ingreso de dinero", "Carga de saldo"), sending it to another account of the same user ("Retiro a tu cuenta"), a cash withdrawal at an ATM ("Extracción"), buying or selling dollars, and paying a credit card of the same user ("Pago de tarjeta", "Pago Visa"). When unsure whether the other side is the user, use "expense" or "income" and list "type" in "uncertain".',
+    '- For a "transfer", incoming is true when the money came INTO this account and false when it left it. For any other type incoming is false.',
+    'Bank taxes and fees ("Impuesto Ley 25.413", "débitos y créditos", "comisión", "mantenimiento de cuenta", "IVA", "percepción") are "expense" with financialCharge true.',
+    'Refunds of a purchase ("devolución", "reintegro", "anulación", "contracargo") are "expense" with refund true and a positive amount.',
+    'Ignore the balance lines ("saldo", "saldo anterior", "saldo disponible"), headers, subtotals and totals: they are not movements.',
+    'Also return "statement": fromDate and toDate (the first and last day the statement covers), openingBalance (the balance at the start: "saldo inicial", "saldo anterior") and closingBalance (the balance at the end: "saldo final", "saldo actual"), in the format of "amount" below but with a minus sign when the account is overdrawn, and currency (of those balances). Each null if not printed.',
+  ].join(' '),
 };
 
 /** The extra field a card statement answers with. */
 const STATEMENT_SHAPE =
   '"statement": { "closingDate": null, "dueDate": null, "nextClosingDate": null, "nextDueDate": null, "total": null, "minimumPayment": null, "currency": null }';
+/** The extra field an account's statement answers with. */
+const ACCOUNT_STATEMENT_SHAPE =
+  '"statement": { "fromDate": null, "toDate": null, "openingBalance": null, "closingBalance": null, "currency": null }';
+const STATEMENT_SHAPES: Partial<Record<ExtractionInput['kind'], string>> = {
+  card_statement: STATEMENT_SHAPE,
+  account_statement: ACCOUNT_STATEMENT_SHAPE,
+};
 
 /**
  * The instructions sent with every document. Written for Argentine receipts
@@ -65,7 +84,7 @@ export function buildPrompt(input: ExtractionInput): string {
     (category) => `${category.id} | ${category.kind} | ${category.path}`,
   );
   return [
-    'You extract personal finance transactions from documents (images, or the text of a card statement) for a bookkeeping app. The user lives in Argentina and also shops in Brazil, so documents are in Spanish or Portuguese.',
+    'You extract personal finance transactions from documents (images, or the text of a statement) for a bookkeeping app. The user lives in Argentina and also shops in Brazil, so documents are in Spanish or Portuguese.',
     KIND_HINTS[input.kind],
     '',
     `Today is ${input.today}. Dates in the document are day-first (DD/MM/YYYY). If the year is missing, use the most recent past date.`,
@@ -110,8 +129,8 @@ export function buildPrompt(input: ExtractionInput): string {
     categories.length > 0 ? categories.join('\n') : '(none)',
     '',
     'Respond with ONLY a JSON object of this exact shape, no markdown and no commentary:',
-    `{ "transactions": [ { "type": "", "refund": false, "financialCharge": false, "date": null, "amount": null, "currency": null, "merchant": "", "description": "", "categoryId": null, "installmentNumber": null, "installmentTotal": null, "items": [ { "name": "", "amount": "", "product": "", "group": null, "quantity": null } ], "uncertain": [] } ], ${
-      input.kind === 'card_statement' ? `${STATEMENT_SHAPE}, ` : ''
+    `{ "transactions": [ { "type": "", "refund": false, "financialCharge": false, "date": null, "amount": null, "currency": null, "merchant": "", "description": "", "categoryId": null, "installmentNumber": null, "installmentTotal": null, "incoming": false, "items": [ { "name": "", "amount": "", "product": "", "group": null, "quantity": null } ], "uncertain": [] } ], ${
+      STATEMENT_SHAPES[input.kind] ? `${STATEMENT_SHAPES[input.kind]}, ` : ''
     }"warnings": [] }`,
   ].join('\n');
 }

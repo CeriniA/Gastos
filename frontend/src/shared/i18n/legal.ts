@@ -47,10 +47,10 @@ const privacy: LegalDocument = {
       title: 'Qué datos guarda',
       items: [
         'Tu nombre de usuario y tu contraseña. La contraseña se guarda cifrada con un algoritmo de un solo sentido (bcrypt): nadie puede leerla, tampoco quien administra la instalación.',
-        'Lo que vos cargás: cuentas, categorías, etiquetas, movimientos con sus montos, fechas y descripciones, productos de tus compras, cierres y vencimientos de tus tarjetas, tus movimientos fijos y las tasas de cambio que cargues.',
+        'Lo que vos cargás: cuentas, categorías, etiquetas, movimientos con sus montos, fechas y descripciones, productos de tus compras, cierres y vencimientos de tus tarjetas, tus movimientos fijos, las tasas de cambio y el saldo inicial de tus cuentas que cargues.',
         'Cuántos comprobantes mandaste a leer en el día, para el límite diario de lectura automática. Se guarda solo el número del día en curso, y lo ve quien administra la instalación, junto con tu límite.',
         `Las fotos de tickets y capturas que subís para que se lean, solo hasta que confirmás o descartás lo leído. En ese momento se borran. Las que no revisás se borran solas a los ${PENDING_DOCUMENT_RETENTION_DAYS} días.`,
-        'El texto de un resumen de tarjeta que aprobás para su lectura, solo hasta que confirmás lo leído. El archivo PDF y su contraseña no se guardan nunca.',
+        'El texto de un resumen que aprobás para su lectura (de una tarjeta, de una cuenta del banco o de una app), solo hasta que confirmás lo leído. El archivo (PDF, Excel o CSV) y la contraseña del PDF no se guardan nunca.',
         'Si conectás tu Google Drive, el permiso que le diste a la aplicación, guardado cifrado.',
       ],
       paragraphs: [
@@ -80,7 +80,7 @@ const privacy: LegalDocument = {
       items: [
         'MongoDB Atlas (MongoDB, Inc.) guarda la base de datos.',
         'Render (Render Services, Inc.) aloja la aplicación y el servidor.',
-        'Google Gemini (Google LLC) recibe las fotos, capturas y textos de resúmenes que mandás a leer, y devuelve lo que entendió. En el plan gratuito de ese servicio, Google puede usar lo que recibe para mejorar sus productos. Por eso, antes de mandar un resumen de tarjeta, la aplicación te muestra el texto con los datos personales tapados y solo lo envía cuando lo aprobás.',
+        'Google Gemini (Google LLC) recibe las fotos, capturas y textos de resúmenes que mandás a leer, y devuelve lo que entendió. En el plan gratuito de ese servicio, Google puede usar lo que recibe para mejorar sus productos. Por eso, antes de mandar un resumen, la aplicación te muestra el texto con los datos personales tapados (números de tarjeta y de cuenta, CBU, CVU, alias, documentos) y solo lo envía cuando lo aprobás.',
         'Google Drive (Google LLC), solo si lo conectás, guarda tu copia de seguridad en tu propia cuenta.',
         'Un servicio público de cotizaciones recibe únicamente el pedido de la cotización entre dos monedas. No recibe ningún dato tuyo.',
       ],

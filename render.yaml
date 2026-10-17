@@ -35,6 +35,10 @@ services:
       # Without it the app works, but photos cannot be read.
       - key: GEMINI_API_KEY
         sync: false
+      # Documents each user can send to the AI per day, unless the admin gives them another limit.
+      # Optional: without it, 30.
+      - key: AI_DAILY_READINGS
+        value: '30'
       # Automatic backup to Google Drive (docs/RESPALDO_DRIVE.md). Without the three, it is off.
       # They are the app's; each user connects their own Drive from the app.
       - key: DRIVE_CLIENT_ID

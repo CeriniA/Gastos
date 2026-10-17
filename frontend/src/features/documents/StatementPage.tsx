@@ -4,13 +4,25 @@ import {
   MAX_HIDDEN_WORDS,
   MAX_PDF_PASSWORD_LENGTH,
   MIN_HIDDEN_WORD_LENGTH,
+  STATEMENT_KINDS,
   hideWords,
   statementUploadSchema,
+  type StatementKind,
   type StatementPreview,
 } from '@gastos/shared';
 import { fieldMessage } from '../../shared/api/errors';
 import { es } from '../../shared/i18n/es';
-import { Button, Card, Field, Notice, PageTitle, Select, TextArea, TextInput } from '../../shared/ui/ui';
+import {
+  Button,
+  Card,
+  Field,
+  Notice,
+  PageTitle,
+  Select,
+  Tabs,
+  TextArea,
+  TextInput,
+} from '../../shared/ui/ui';
 import { useAction } from '../../shared/ui/useAction';
 import { useAccounts } from '../accounts/api';
 import { useDocumentMutations } from './api';
@@ -20,6 +32,11 @@ import { uploadFailure } from './uploadFailure';
 const HIDDEN_WORDS_KEY = 'gastos.statement.hiddenWords';
 /** Enough lines to read a good part of a statement without scrolling the page. */
 const TEXT_ROWS = 16;
+/** What the file picker offers: what banks and apps let their movements be downloaded as. */
+const ACCEPTED_FILES =
+  '.pdf,.xlsx,.csv,.txt,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+/** Only a PDF can carry a password. */
+const isPdf = (file: File | null) => !file || /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
 
 function loadWords(): string[] {
   try {
@@ -39,9 +56,10 @@ function saveWords(words: readonly string[]) {
 }
 
 /**
- * Reading a card statement in two steps: the server extracts the PDF's text
- * and hides what it recognises; the user reads it, hides anything else and
- * only then sends it to the AI. The PDF itself is never stored.
+ * Reading a statement in two steps, a card's or any other account's: the
+ * server extracts the text of the PDF, Excel or CSV file and hides what it
+ * recognises; the user reads it, hides anything else and only then sends it
+ * to the AI. The file itself is never stored.
  */
 export function StatementPage() {
   const navigate = useNavigate();
@@ -50,6 +68,7 @@ export function StatementPage() {
   const { failure, setFailure, run } = useAction(uploadFailure);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  const [kind, setKind] = useState<StatementKind>('card_statement');
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState('');
   const [accountId, setAccountId] = useState('');
@@ -58,8 +77,9 @@ export function StatementPage() {
   const [words, setWords] = useState<string[]>(loadWords);
   const [newWord, setNewWord] = useState('');
 
-  const cards = (accounts.data ?? []).filter(
-    (account) => !account.archived && account.type === 'credit_card',
+  // A card's statement goes to a card; any other statement, to any other account.
+  const choices = (accounts.data ?? []).filter(
+    (account) => !account.archived && (account.type === 'credit_card') === (kind === 'card_statement'),
   );
 
   const choose = (event: ChangeEvent<HTMLInputElement>) => {
@@ -73,7 +93,7 @@ export function StatementPage() {
   const read = () =>
     run(async () => {
       if (!file) return;
-      const result = await previewStatement.mutateAsync({ file, password });
+      const result = await previewStatement.mutateAsync({ file, password: isPdf(file) ? password : '' });
       setPreview(result);
       setText(hideWords(result.text, words).text);
     });
@@ -95,7 +115,7 @@ export function StatementPage() {
   };
 
   const send = () => {
-    const parsed = statementUploadSchema.safeParse({ text, fileName: file?.name ?? '', accountId });
+    const parsed = statementUploadSchema.safeParse({ kind, text, fileName: file?.name ?? '', accountId });
     if (!parsed.success) {
       setFailure(fieldMessage(parsed.error.issues[0]?.message ?? 'invalid'));
       return;
@@ -120,7 +140,7 @@ export function StatementPage() {
 
       {preview ? (
         <div className="space-y-4">
-          <Notice>{es.statement.found(preview.pages, preview.hidden)}</Notice>
+          <Notice>{es.statement.found(preview.fileType, preview.pages, preview.hidden)}</Notice>
           <Notice tone="attention">{es.statement.check}</Notice>
 
           <Card>
@@ -178,7 +198,23 @@ export function StatementPage() {
       ) : (
         <Card>
           <div className="space-y-3">
-            <Field label={es.statement.file} hint={file ? es.statement.chosen(file.name) : undefined}>
+            <div>
+              <p className="mb-1 text-sm font-medium text-muted">{es.statement.kind}</p>
+              <Tabs
+                options={STATEMENT_KINDS}
+                value={kind}
+                label={(option) => es.statement.kinds[option]}
+                onChange={(option) => {
+                  setKind(option);
+                  setAccountId('');
+                }}
+              />
+              <p className="-mt-2 text-sm text-muted">{es.statement.kindHints[kind]}</p>
+            </div>
+            <Field
+              label={es.statement.file}
+              hint={file ? es.statement.chosen(file.name) : es.statement.fileHint}
+            >
               <Button variant="secondary" className="w-full" onClick={() => fileInput.current?.click()}>
                 {es.statement.choose}
               </Button>
@@ -186,27 +222,29 @@ export function StatementPage() {
             <input
               ref={fileInput}
               type="file"
-              accept="application/pdf"
+              accept={ACCEPTED_FILES}
               className="sr-only"
               tabIndex={-1}
               onChange={choose}
             />
-            <Field
-              label={`${es.statement.password} (${es.common.optional})`}
-              hint={es.statement.passwordHint}
-            >
-              <TextInput
-                type="password"
-                autoComplete="off"
-                maxLength={MAX_PDF_PASSWORD_LENGTH}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-              />
-            </Field>
-            <Field label={`${es.statement.account} (${es.common.optional})`}>
+            {isPdf(file) ? (
+              <Field
+                label={`${es.statement.password} (${es.common.optional})`}
+                hint={es.statement.passwordHint}
+              >
+                <TextInput
+                  type="password"
+                  autoComplete="off"
+                  maxLength={MAX_PDF_PASSWORD_LENGTH}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+              </Field>
+            ) : null}
+            <Field label={`${es.statement.accounts[kind]} (${es.common.optional})`}>
               <Select value={accountId} onChange={(event) => setAccountId(event.target.value)}>
                 <option value="">{es.add.accountLater}</option>
-                {cards.map((account) => (
+                {choices.map((account) => (
                   <option key={account.id} value={account.id}>
                     {account.name} ({account.currency})
                   </option>

@@ -1,5 +1,11 @@
 import { Schema, model } from 'mongoose';
-import { ACCOUNT_TYPES, CURRENCIES, type AccountType, type Currency } from '@gastos/shared';
+import {
+  ACCOUNT_TYPES,
+  CURRENCIES,
+  type AccountType,
+  type Currency,
+  type OpeningBalance,
+} from '@gastos/shared';
 import { COLLECTIONS } from '../../core/db/collections';
 import { ownedByUser, uniquePerUser } from '../../core/db/ownerPlugin';
 import type { ObjectId } from '../../core/db/ids';
@@ -13,6 +19,8 @@ export interface AccountDoc {
   currency: Currency;
   bankId: ObjectId | null;
   networkId: ObjectId | null;
+  /** What it had on a day, where its balance starts counting. Null: from zero, since its first movement. */
+  openingBalance: OpeningBalance | null;
   archived: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -26,6 +34,13 @@ const schema = new Schema<AccountDoc>(
     currency: { type: String, required: true, enum: [...CURRENCIES] },
     bankId: { type: Schema.Types.ObjectId, default: null },
     networkId: { type: Schema.Types.ObjectId, default: null },
+    openingBalance: {
+      type: new Schema<OpeningBalance>(
+        { amountCents: { type: Number, required: true }, date: { type: String, required: true } },
+        { _id: false },
+      ),
+      default: null,
+    },
     archived: { type: Boolean, required: true, default: false },
   },
   { timestamps: true },

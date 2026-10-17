@@ -32,7 +32,7 @@ const LONG_NUMBER = new RegExp(
 
 /** Labels after which the rest of the line is personal: the label stays, the value goes. */
 const LABELLED_LINE =
-  /(\b(?:domicilio|direcci[oó]n|titular|nombre y apellido|apellido y nombre|nombre|tel[eé]fono|tel\.|celular|e-?mail|correo)\s*:\s*)[^\n]+/giu;
+  /(\b(?:domicilio|direcci[oó]n|titular|alias|cbu|cvu|nombre y apellido|apellido y nombre|nombre|tel[eé]fono|tel\.|celular|e-?mail|correo)\s*:\s*)[^\n]+/giu;
 /**
  * Labels after which a number identifies the person or their account. The
  * number may not run into a comma: "Saldo cuenta 12.345,67" is an amount.
