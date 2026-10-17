@@ -4,18 +4,18 @@ Cada etapa termina en algo que funciona. Si una se complica, lo anterior ya sirv
 
 ## Estado de la base
 
-| Qué                                                          | Estado                                                                                                                                                              |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasa en la PC del usuario el 17/10/2026 con la etapa 4 (201 pruebas)                                                                                                |
-| Usuarios y datos por usuario contra MongoDB Atlas            | Funciona en Render desde el 13/10/2026; la migración de dueños corrió sin errores                                                                                   |
-| Etapa 4 contra MongoDB Atlas                                 | **Sin probar.** Escrita el 17/10/2026 y probada en memoria y por HTTP                                                                                               |
-| Pantallas de la etapa 1 en un navegador                      | Recorridas el 13/10/2026 contra la demo en memoria (`npm run demo`), tamaño celular: flujo y textos. Sin mirar el aspecto ni probar las descargas                   |
-| Lectura de resúmenes en PDF                                  | Escrita el 12/10/2026 sin ningún resumen real a mano: la lectura del PDF, el tapado de datos y las instrucciones a la IA se ajustan con el primer resumen verdadero |
-| Compilación de backend y frontend (`npm run build`)          | Render compiló los dos el 11/10/2026; se repite en cada push                                                                                                        |
-| Etapa 1 corriendo contra MongoDB Atlas                       | Dada por cerrada por el usuario                                                                                                                                     |
-| Lectura real con Gemini                                      | Usada por el usuario con tickets y capturas de MercadoPago. La clasificación de productos (instrucciones versión 5) dio bien en el primer uso real, el 11/10/2026   |
-| Consumo por producto contra MongoDB y Gemini reales          | Funciona en Render con datos reales desde el 11/10/2026                                                                                                             |
-| `render.yaml`                                                | Desplegado en Render el 11/10/2026: backend y sitio en línea. Atlas necesita `0.0.0.0/0` en Network Access                                                          |
+| Qué                                                          | Estado                                                                                                                                                                                  |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasa en la PC del usuario el 17/10/2026 (210 pruebas)                                                                                                                                   |
+| Usuarios y datos por usuario contra MongoDB Atlas            | Funciona en Render desde el 13/10/2026; la migración de dueños corrió sin errores                                                                                                       |
+| Etapa 4, resúmenes de cuenta y saldos contra MongoDB Atlas   | **Sin probar.** Escritos el 17/10/2026 y probados en memoria y por HTTP; corren contra Atlas por primera vez con el push de `d48d0e8` y `2743d8a`                                       |
+| Pantallas en un navegador                                    | Etapas 1 a 3 recorridas el 13/10/2026 y lo del 17/10/2026 (usuarios, informes, tasas, fijos, resumen de cuenta, saldos) el mismo día, con la demo, tamaño celular. Sin mirar el aspecto |
+| Lectura de resúmenes                                         | De tarjeta (12/10/2026) y de cuenta (17/10/2026) sin ningún resumen real a mano: el tapado y las instrucciones a la IA se ajustan con el primero verdadero                              |
+| Compilación de backend y frontend (`npm run build`)          | Render compiló los dos el 11/10/2026; se repite en cada push                                                                                                                            |
+| Etapa 1 corriendo contra MongoDB Atlas                       | Dada por cerrada por el usuario                                                                                                                                                         |
+| Lectura real con Gemini                                      | Usada por el usuario con tickets y capturas de MercadoPago. La clasificación de productos (instrucciones versión 5) dio bien en el primer uso real, el 11/10/2026                       |
+| Consumo por producto contra MongoDB y Gemini reales          | Funciona en Render con datos reales desde el 11/10/2026                                                                                                                                 |
+| `render.yaml`                                                | Desplegado en Render el 11/10/2026: backend y sitio en línea. Atlas necesita `0.0.0.0/0` en Network Access                                                                              |
 
 Las versiones de `package.json` se escribieron sin acceso al registro de npm; la instalación funcionó.
 
@@ -23,72 +23,43 @@ Las versiones de `package.json` se escribieron sin acceso al registro de npm; la
 
 Para retomar. Se borra o se reescribe al empezar la próxima sesión.
 
-**Subido antes (commit y push del usuario):** todo hasta `b58f5a3`: usuarios con datos propios, Drive por
-usuario, pago de tarjeta, informe por categoría, política de privacidad y condiciones. Funciona en Render
-desde el 13/10/2026.
+**Subido (commit y push del usuario):** todo hasta `b58f5a3`. Funciona en Render desde el 13/10/2026.
 
-**Hecho el 17/10/2026, en el commit `d48d0e8` (sin push):**
+**Con commit, sin push:**
 
-1. Usuarios: el administrador renombra a un usuario, le cambia el tipo (no el suyo propio) y le fija un
-   límite diario de lecturas con IA (Más → Usuarios → Editar). Ahí también se ve cuántas lleva hoy cada uno.
-2. Límite de lectura con IA por usuario: 30 documentos por día, o lo que diga `AI_DAILY_READINGS`. Pasado
-   el límite, la subida se rechaza con un aviso.
-3. Etapa 4 completa:
-   - Informes nuevos: Cuentas, Meses (evolución), Comercios y Próximos (proyección).
-   - Tasas de cambio (Más → Tasas de cambio) y "Mostrar: todo en pesos / todo en dólares" en los informes.
-   - Movimientos fijos (Más → Movimientos fijos): sugerencias, "Es un movimiento fijo" en cada movimiento,
-     estado de cada mes, aviso en el Inicio y entrada en la proyección.
-4. Política de privacidad actualizada (fecha 17/10/2026): dice que se guardan fijos, tasas y la cuenta de
-   lecturas del día.
-5. Migración `2026-10-17-recurring-merchant`: completa dos campos nuevos de los fijos. No hay fijos guardados
-   todavía, así que normalmente no cambia nada.
-
-**Hecho después, el mismo día, sin commit:**
-
-1. Resumen de cuenta: los movimientos de una cuenta del banco, de MercadoPago o de cualquier app (también
-   la de débito), en PDF, Excel o CSV. Agregar → Leer un resumen → "Banco o app". Las transferencias entre
-   cuentas propias se proponen con su dirección; lo ya cargado (el ticket del súper) sale como repetido.
-2. Saldo de cada cuenta en Más → Cuentas, con saldo inicial editable. La revisión de un resumen de cuenta
-   compara su saldo final con el de la app y ofrece usar el saldo inicial del resumen.
-3. El tapado también cubre CBU, CVU y alias. Instrucciones a la IA versión 9.
-4. Política de privacidad actualizada: resúmenes de cualquier cuenta, Excel y CSV, saldo inicial.
-5. Migración `2026-10-17-account-opening-balance`.
-6. Correcciones de la revisión de `d48d0e8`: el límite de IA se controla antes de reemplazar un pendiente; el
-   nombre de un fijo es único por tipo y moneda (migración `2026-10-17-recurring-name-index`, que rehace el
-   índice); el promedio de Meses usa `averageCents`; `AI_DAILY_READINGS` en `.env.example` y `render.yaml`; el
-   límite de IA es una pieza propia (`aiAllowance`), sin variable asignada después. Migración
-   `2026-10-17-user-ai-limit` para los campos nuevos de usuarios.
-7. Repaso propio: el chequeo de "es PDF" tenía el punto sin escapar; un lector de Excel recibía un nombre de
-   archivo inventado; un aviso hablaba de "PDF" para cualquier archivo; dos pruebas tenían líneas sin sentido.
+- `d48d0e8`: usuarios (renombrar, cambiar el tipo, límite diario de IA) y la etapa 4 entera (informes por
+  cuenta, mes por mes, por comercio y proyección; tasas de cambio y vista en una moneda; movimientos fijos).
+- `2743d8a`: resumen de cuenta (banco, MercadoPago, una app) en PDF, Excel o CSV; saldo de cada cuenta con
+  saldo inicial y control contra el saldo del resumen; las correcciones de la revisión de `d48d0e8`.
+- La puesta al día de la documentación, en el commit que sigue a `2743d8a`.
 
 **Para subirlo:**
 
-1. `npm run check` pasó el 17/10/2026 (210 pruebas).
-2. Commit de lo que falta y push. En Render no hace falta ninguna variable nueva: `AI_DAILY_READINGS` es
-   opcional (30 si no está).
-3. Después del despliegue: Más → Usuarios muestra "Lecturas con IA hoy" de cada uno; Informes tiene seis
-   pestañas; Más → Cuentas muestra el saldo de cada cuenta.
-
-**No probado contra una base real:** las consultas nuevas (informes, fijos, tasas, saldos, el contador de
-lecturas) están probadas sobre el backend en memoria y por HTTP. Contra MongoDB Atlas corren por primera vez
-al subir. La lectura de un resumen de cuenta está probada con una IA simulada: falta uno real de MercadoPago
-y uno de un banco.
+1. Push. En Render no hace falta ninguna variable nueva: `AI_DAILY_READINGS` es opcional (30 si no está;
+   `render.yaml` ya la trae).
+2. Al arrancar corren solas las migraciones nuevas: `2026-10-17-recurring-merchant`,
+   `2026-10-17-account-opening-balance`, `2026-10-17-recurring-name-index` (rehace un índice) y
+   `2026-10-17-user-ai-limit`. Conviene bajar un respaldo antes (Más → Respaldo y datos).
+3. Después: Más → Usuarios muestra "Lecturas con IA hoy"; Informes tiene seis pestañas; Más → Cuentas muestra
+   el saldo de cada cuenta; Agregar → Leer un resumen ofrece "Banco o app".
 
 **Pendiente del usuario (no es código):**
 
 - Cargar `VITE_CONTACT_EMAIL` en el sitio de Render y poner las direcciones de `/privacidad` y
   `/condiciones` en Google Cloud.
 - Configurar Google una vez con `docs/RESPALDO_DRIVE.md` y probar "Copiar ahora" con un Drive de verdad.
-- Que el amigo pruebe un resumen real: qué quedó sin tapar en el texto, si la suma da igual al total y si
-  los intereses, impuestos y comisiones salen en "Cargos financieros".
-- Probar un resumen real de MercadoPago y de un banco (en Excel o CSV si se puede): si las transferencias
-  entre cuentas propias salen como transferencia y si el saldo final coincide.
+- Probar resúmenes reales: uno de tarjeta (qué quedó sin tapar, si la suma da igual al total, si los cargos
+  salen en "Cargos financieros") y uno de MercadoPago y uno de un banco, en Excel o CSV si se puede (si las
+  transferencias entre cuentas propias salen como transferencia y si el saldo final coincide).
 - Cargar el saldo inicial de cada cuenta (Más → Cuentas → Editar), o usar el que ofrece el primer resumen.
 
 **Lo próximo que se puede programar:**
 
+- Hoja "Productos" en la exportación a Excel (pedido del 17/10/2026; diseño en
+  `IMPORTACION_EXPORTACION.md`, sección "Pendiente: hoja de productos").
 - Ajustar el tapado y las instrucciones con el primer resumen real, de tarjeta y de cuenta.
 - Recordar una corrección de producto o grupo para el próximo ticket; comparar precios en el tiempo.
+- Lista de reglas de categoría y de documentos confirmados en Más (la API ya existe).
 - Uso sin conexión: está en la segunda versión; el usuario decidió no adelantarlo por ahora.
 
 **Cómo se trabaja (recordatorio para el asistente):**
@@ -99,6 +70,59 @@ y uno de un banco.
 - Antes de entregar: formato, `npm run audit:code`, pruebas y tipos, y decir qué se corrió.
 - Un problema que se encuentra se arregla en el momento, no se anota como deuda sin avisar.
 - No leer `backend/.env`.
+- Antes de entregar, repasar lo propio línea por línea: cada línea con un motivo, sin atajos de tipos
+  (`as never`, `!` que no hacen falta), sin líneas de prueba que no prueban nada. Un cambio en lo guardado
+  lleva migración, también en `users`; un índice que cambia, una que lo rehaga.
+- Al terminar, anotar en "Errores encontrados y corregidos" lo que salió mal.
+
+## Errores encontrados y corregidos (17/10/2026)
+
+Para que quede a la vista qué salió mal y cómo se arregló. Todos tienen prueba salvo los de texto.
+
+En la revisión del usuario de `d48d0e8` (corregidos en `2743d8a`):
+
+1. **El límite de IA se controlaba después de borrar el pendiente que una subida reemplaza.** Sin cupo, se
+   perdía el documento que esperaba revisión. Ahora se controla antes de tocar nada.
+2. **Un fijo con el mismo nombre en otra moneda daba "ya existe"** (Netflix en pesos y en dólares). El
+   nombre es único por tipo y moneda; la migración `2026-10-17-recurring-name-index` rehace el índice, porque
+   crear el nuevo no borra el viejo.
+3. **El promedio de Meses redondeaba dinero en la pantalla.** Ahora usa `averageCents` de `money.ts`.
+4. **`AI_DAILY_READINGS` no figuraba en `.env.example` ni en `render.yaml`.**
+5. **El límite de IA dependía de una variable asignada después del armado** (`container!`). Ahora es una pieza
+   propia, `aiAllowance`, que se arma primero.
+
+En el repaso propio (corregidos en `2743d8a`):
+
+6. El chequeo de "es un PDF" tenía el punto sin escapar: un archivo llamado `informepdf` pasaba por PDF.
+7. Al lector de Excel se le pasaba un nombre de archivo inventado para que no lo tomara por CSV. Ahora hay
+   una función propia, `readWorkbook`.
+8. El aviso "demasiado texto" hablaba de "PDF" también para un Excel o un CSV.
+9. Los campos nuevos de usuarios (límite de IA) no tenían migración: la regla del proyecto la pide. Se agregó
+   `2026-10-17-user-ai-limit`.
+10. Dos pruebas tenían líneas sin sentido (una comparación que siempre daba lo mismo, una variable usada solo
+    para que el compilador no se quejara) y otra escondía sus tipos con `as never`.
+11. Un filtro de transferencias quedó duplicado en las sugerencias de fijos; se reemplazó por un tipo que lo
+    dice una sola vez.
+
+Al recorrer la demo, antes del commit:
+
+12. La revisión de un resumen de cuenta mostraba "Fechas del resumen", que es solo de tarjetas.
+13. Con "todo en dólares" y sin tasas, un informe decía "no hay egresos" además del aviso de que faltaban tasas.
+14. "Se taparon 1 dato" y "Se taparon 0 datos": textos corregidos.
+15. Se colaron caracteres invisibles (una marca de orden de bytes) en el código fuente; el lint los marcó y se
+    cambiaron por su forma escrita.
+
+## Resúmenes de cuenta y saldos (17/10/2026)
+
+Hecho, probado en memoria y por HTTP y recorrido en la demo, sin probar con un resumen real:
+
+- Resumen de cuenta (`account_statement`): PDF, Excel o CSV, reconocido por su contenido; tapado también de
+  CBU, CVU y alias; ingresos, egresos y transferencias con su dirección (instrucciones versión 9).
+- Lo ya cargado sale como repetido y sin marcar: así se resuelve la misma compra por dos vías.
+- Saldo de cada cuenta (saldo inicial más los movimientos confirmados desde ese día) y control contra el
+  saldo final del resumen, con la opción de usar su saldo inicial.
+
+Falta: un Excel viejo (`.xls`) se rechaza con aviso; leerlo pediría otra librería.
 
 ## Usuarios (13/10/2026)
 
@@ -188,7 +212,6 @@ Falta:
 - Seguir ajustando las instrucciones (`backend/src/providers/ai/prompt.ts`) con documentos reales: las
   capturas de MercadoPago con listas superpuestas son el caso más difícil.
 - Elegir el modelo: hoy el valor por defecto es `gemini-3.5-flash-lite`; se cambia con `GEMINI_MODEL`.
-- Lista de reglas y de documentos confirmados en Más (la API ya existe).
 - Medir memoria y tiempo en Render gratuito.
 
 ### Consumo por producto (hecho)
@@ -213,7 +236,8 @@ copiado, exports sin uso y números sueltos, y el lint rechaza textos escritos e
 sigue en esta lista es lo que esos controles no cubren.
 
 - **Las pantallas no tienen pruebas automáticas.** Las reglas del backend y sus rutas HTTP sí. Las pantallas
-  de las etapas 1 a 3 se recorrieron a mano el 13/10/2026 con `npm run demo`: flujo y textos, no el aspecto.
+  se recorrieron a mano con `npm run demo` el 13/10/2026 (etapas 1 a 3) y el 17/10/2026 (lo nuevo): flujo y
+  textos, no el aspecto.
   Sin recorrer: un ticket en otra moneda (el cambio), el alta de cuotas a mano, Bancos y tarjetas, y las
   descargas. Un error visual lo encuentra el usuario.
 - **Las consultas a MongoDB no tienen pruebas.** Las pruebas corren sobre repositorios en memoria; lo que
@@ -231,6 +255,8 @@ sigue en esta lista es lo que esos controles no cubren.
 - **La sesión se guarda en el navegador** (`localStorage`). Es lo habitual en una app de este tipo; el
   riesgo se acota con el vencimiento a 30 días y con "cerrar sesión en todos los dispositivos".
 - **Sin aviso de errores.** Si el servidor falla, solo queda en los registros de Render.
+- **Una prueba tarda 5 segundos** (`statement.test.ts`, el PDF con demasiado texto): no se midió por qué. Ya
+  tardaba eso antes del 17/10/2026; no afecta a la app.
 
 ## Etapa 3: tarjetas, cuotas y duplicados
 

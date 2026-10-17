@@ -374,4 +374,4 @@ permitir la sugerencia.
 
 ## Por venir
 
-La unión de una misma compra cargada por dos vías (ticket y resumen), cuando se defina el margen de días.
+Una segunda hoja, "Productos", en `/spreadsheet/export?format=xlsx` (ver `IMPORTACION_EXPORTACION.md`).

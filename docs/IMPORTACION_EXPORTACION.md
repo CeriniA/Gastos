@@ -51,17 +51,43 @@ escribe estas columnas y la importación las lee, así que un archivo exportado 
 5. **Confirmación.** Entran todas las filas válidas juntas, o ninguna: si una falla al guardar, no queda
    media importación.
 
+Un resumen que un banco o una app deja bajar en Excel o CSV **no se importa por acá**: cada banco arma sus
+columnas distinto. Va por **Agregar → Leer un resumen**, donde la IA lo entiende y se revisa como cualquier
+documento (ver `ESPECIFICACION.md`, sección 6).
+
 Las **cuentas no se crean solas**: hay que crearlas antes o apuntarlas a una existente, porque el archivo no dice si son tarjeta,
 banco o efectivo, y eso cambia cómo se calcula la fecha de pago.
 
 ### Lo que la planilla no conserva
 
 - Un movimiento dividido entre categorías se exporta como una fila por parte.
-- No incluye borradores, proyectados, papelera, reglas, fijos, tasas de cambio ni períodos de tarjeta.
+- No incluye borradores, proyectados, papelera, reglas, fijos, tasas de cambio, saldos iniciales ni
+  períodos de tarjeta.
 - La cuota se guarda como dato (`3/6`) sin vincularla a un plan.
-- Los productos de cada movimiento no van en la planilla.
+- Los productos de cada movimiento no van en la planilla (pendiente: ver "Hoja de productos" abajo).
 
 Para una copia exacta, usar el respaldo.
+
+### Pendiente: hoja de productos
+
+Pedido del usuario el 17/10/2026, todavía sin programar. La exportación a Excel sumaría una segunda hoja,
+**Productos**, con una fila por producto de cada compra:
+
+| Columna      | Ejemplo        | De dónde sale                                  |
+| ------------ | -------------- | ---------------------------------------------- |
+| Fecha        | `2026-10-05`   | La fecha de la compra                          |
+| Comercio     | `Coto`         | La descripción del movimiento                  |
+| Producto     | `Leche`        | El nombre genérico                             |
+| En el ticket | `LECHE ENT 1L` | El texto del renglón                           |
+| Grupo        | `Lácteos`      | El grupo, en español                           |
+| Cantidad     | `2`            | Vacía si el ticket no la dice                  |
+| Monto        | `2400,00`      | Negativo en una devolución, como en el Consumo |
+| Moneda       | `ARS`          | La del movimiento                              |
+
+- La primera hoja no cambia: la importación lee solo la primera hoja, así que un archivo exportado se
+  sigue pudiendo volver a importar. Los productos no se importan.
+- El CSV queda como está: un CSV tiene una sola tabla.
+- Mismo rango de fechas que la exportación de movimientos; solo movimientos confirmados.
 
 ## Respaldo completo
 

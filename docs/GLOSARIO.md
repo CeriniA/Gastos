@@ -99,3 +99,4 @@ Cada concepto con su nombre en pantalla y en el código. Usar siempre estos tér
 | Saldo inicial                                                       | `openingBalance`                                             | `{ amountCents, date }`: lo que tenía la cuenta ese día                           |
 | Saldo (de una cuenta)                                               | `AccountBalance` / `balance`                                 | Saldo inicial más los movimientos confirmados desde ese día                       |
 | Control del saldo                                                   | `BalanceCheck`                                               | En la revisión: el saldo del resumen contra el de la app                          |
+| Límite diario de IA (la pieza que lo controla)                      | `aiAllowance` / `takeAiReading`                              | Se arma antes que los servicios; la cuenta del día vive en `users`                |

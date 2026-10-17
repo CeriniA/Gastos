@@ -42,7 +42,8 @@ Un movimiento es un **ingreso**, un **egreso** o una **transferencia**.
   partes tienen que sumar el total.
 - No se aceptan fechas futuras, salvo en movimientos proyectados (cuotas futuras, etapa 3).
 
-Estados: `confirmado` (cuenta en los informes) y `proyectado` (cuota o fijo futuro). Lo que lee la IA no
+Estados: `confirmado` (cuenta en los informes) y `proyectado` (cuota futura). Lo que se espera de un
+movimiento fijo no se guarda como movimiento: la proyección lo calcula (sección 10). Lo que lee la IA no
 es un movimiento hasta que se confirma: mientras tanto vive en su documento. El estado `borrador` existe
 en el código pero no se usa.
 
@@ -146,8 +147,8 @@ fuerza nada: queda la sugerencia de la IA.
   espera queda como error, con la foto guardada para reintentar a mano. El servidor gratuito se duerme
   sin uso: dormido no reintenta, y retoma al volver a abrir la app.
 - A la IA se le pide que no devuelva números de tarjeta ni datos personales.
-- **Resumen de tarjeta en PDF**, en dos pasos. Primero el servidor saca el texto del PDF (hasta 20 páginas;
-  si tiene contraseña, se escribe y no se guarda) y tapa con `***` lo que reconoce: números de tarjeta y
+- **Resumen de tarjeta**, en dos pasos. Primero el servidor saca el texto del archivo: un PDF de hasta 20
+  páginas (si tiene contraseña, se escribe y no se guarda), un Excel (`.xlsx`) o un CSV y tapa con `***` lo que reconoce: números de tarjeta y
   de cuenta, DNI, CUIT, mails y lo que sigue a "Titular:", "Domicilio:", "Teléfono:". No guarda nada. El
   usuario lee el texto, lo corrige y agrega palabras para tapar siempre (su nombre, su calle), que se
   recuerdan solo en su teléfono. Recién cuando aprieta "Mandar a la IA" se guarda ese texto y se lee como
@@ -181,14 +182,14 @@ fuerza nada: queda la sugerencia de la IA.
 
 ## 7. Duplicados (etapa 3; detección simple en la importación desde la etapa 1)
 
-| Caso                                                                                                                   | Tratamiento                                                                                                  |
-| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| El mismo archivo subido dos veces                                                                                      | Se rechaza por la huella                                                                                     |
-| La misma compra por dos vías (ticket y resumen)                                                                        | Coincidencia por monto, fecha cercana y cuenta: la app propone unirlos                                       |
-| Pago de la tarjeta                                                                                                     | Transferencia, no egreso                                                                                     |
-| Fila de planilla igual a un movimiento existente                                                                       | Se marca en la vista previa y se excluye salvo que el usuario la incluya                                     |
-| Movimiento leído de un documento con la misma fecha, monto y moneda que uno ya cargado, o que otro del mismo documento | En la revisión aparece con un aviso y sin marcar; el usuario lo tilda si es otro                             |
-| Fotos o capturas que se superponen                                                                                     | Subidas juntas ("partes de un mismo ticket" o "de una misma lista"), la IA informa cada renglón una sola vez |
+| Caso                                                                                                                   | Tratamiento                                                                                                                                              |
+| ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| El mismo archivo subido dos veces                                                                                      | Se rechaza por la huella                                                                                                                                 |
+| La misma compra por dos vías (ticket y resumen)                                                                        | Es el caso de la fila de abajo: mismo día, monto y moneda, en cualquier cuenta. Sale sin marcar y queda el del ticket, con sus productos. No se une nada |
+| Pago de la tarjeta                                                                                                     | Transferencia, no egreso                                                                                                                                 |
+| Fila de planilla igual a un movimiento existente                                                                       | Se marca en la vista previa y se excluye salvo que el usuario la incluya                                                                                 |
+| Movimiento leído de un documento con la misma fecha, monto y moneda que uno ya cargado, o que otro del mismo documento | En la revisión aparece con un aviso y sin marcar; el usuario lo tilda si es otro                                                                         |
+| Fotos o capturas que se superponen                                                                                     | Subidas juntas ("partes de un mismo ticket" o "de una misma lista"), la IA informa cada renglón una sola vez                                             |
 
 ## 8. Tarjetas y cuotas (etapa 3)
 
@@ -327,22 +328,23 @@ detalle o con productos cargados a mano; un pago de MercadoPago sin detalle no a
 
 Diseño para celular primero. Barra inferior: **Inicio, Movimientos, +, Informes, Más**.
 
-| Pantalla                 | Qué muestra                                                                        | Etapa |
-| ------------------------ | ---------------------------------------------------------------------------------- | ----- |
-| Login                    | Usuario y contraseña; aviso si el servidor está despertando                        | 1     |
-| Inicio                   | Balance del mes por moneda, últimos movimientos                                    | 1     |
-| Movimientos              | Lista por mes con buscador y filtros; tocar uno lo edita                           | 1     |
-| Agregar                  | Carga manual (etapa 1); foto o archivo (etapa 2)                                   | 1 y 2 |
-| Más                      | Cuentas, tarjetas, categorías, bancos, etiquetas, papelera, respaldo e importación | 1 y 3 |
-| Contraseña               | En Más: cada usuario cambia la suya                                                | 1     |
-| Usuarios                 | En Más, solo para el administrador: crear, editar, cambiar contraseña, desactivar  | 1     |
-| Pendientes               | Bandeja única de todo lo que espera una decisión                                   | 2     |
-| Revisión                 | Imagen y datos extraídos                                                           | 2     |
-| Tarjetas                 | Compras desde el último cierre, cada resumen con lo cargado, alta de cierres       | 3     |
-| Movimientos fijos        | En Más: cada fijo y cómo está este mes, sugerencias, los marcados como no fijos    | 4     |
-| Tasas de cambio          | En Más: pesos por dólar desde cada día, para ver los informes en una moneda        | 4     |
-| Privacidad y condiciones | `/privacidad` y `/condiciones`: páginas públicas, se leen sin iniciar sesión       | 1     |
-| Informes                 | Ver sección 10                                                                     | 4     |
+| Pantalla                 | Qué muestra                                                                       | Etapa |
+| ------------------------ | --------------------------------------------------------------------------------- | ----- |
+| Login                    | Usuario y contraseña; aviso si el servidor está despertando                       | 1     |
+| Inicio                   | Balance del mes por moneda, últimos movimientos                                   | 1     |
+| Movimientos              | Lista por mes con buscador y filtros; tocar uno lo edita                          | 1     |
+| Agregar                  | Carga manual; foto o captura; resumen de tarjeta o de cuenta (PDF, Excel o CSV)   | 1 a 4 |
+| Más                      | Cuentas, tarjetas, fijos, categorías, bancos, etiquetas, tasas, papelera, datos   | 1 a 4 |
+| Cuentas                  | En Más: cada cuenta con su saldo de hoy; su saldo inicial se edita                | 1 y 4 |
+| Contraseña               | En Más: cada usuario cambia la suya                                               | 1     |
+| Usuarios                 | En Más, solo para el administrador: crear, editar, cambiar contraseña, desactivar | 1     |
+| Pendientes               | Bandeja única de todo lo que espera una decisión                                  | 2     |
+| Revisión                 | Imagen y datos extraídos                                                          | 2     |
+| Tarjetas                 | Compras desde el último cierre, cada resumen con lo cargado, alta de cierres      | 3     |
+| Movimientos fijos        | En Más: cada fijo y cómo está este mes, sugerencias, los marcados como no fijos   | 4     |
+| Tasas de cambio          | En Más: pesos por dólar desde cada día, para ver los informes en una moneda       | 4     |
+| Privacidad y condiciones | `/privacidad` y `/condiciones`: páginas públicas, se leen sin iniciar sesión      | 1     |
+| Informes                 | Ver sección 10                                                                    | 4     |
 
 Toda pantalla contempla: cargando, lista vacía con indicación de qué hacer, error con reintento y
 servidor despertando.
@@ -351,27 +353,27 @@ servidor despertando.
 
 MongoDB. Los nombres están en inglés; ver `GLOSARIO.md`.
 
-| Colección          | Guarda                                       | Apunta a                                                                                       | Etapa |
-| ------------------ | -------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----- |
-| `accounts`         | Cuentas                                      |                                                                                                | 1     |
-| `categories`       | Árbol de categorías                          | `categories` (padre)                                                                           | 1     |
-| `tags`             | Etiquetas                                    |                                                                                                | 1     |
-| `transactions`     | Movimientos, con ítems y divisiones adentro  | `accounts`, `categories`, `tags`, `documents`, `installmentPlans`, `cardPeriods`, `recurrings` | 1     |
-| `documents`        | Archivos subidos y su extracción             | `accounts`                                                                                     | 2     |
-| `categoryRules`    | Comercio → categoría                         | `categories`                                                                                   | 2     |
-| `installmentPlans` | Compras en cuotas                            | `accounts`                                                                                     | 3     |
-| `cardPeriods`      | Períodos de tarjeta                          | `accounts`, `documents`                                                                        | 3     |
-| `recurrings`       | Movimientos fijos, y comercios que no lo son | `accounts`, `categories`                                                                       | 4     |
-| `exchangeRates`    | Tasas de cambio por fecha                    |                                                                                                | 4     |
-| `migrations`       | Migraciones ya aplicadas                     |                                                                                                | 1     |
-| `users`            | Quién puede entrar, y su permiso de Drive    |                                                                                                | 1     |
+| Colección          | Guarda                                             | Apunta a                                                                                       | Etapa |
+| ------------------ | -------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----- |
+| `accounts`         | Cuentas, con su saldo inicial                      |                                                                                                | 1     |
+| `categories`       | Árbol de categorías                                | `categories` (padre)                                                                           | 1     |
+| `tags`             | Etiquetas                                          |                                                                                                | 1     |
+| `transactions`     | Movimientos, con ítems y divisiones adentro        | `accounts`, `categories`, `tags`, `documents`, `installmentPlans`, `cardPeriods`, `recurrings` | 1     |
+| `documents`        | Archivos subidos y su extracción                   | `accounts`                                                                                     | 2     |
+| `categoryRules`    | Comercio → categoría                               | `categories`                                                                                   | 2     |
+| `installmentPlans` | Compras en cuotas                                  | `accounts`                                                                                     | 3     |
+| `cardPeriods`      | Períodos de tarjeta                                | `accounts`, `documents`                                                                        | 3     |
+| `recurrings`       | Movimientos fijos, y comercios que no lo son       | `accounts`, `categories`                                                                       | 4     |
+| `exchangeRates`    | Tasas de cambio por fecha                          |                                                                                                | 4     |
+| `migrations`       | Migraciones ya aplicadas                           |                                                                                                | 1     |
+| `users`            | Quién entra, su permiso de Drive y su límite de IA |                                                                                                | 1     |
 
 Todas las colecciones, salvo `migrations` y `users`, guardan datos de un usuario: cada documento lleva su
 dueño (`userId`) y lo que no puede repetirse (el nombre de una cuenta, una regla por comercio) es único
 dentro de los datos de cada usuario. `users` no entra en ningún respaldo.
 
-Los modelos de las etapas 2 a 4 ya existen para que el respaldo tenga un formato estable; sus servicios
-y pantallas se escriben en su etapa.
+Todos los modelos tienen servicio y pantalla desde el 17/10/2026. Se crearon antes que sus pantallas para que
+el respaldo tuviera un formato estable desde el principio.
 
 Los ítems y las divisiones van **dentro** del movimiento: no existen sin él y no pueden quedar sueltos.
 
@@ -380,7 +382,7 @@ Los ítems y las divisiones van **dentro** del movimiento: no existen sin él y 
 | Se borra                          | Resultado                                                                     |
 | --------------------------------- | ----------------------------------------------------------------------------- |
 | Categoría con movimientos o hijas | Bloqueado: se archiva, o se une con otra                                      |
-| Cuenta con movimientos            | Bloqueado: se archiva                                                         |
+| Cuenta con movimientos            | Bloqueado: se archiva. También con cierres, planes de cuotas o fijos          |
 | Etiqueta                          | Se quita de todos sus movimientos en la misma operación                       |
 | Movimiento                        | Va a la papelera 30 días; se puede recuperar, o borrar del todo desde ahí     |
 | Documento (etapa 2)               | Pregunta: borrar sus movimientos o conservarlos como manuales                 |
@@ -408,9 +410,15 @@ Todas se aplican en el backend; el frontend las repite para avisar antes.
 - División: las partes suman el total.
 - Cuota: el número no supera el total.
 - Nombres únicos dentro de los datos de cada usuario: cuenta, etiqueta y categoría entre hermanas (sin
-  distinguir mayúsculas ni acentos). El nombre de usuario es único en toda la app.
+  distinguir mayúsculas ni acentos); un fijo, entre los de su mismo tipo y moneda. El nombre de usuario es
+  único en toda la app.
+- Saldo inicial: un monto (con signo: negativo es deuda) y un día; los dos o ninguno.
+- Tasa de cambio: mayor que cero; dos no empiezan el mismo día.
 - Contraseña nueva: al menos 8 caracteres.
-- Archivo: tipo y tamaño permitidos (5 MB), huella no repetida.
+- Archivo: tipo y tamaño permitidos (5 MB), huella no repetida. Un resumen se reconoce por su contenido,
+  no por el nombre: PDF (hasta 20 páginas), Excel `.xlsx` (hasta 5000 filas) o CSV, y hasta 100.000
+  caracteres de texto. Un Excel viejo (`.xls`) se rechaza con el pedido de guardarlo como `.xlsx` o CSV.
+- Lectura con IA: hasta el límite diario de cada usuario (sección 17).
 
 ## 16. Integridad
 

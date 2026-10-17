@@ -1,12 +1,13 @@
 # Gastos
 
 App web personal para llevar ingresos y egresos: carga manual, fotos de tickets, capturas de
-MercadoLibre/MercadoPago y resúmenes de tarjeta leídos con IA, en pesos y dólares.
+MercadoLibre/MercadoPago y resúmenes de tarjeta, de bancos y de apps leídos con IA, en pesos y dólares.
 
 Qué hace hoy (el detalle, en `docs/ROADMAP.md`):
 
 - Varios usuarios, cada uno con sus propios datos: nadie ve los de otro. Un administrador crea los
-  usuarios; cada uno cambia su contraseña.
+  usuarios, les cambia el nombre y el tipo y les fija cuántos documentos mandan a leer por día; cada uno
+  cambia su contraseña.
 - Cuentas, categorías en árbol, etiquetas, bancos y marcas de tarjeta; movimientos manuales con división
   entre categorías, productos, buscador, filtros y papelera.
 - Lectura de tickets y capturas con IA (Gemini), con revisión antes de guardar, conversión de otras
@@ -14,16 +15,22 @@ Qué hace hoy (el detalle, en `docs/ROADMAP.md`):
 - Consumo por producto.
 - Tarjetas: cierres y vencimientos cargados a mano, fecha de pago calculada por el resumen y compras en
   cuotas.
-- Resúmenes de tarjeta en PDF: el texto, con los datos personales tapados y aprobado por el usuario, va a la
-  IA; los cierres se guardan con las compras (sin probar todavía con un resumen real).
+- Resúmenes de tarjeta y de cuenta (banco, MercadoPago, una app) en PDF, Excel o CSV: el texto, con los
+  datos personales tapados y aprobado por el usuario, va a la IA. De la tarjeta se guardan los cierres con
+  las compras; de una cuenta, la app compara su saldo final con el propio (sin probar todavía con
+  resúmenes reales).
+- Saldo de cada cuenta, desde un saldo inicial.
 - Devoluciones que restan en su categoría; cuotas leídas de un resumen que crean las que faltan.
 - Copia automática del respaldo de cada usuario en su propio Google Drive, una vez por día. Google se
   configura una vez (`docs/RESPALDO_DRIVE.md`) y cada usuario conecta su Drive desde la app.
 - Pago de la tarjeta como transferencia ligada a su resumen, con lo pagado y lo que falta.
-- Informe del mes por categoría, de ingresos y egresos.
+- Informes: por categoría, por cuenta, mes por mes, por comercio, consumo y la proyección de los próximos
+  meses, cada moneda aparte o todo en pesos o en dólares con tasas de cambio cargadas a mano.
+- Movimientos fijos: la app los sugiere, el usuario los marca, y avisa si uno no apareció o cambió mucho.
 - Balance del mes por moneda, respaldo completo, exportación e importación de planillas.
 
-Falta: el resto de los informes (por cuenta, evolución mensual, comercios) y movimientos fijos.
+Falta: la hoja de productos en la exportación a Excel (`docs/IMPORTACION_EXPORTACION.md`) y probar todo con
+resúmenes reales. Lo de la segunda versión está en `docs/ROADMAP.md`.
 
 ## Stack
 
@@ -111,7 +118,8 @@ npm run dev:frontend
 No usa `backend/.env` ni la base: arranca con un administrador que tiene categorías, cuentas y algunos
 movimientos inventados. Su usuario y contraseña están en `backend/memory.env`; desde Más → Usuarios podés
 crear otros y comprobar que no ven nada de él. La IA, el lector de PDF y Google Drive son de mentira:
-cualquier foto o PDF que subas "lee" la misma respuesta inventada, y conectar Drive sale bien en el acto.
+cualquier foto o resumen que subas "lee" la misma respuesta inventada (una por tipo de documento), y
+conectar Drive sale bien en el acto. Un CSV o un Excel se pasa a texto de verdad.
 
 ## Publicar en Render
 
@@ -122,6 +130,8 @@ cualquier foto o PDF que subas "lee" la misma respuesta inventada, y conectar Dr
    - `AUTH_USERNAME` y `AUTH_PASSWORD_HASH`: el primer usuario, un administrador. Solo se leen la primera
      vez; después los usuarios y las contraseñas se manejan desde la app.
    - `GEMINI_API_KEY`: la clave de Google AI Studio. Sin ella la app funciona, pero no lee fotos.
+   - `AI_DAILY_READINGS` (opcional, 30 si no está): cuántos documentos manda a leer cada usuario por día.
+     El administrador le puede dar otro límite a cada uno desde Más → Usuarios.
    - `DRIVE_CLIENT_ID`, `DRIVE_CLIENT_SECRET` y `PUBLIC_API_URL`: la copia automática en Google Drive
      (`docs/RESPALDO_DRIVE.md`). Sin las tres, el respaldo es solo manual.
    - `CORS_ORIGIN`: la dirección del sitio estático (`https://gastos-web.onrender.com` o la que asigne Render).

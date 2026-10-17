@@ -52,6 +52,7 @@ src/
   providers/ai/        Interfaz del lector de documentos y sus implementaciones
   providers/pdf/       Interfaz del lector de texto de PDF y su implementación (unpdf)
   providers/drive/     Dónde se guarda la copia automática del respaldo (Google Drive, por HTTPS)
+  providers/rates/     Cotización pública de referencia para comprobantes en otra moneda
   migrations/          Cambios numerados sobre datos guardados
   wiring.ts            Donde se conectan los servicios entre sí (sin base de datos)
   container.ts         Usuarios, sesiones, respaldo y Drive armados sobre esos servicios
@@ -165,9 +166,21 @@ devuelve una extracción con el formato de `extractionResultSchema`. Gemini es u
 de proveedor es escribir otra y cambiar una línea en `composition.ts`. Lo que devuelve se valida igual que
 cualquier otra entrada.
 
-Los PDF siguen la misma idea con `PdfTextReader` (`providers/pdf/`): da el texto de cada página. El tapado
+Los PDF siguen la misma idea con `PdfTextReader` (`providers/pdf/`): da el texto de cada página. Un resumen
+puede llegar también en Excel o CSV: `modules/documents/statementFile.ts` reconoce el archivo por sus
+primeros bytes y lo pasa a texto; el Excel lo lee `readWorkbook` del módulo `spreadsheet`, que el módulo de
+documentos recibe en `wiring.ts` como cualquier otra dependencia. El tapado
 de datos personales (`shared/src/redaction.ts`) corre en el servidor antes de mostrar el texto, y las
 palabras que el usuario tapa se aplican en el teléfono; a la IA solo llega el texto aprobado.
+
+### Límite de lectura con IA
+
+Cada usuario manda a leer una cantidad de documentos por día (`AI_DAILY_READINGS`, o la que le dé el
+administrador). Lo controla `modules/users/aiAllowance.ts`, que solo necesita el repositorio de usuarios y
+la fecha. Por eso `composition.ts` (y `testing/memoryApp.ts`) lo arman **antes** que los servicios: el de
+documentos lo recibe como `takeAiReading` y el de usuarios lo usa para mostrar cuántas lleva cada uno. Nada
+depende de una variable que se asigna después del armado. La cuenta del día vive en `users`, no en los datos
+del usuario: no entra en el respaldo.
 
 ## Frontend
 
@@ -223,6 +236,13 @@ Corren con el ejecutor de pruebas de Node (`npm test`), sin base de datos ni red
   usuarios que no ven nada del otro: ni listas, ni un dato pedido por su id, ni su respaldo, ni su Drive.
 - `core/db/ownerPlugin.test.ts`: el filtro por dueño sobre Mongoose de verdad, sin base: cada tipo de
   consulta queda acotada al usuario, y sin usuario no hay consulta.
+- Informes (`modules/reports/reports.service.test.ts`): por categoría, por cuenta, mes por mes, por comercio,
+  todo en una moneda y la proyección. Fijos (`modules/recurrings/recurrings.service.test.ts`): sugerencias,
+  marca, estado del mes, nombres por tipo y moneda.
+- Resúmenes de cuenta y saldos (`modules/documents/accountStatement.test.ts`): PDF, Excel y CSV, tapado,
+  dirección de las transferencias y saldo desde el saldo inicial. La lectura de la respuesta de la IA, en
+  `providers/ai/normalize.test.ts`.
+- Usuarios (`modules/users/users.service.test.ts`): renombrar, cambiar el tipo y el límite diario de IA.
 - Usuarios y sesiones (`modules/auth/auth.service.test.ts`), el cifrado (`core/crypto/crypto.test.ts`) y
   la copia a Drive de cada usuario (`modules/backup/driveBackup.test.ts`).
 
