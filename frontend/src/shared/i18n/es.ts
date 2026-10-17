@@ -207,7 +207,7 @@ export const es = {
     openingAmount: 'Monto',
     openingDate: 'Al día',
     openingHint:
-      'Lo que tenía la cuenta ese día, según el banco o la app. Desde ahí la app suma y resta tus movimientos. En una tarjeta, lo que debés va con signo menos. Vacío: cuenta desde cero.',
+      'Lo que tenía la cuenta al empezar ese día, antes de sus movimientos, según el banco o la app. Desde ahí la app suma y resta tus movimientos, los de ese día incluidos. En una tarjeta, lo que debés va con signo menos. Vacío: cuenta desde cero.',
     openingInvalid: 'Escribí el monto (con signo menos si es deuda) y el día.',
     title: 'Cuentas',
     empty: 'Todavía no hay cuentas. Creá la primera para empezar a cargar movimientos.',

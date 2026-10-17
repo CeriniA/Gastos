@@ -282,7 +282,8 @@ Resumen de cuenta (`account_statement`): trae ingresos, egresos y transferencias
 trae `fromDate`, `toDate`, `openingBalanceCents` y `closingBalanceCents` (con signo) y `currency`; los campos
 de tarjeta vienen en `null`.
 
-**Saldo de una cuenta.** `openingBalance` es `{ amountCents, date }` (con signo: negativo es deuda) o `null`.
+**Saldo de una cuenta.** `openingBalance` es `{ amountCents, date }` (con signo: negativo es deuda) o `null`:
+lo que tenía la cuenta al empezar `date`, antes de los movimientos de ese día.
 El saldo de un día es ese monto más los movimientos confirmados desde `date` hasta ese día, incluidos: los
 ingresos y lo que llega suman; los egresos y lo que sale restan; una devolución devuelve. Sin saldo inicial
 cuenta desde cero, con todos los movimientos. Las cuotas proyectadas y la papelera no entran. Se calcula,

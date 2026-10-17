@@ -93,8 +93,9 @@ Una tarjeta con saldo en pesos y en dólares son **dos cuentas** (por ejemplo "V
 mismo banco y marca. Comparten cierres: al cargar uno, la app ofrece aplicarlo a las dos.
 
 **Saldo (hecho, 17/10/2026).** Más → Cuentas muestra el saldo de hoy de cada cuenta. Cada una puede tener un
-**saldo inicial**: lo que tenía un día según el banco o la app (en una tarjeta, lo que se debe, con signo
-menos). El saldo es ese monto más los movimientos confirmados desde ese día: los ingresos y las
+**saldo inicial**: lo que tenía al empezar un día, antes de sus movimientos, según el banco o la app (en una
+tarjeta, lo que se debe, con signo menos). El saldo es ese monto más los movimientos confirmados desde ese
+día, los de ese día incluidos: los ingresos y las
 transferencias que llegan suman, los egresos y las que salen restan, y una devolución devuelve. Sin saldo
 inicial, la cuenta arranca en cero con su primer movimiento. Las cuotas proyectadas y la papelera no
 cuentan. Se calcula, no se guarda. Al revisar un resumen de cuenta, la app compara este saldo con el del
