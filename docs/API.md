@@ -26,6 +26,7 @@ Los esquemas de entrada y los tipos de salida están en `shared/src/schemas/`.
 | `PAYLOAD_TOO_LARGE`   | 413  | Archivo o pedido demasiado grande                                                                                                      |
 | `RATE_LIMITED`        | 429  | Demasiados intentos de login                                                                                                           |
 | `AI_PROVIDER`         | 502  | Falló el servicio de lectura (etapa 2)                                                                                                 |
+| `AI_LIMIT`            | 429  | El usuario ya mandó a leer todos los documentos que puede hoy                                                                          |
 | `INTERNAL`            | 500  | Error inesperado                                                                                                                       |
 
 ## Estado y acceso
@@ -45,13 +46,22 @@ usuario del token**: pedir por su id un dato de otro usuario responde `NOT_FOUND
 | Método | Ruta                 | Descripción                                                                                                          |
 | ------ | -------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | POST   | `/users/me/password` | `{ currentPassword, newPassword }`. Cualquier usuario. Cierra sus sesiones: responde `204` y hay que volver a entrar |
-| GET    | `/users`             | **Solo administrador.** `[{ id, username, role, active, createdAt }]`                                                |
+| GET    | `/users`             | **Solo administrador.** `[{ id, username, role, active, aiDailyLimit, aiLimit, aiReadingsToday, createdAt }]`        |
 | POST   | `/users`             | **Solo administrador.** `{ username, password, role? }` (`role`: `user` por defecto, o `admin`)                      |
-| PATCH  | `/users/:id`         | **Solo administrador.** `{ password?, active? }`. Las dos cierran las sesiones de ese usuario                        |
+| PATCH  | `/users/:id`         | **Solo administrador.** `{ username?, role?, password?, active?, aiDailyLimit? }`. Ver abajo                         |
 
 Quien no es administrador recibe `FORBIDDEN`. La contraseña nueva tiene al menos 8 caracteres. Un nombre de
-usuario repetido (sin distinguir mayúsculas ni acentos) responde `DUPLICATE`; desactivarse a uno mismo,
-`CONFLICT`. No hay ruta para borrar un usuario ni para ver sus datos.
+usuario repetido (sin distinguir mayúsculas ni acentos) responde `DUPLICATE`; desactivarse a uno mismo o
+cambiarse el propio tipo, `CONFLICT`: así siempre queda un administrador. Una contraseña nueva y desactivar
+cierran las sesiones de ese usuario; renombrarlo o cambiarle el tipo, no (el tipo vale desde el pedido
+siguiente). No hay ruta para borrar un usuario ni para ver sus datos.
+
+**Lecturas con IA por día.** Cada documento que se manda a leer (`POST /documents`, `POST /documents/statement`
+y `POST /documents/:id/retry`) cuenta uno para el usuario. Pasado su límite responde `AI_LIMIT` (429) y no
+se guarda nada; al día siguiente vuelve a cero. El límite es `aiDailyLimit` del usuario, o, si es `null`, el
+de la instalación (`AI_DAILY_READINGS`, 30 si no se configura); `aiLimit` es el que rige. `0` deja al
+usuario sin IA. Volver a subir un documento que todavía se está leyendo no cuenta, y los reintentos solos
+cuando la IA no tiene cupo tampoco.
 
 ## Cuentas
 
@@ -283,9 +293,13 @@ del ticket, `product` el nombre genérico en español ("Leche"), `group` uno de 
 
 ## Informes
 
-| Método | Ruta                                | Qué hace                                                                      |
-| ------ | ----------------------------------- | ----------------------------------------------------------------------------- |
-| GET    | `/reports/categories?month=YYYY-MM` | Ingresos y egresos del mes por categoría, por moneda: `{ month, currencies }` |
+| Método | Ruta                                      | Qué hace                                                                                                                                         |
+| ------ | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GET    | `/reports/categories?month=YYYY-MM`       | Ingresos y egresos del mes por categoría, por moneda: `{ month, currencies, consolidated }`                                                      |
+| GET    | `/reports/accounts?month=YYYY-MM`         | Por cuenta: `{ month, accounts: [{ accountId, name, currency, incomeCents, expenseCents, transfersInCents, transfersOutCents }], consolidated }` |
+| GET    | `/reports/evolution?to=YYYY-MM&months=12` | Mes por mes, del más viejo al último: `{ months: [{ month, totals }], consolidated }`. `months` de 1 a 36                                        |
+| GET    | `/reports/merchants?month=YYYY-MM`        | Egresos por comercio: por moneda, `{ currency, totalCents, merchants: [{ name, totalCents, count }], othersCents }`                              |
+| GET    | `/reports/projection`                     | Este mes y los dos siguientes: lo cargado más lo esperado (cuotas por venir y fijos sin aparecer)                                                |
 
 Cada moneda trae `income` y `expense`, cada uno con `totalCents` y `categories`: las categorías principales
 con algo en el mes, de mayor a menor. Cada categoría es `{ categoryId, name, totalCents, children }`, donde
@@ -294,7 +308,52 @@ con algo en el mes, de mayor a menor. Cada categoría es `{ categoryId, name, to
 Cuenta lo mismo que `/transactions/summary`: movimientos confirmados, por fecha de pago, sin transferencias
 ni papelera. Un movimiento dividido suma cada parte a su categoría y una devolución resta de la suya.
 
+Todos los informes cuentan igual: por fecha de pago, las devoluciones restan, las transferencias no son
+ingreso ni egreso. Comercio es la descripción del egreso, sin distinguir mayúsculas ni acentos; los 20 más
+grandes van uno por uno y el resto (y lo que no tiene descripción) en `othersCents`.
+
+**Todo en una moneda.** Con `in=ARS` o `in=USD` cada informe muestra todo en esa moneda: cada movimiento se
+convierte con la tasa del usuario vigente el día del movimiento (la última que empezó ese día o antes).
+`consolidated` es entonces `{ currency, leftOut }`: los movimientos que quedaron afuera porque ninguna tasa
+cubre su día. Sin `in`, `consolidated` es `null` y cada moneda va por separado.
+
+**Proyección.** Cada mes trae `currencies` (`confirmedIncomeCents`, `confirmedExpenseCents`,
+`expectedIncomeCents`, `expectedExpenseCents`, `balanceCents`) y `entries`: lo esperado, cada uno
+`{ kind: installment | recurring, type, name, installment, date, cents, currency }`. Lo cargado incluye
+las compras con tarjeta que se pagan en ese mes.
+
+## Tasas de cambio
+
+| Método | Ruta                  | Qué hace                                                   |
+| ------ | --------------------- | ---------------------------------------------------------- |
+| GET    | `/exchange-rates`     | Las del usuario, de la más vieja a la más nueva            |
+| POST   | `/exchange-rates`     | `{ validFrom: YYYY-MM-DD, arsPerUsd }`. Vale desde ese día |
+| PATCH  | `/exchange-rates/:id` | `{ validFrom, arsPerUsd }`                                 |
+| DELETE | `/exchange-rates/:id` | Se borra; los informes dejan de usarla                     |
+
+Dos tasas no pueden empezar el mismo día: `DUPLICATE`. Una tasa no cambia nada guardado.
+
+## Movimientos fijos
+
+| Método | Ruta                           | Qué hace                                                                                                         |
+| ------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| GET    | `/recurrings?month=YYYY-MM`    | `{ month, items, suggestions, ignored }`. Sin `month`, el mes actual                                             |
+| POST   | `/recurrings/from-transaction` | `{ transactionId, ignore? }`. Marca ese movimiento como fijo, o con `ignore: true` dice que su comercio no lo es |
+| PATCH  | `/recurrings/:id`              | `{ name?, expectedAmountCents?, dayOfMonth?, accountId?, categoryId?, active? }`                                 |
+| DELETE | `/recurrings/:id`              | Lo borra; sus movimientos quedan, solo pierden la marca                                                          |
+
+Cada `item` es `{ recurring, state, seenCents, expectedDate, transactionIds }`. `state`: `seen` (llegó),
+`changed` (llegó con más de un 20 % de diferencia), `late` (pasaron 5 días de su día y no llegó), `expected`
+(todavía no es su día) o `paused`. Un fijo se reconoce por los movimientos marcados con él y por los de su
+mismo tipo, moneda y descripción (sin distinguir mayúsculas ni acentos) que no tengan otra marca, según su
+fecha de pago. Una `suggestion` es `{ transactionId, name, type, amountCents, currency, months }`: un
+comercio pagado exactamente una vez por mes, por un monto parecido (20 %), al menos 3 meses seguidos que
+terminan este mes o el anterior. Ninguna se aplica sola: se acepta con `from-transaction`.
+
+Marcar un movimiento sin descripción, o una transferencia, responde `VALIDATION`. Si su comercio ya es un fijo,
+el movimiento se suma a ese. Un fijo marcado como "no es fijo" queda en `ignored`; borrarlo vuelve a
+permitir la sugerencia.
+
 ## Por venir
 
-Etapa 4: más informes en `/reports` (por cuenta, evolución mensual, comercios), `/recurrings`,
-`/exchange-rates`.
+La unión de una misma compra cargada por dos vías (ticket y resumen), cuando se defina el margen de días.

@@ -11,6 +11,7 @@ import {
   type LastRate,
   type Paginated,
   type ProductGroup,
+  type ReportRow,
   type Split,
   type Transaction,
   type TransactionItem,
@@ -501,12 +502,17 @@ export const transactionsRepository = {
         type: { $in: ['income', 'expense'] },
         paymentDate: { $gte: firstDayOfMonth(month), $lte: lastDayOfMonth(month) },
       },
-      { type: 1, refund: 1, currency: 1, amountCents: 1, categoryId: 1, splits: 1 },
+      { date: 1, type: 1, refund: 1, currency: 1, amountCents: 1, categoryId: 1, splits: 1 },
     ).lean<
-      Pick<TransactionDoc, 'type' | 'refund' | 'currency' | 'amountCents' | 'categoryId' | 'splits'>[]
+      Pick<
+        TransactionDoc,
+        '_id' | 'date' | 'type' | 'refund' | 'currency' | 'amountCents' | 'categoryId' | 'splits'
+      >[]
     >();
     return docs.flatMap((doc) =>
       filedAmounts({
+        id: doc._id.toString(),
+        date: doc.date,
         type: doc.type,
         refund: doc.refund ?? false,
         currency: doc.currency,
@@ -517,6 +523,77 @@ export const transactionsRepository = {
           amountCents: part.amountCents,
         })),
       }),
+    );
+  },
+
+  /**
+   * What the reports read of every live transaction paid in a range of days:
+   * the confirmed ones and the installments still to come.
+   */
+  async findReportRows(range: { from: string; to: string }): Promise<ReportRow[]> {
+    const docs = await TransactionModel.find(
+      {
+        deletedAt: null,
+        status: { $in: ['confirmed', 'projected'] },
+        paymentDate: { $gte: range.from, $lte: range.to },
+      },
+      {
+        type: 1,
+        refund: 1,
+        status: 1,
+        date: 1,
+        paymentDate: 1,
+        amountCents: 1,
+        currency: 1,
+        accountId: 1,
+        toAccountId: 1,
+        toAmountCents: 1,
+        description: 1,
+        recurringId: 1,
+        installment: 1,
+      },
+    )
+      .sort({ paymentDate: 1, date: 1 })
+      .lean<TransactionDoc[]>();
+    return docs.map((doc) => ({
+      id: doc._id.toString(),
+      type: doc.type,
+      refund: doc.refund ?? false,
+      status: doc.status,
+      date: doc.date,
+      paymentDate: doc.paymentDate,
+      amountCents: doc.amountCents,
+      currency: doc.currency,
+      accountId: doc.accountId.toString(),
+      toAccountId: idString(doc.toAccountId),
+      toAmountCents: doc.toAmountCents ?? null,
+      description: doc.description ?? '',
+      recurringId: idString(doc.recurringId),
+      installment: doc.installment
+        ? {
+            planId: idString(doc.installment.planId),
+            number: doc.installment.number,
+            total: doc.installment.total,
+          }
+        : null,
+    }));
+  },
+
+  /** Marks a transaction as one of a fixed item's, or takes the mark away. */
+  async setRecurring(id: string, recurringId: string | null, options: WriteOptions = {}): Promise<void> {
+    await TransactionModel.updateOne(
+      { _id: toObjectId(id) },
+      { $set: { recurringId: toObjectIdOrNull(recurringId) } },
+      { session: options.session },
+    );
+  },
+
+  /** Every transaction of a fixed item loses the mark, the trash included. */
+  async clearRecurring(recurringId: string, options: WriteOptions = {}): Promise<void> {
+    await TransactionModel.updateMany(
+      { recurringId: toObjectId(recurringId) },
+      { $set: { recurringId: null } },
+      { session: options.session },
     );
   },
 

@@ -1,4 +1,4 @@
-import type { User } from '@gastos/shared';
+import type { IsoDate, User } from '@gastos/shared';
 import { currentUserId, runAsUser } from './core/context/owner';
 import { createSecretBox } from './core/crypto/secretBox';
 import { createTicketOffice } from './core/crypto/signedTicket';
@@ -51,6 +51,10 @@ export interface ContainerParts {
   sessionDays: number;
   /** Tests lower it so they do not spend their time hashing. */
   passwordHashCost?: number;
+  /** Today's calendar day: the AI limit counts per day. */
+  today: () => IsoDate;
+  /** Documents a user sends to the AI per day unless the admin gives them another limit. */
+  aiDailyReadings: number;
 }
 
 /**
@@ -65,6 +69,8 @@ export function buildContainer(parts: ContainerParts): Container {
   const users = createUsersService(parts.usersRepository, {
     hashCost: parts.passwordHashCost,
     onCreated: welcome,
+    today: parts.today,
+    aiDailyReadings: parts.aiDailyReadings,
   });
   const auth = createAuthService({ jwtSecret: secret, expiresDays: parts.sessionDays }, users);
 

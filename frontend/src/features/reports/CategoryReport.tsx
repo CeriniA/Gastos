@@ -10,7 +10,8 @@ import { QueryState } from '../../shared/ui/QueryState';
 import { Card, Notice } from '../../shared/ui/ui';
 import { MonthNav } from './MonthNav';
 import { ShareRow } from './ShareRow';
-import { useCategoryReport } from './api';
+import { ConsolidationNotice } from './ShowIn';
+import { useCategoryReport, type MonthReportProps } from './api';
 
 /** A category and, when opened, its subcategories, each as a share of the kind's total. */
 function CategoryRow({
@@ -67,20 +68,24 @@ function CurrencyReport({ entry }: { entry: CurrencyCategoryReport }) {
 }
 
 /** What came in and what went out in a month, by category. */
-export function CategoryReport({ month, onMonth }: { month: string; onMonth: (month: string) => void }) {
-  const report = useCategoryReport(month);
+export function CategoryReport({ month, onMonth, showIn }: MonthReportProps) {
+  const report = useCategoryReport(month, showIn);
   return (
     <>
       <MonthNav month={month} onChange={onMonth} />
       <QueryState query={report}>
         {(data) =>
           data.currencies.length === 0 ? (
-            <Notice>{es.reports.empty}</Notice>
+            <div className="space-y-3">
+              {data.consolidated?.leftOut ? null : <Notice>{es.reports.empty}</Notice>}
+              <ConsolidationNotice consolidated={data.consolidated} />
+            </div>
           ) : (
             <div className="space-y-4">
               {data.currencies.map((entry) => (
                 <CurrencyReport key={entry.currency} entry={entry} />
               ))}
+              <ConsolidationNotice consolidated={data.consolidated} />
               <p className="text-sm text-muted">{es.reports.scope}</p>
             </div>
           )

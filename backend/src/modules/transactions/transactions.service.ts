@@ -387,6 +387,18 @@ export function createTransactionsService(repository: TransactionsRepository, de
       return { month, totals: await repository.totalsByMonth(month) };
     },
 
+    /** What the reports and the fixed items read of the transactions paid in a range of days. */
+    listReportRows: (range: { from: string; to: string }) => repository.findReportRows(range),
+
+    /** Marks a transaction as one of a fixed item's (null takes the mark away). */
+    async markRecurring(id: string, recurringId: string | null, options: WriteOptions = {}): Promise<void> {
+      await get(id);
+      await repository.setRecurring(id, recurringId, options);
+    },
+
+    releaseRecurring: (recurringId: string, options: WriteOptions) =>
+      repository.clearRecurring(recurringId, options),
+
     /** What each income or expense paid in a month adds to its category, for the report by category. */
     listFiled: (month: string) => repository.findFiledByMonth(month),
 

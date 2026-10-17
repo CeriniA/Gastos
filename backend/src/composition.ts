@@ -13,10 +13,10 @@ import { cardPeriodsPort, cardPeriodsRepository } from './modules/card-periods';
 import { categoriesPort, categoriesRepository } from './modules/categories';
 import { categoryRulesPort, categoryRulesRepository } from './modules/category-rules';
 import { documentsPort, documentsRepository } from './modules/documents';
-import { exchangeRatesPort } from './modules/exchange-rates';
+import { exchangeRatesPort, exchangeRatesRepository } from './modules/exchange-rates';
 import { installmentPlansPort, installmentPlansRepository } from './modules/installment-plans';
 import { institutionsPort, institutionsRepository } from './modules/institutions';
-import { recurringsPort } from './modules/recurrings';
+import { recurringsPort, recurringsRepository } from './modules/recurrings';
 import { tagsPort, tagsRepository } from './modules/tags';
 import { transactionsPort, transactionsRepository } from './modules/transactions';
 import { usersRepository } from './modules/users';
@@ -51,6 +51,11 @@ const collectionPorts: readonly CollectionPort[] = [
  * database transactions and the configuration, handed to the wiring.
  */
 export function createContainer(env: Env): Container {
+  const today = () => todayIso(env.APP_TIMEZONE);
+  // The users service is built with the container, after the services that
+  // need it; by the time anybody uploads a document it exists.
+  let container: Container | null = null;
+
   // The one line that decides which AI reads the documents.
   const extractor = env.GEMINI_API_KEY
     ? createGeminiExtractor({ apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL })
@@ -63,14 +68,16 @@ export function createContainer(env: Env): Container {
       categories: categoriesRepository,
       categoryRules: categoryRulesRepository,
       documents: documentsRepository,
+      exchangeRates: exchangeRatesRepository,
       installmentPlans: installmentPlansRepository,
       institutions: institutionsRepository,
+      recurrings: recurringsRepository,
       tags: tagsRepository,
       transactions: transactionsRepository,
     },
     {
       runInTransaction: withTransaction,
-      today: () => todayIso(env.APP_TIMEZONE),
+      today,
       now: () => new Date(),
       extractor,
       pdfReader: createUnpdfReader(),
@@ -79,6 +86,7 @@ export function createContainer(env: Env): Container {
         work().catch((error: unknown) => logger.error({ err: error }, 'Background work failed'));
       },
       owner: currentUserId,
+      takeAiReading: () => container!.users.takeAiReading(currentUserId()),
       onError: (error, context) => logger.warn({ err: error, ...context }, 'Document could not be read'),
     },
   );
@@ -93,7 +101,7 @@ export function createContainer(env: Env): Container {
         })
       : null;
 
-  return buildContainer({
+  container = buildContainer({
     services,
     usersRepository,
     collectionPorts,
@@ -104,5 +112,8 @@ export function createContainer(env: Env): Container {
     onError: (error, context) => logger.warn({ err: error, ...context }, 'Drive backup failed'),
     secret: env.JWT_SECRET,
     sessionDays: env.JWT_EXPIRES_DAYS,
+    today,
+    aiDailyReadings: env.AI_DAILY_READINGS,
   });
+  return container;
 }

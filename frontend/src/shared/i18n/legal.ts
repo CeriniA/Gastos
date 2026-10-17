@@ -32,7 +32,7 @@ export interface LegalDocument {
   sections: LegalSection[];
 }
 
-const UPDATED = '2026-10-13';
+const UPDATED = '2026-10-17';
 
 const privacy: LegalDocument = {
   path: '/privacidad',
@@ -47,7 +47,8 @@ const privacy: LegalDocument = {
       title: 'Qué datos guarda',
       items: [
         'Tu nombre de usuario y tu contraseña. La contraseña se guarda cifrada con un algoritmo de un solo sentido (bcrypt): nadie puede leerla, tampoco quien administra la instalación.',
-        'Lo que vos cargás: cuentas, categorías, etiquetas, movimientos con sus montos, fechas y descripciones, productos de tus compras, cierres y vencimientos de tus tarjetas.',
+        'Lo que vos cargás: cuentas, categorías, etiquetas, movimientos con sus montos, fechas y descripciones, productos de tus compras, cierres y vencimientos de tus tarjetas, tus movimientos fijos y las tasas de cambio que cargues.',
+        'Cuántos comprobantes mandaste a leer en el día, para el límite diario de lectura automática. Se guarda solo el número del día en curso, y lo ve quien administra la instalación, junto con tu límite.',
         `Las fotos de tickets y capturas que subís para que se lean, solo hasta que confirmás o descartás lo leído. En ese momento se borran. Las que no revisás se borran solas a los ${PENDING_DOCUMENT_RETENTION_DAYS} días.`,
         'El texto de un resumen de tarjeta que aprobás para su lectura, solo hasta que confirmás lo leído. El archivo PDF y su contraseña no se guardan nunca.',
         'Si conectás tu Google Drive, el permiso que le diste a la aplicación, guardado cifrado.',
@@ -184,7 +185,7 @@ const terms: LegalDocument = {
         'Usala para tu registro personal o familiar.',
         'No intentes acceder a datos de otros usuarios, eludir las medidas de seguridad ni sobrecargar el servicio.',
         'No subas contenido que no tengas derecho a usar, ni comprobantes de terceros sin su permiso.',
-        'La lectura automática tiene un cupo diario que comparten todos los usuarios de la instalación: no lo uses para otra cosa que tus propios comprobantes.',
+        'La lectura automática tiene un cupo diario que comparten todos los usuarios de la instalación: no lo uses para otra cosa que tus propios comprobantes. Por eso cada usuario puede mandar a leer una cantidad de comprobantes por día, que decide quien administra la instalación.',
       ],
     },
     {

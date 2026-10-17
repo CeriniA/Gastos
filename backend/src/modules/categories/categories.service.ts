@@ -22,7 +22,10 @@ export interface CategoryUsage {
   /** Transactions (including the trash) that use the category directly or in a split. */
   countTransactions(categoryId: string): Promise<number>;
   moveTransactions(fromCategoryId: string, toCategoryId: string, options: WriteOptions): Promise<void>;
-  /** Merchant rules are preferences, not history: they follow or go with the category. */
+  /**
+   * Merchant rules and fixed items are preferences, not history: they follow
+   * a merged category; a deleted one takes its rules and leaves its fixed items without it.
+   */
   moveRules(fromCategoryId: string, toCategoryId: string, options: WriteOptions): Promise<void>;
   removeRules(categoryId: string, options: WriteOptions): Promise<void>;
 }

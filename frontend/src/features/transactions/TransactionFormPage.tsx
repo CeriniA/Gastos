@@ -28,6 +28,7 @@ import { QueryState } from '../../shared/ui/QueryState';
 import { Button, Field, Loading, Notice, PageTitle, Select, TextInput } from '../../shared/ui/ui';
 import { useAction } from '../../shared/ui/useAction';
 import { useAccounts } from '../accounts/api';
+import { MarkFixed } from '../recurrings/MarkFixed';
 import { useCategories } from '../categories/api';
 import { optionLabel, orderedTree } from '../categories/tree';
 import { useCreateTag, useTags } from '../tags/api';
@@ -620,6 +621,7 @@ export function TransactionFormPage() {
                   {es.transactions.moveToTrash}
                 </Button>
               ) : null}
+              {existing.data ? <MarkFixed transaction={existing.data} /> : null}
             </form>
           )
         }

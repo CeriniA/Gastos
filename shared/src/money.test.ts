@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   centsToDecimalString,
+  convertBetween,
   convertCents,
+  isNear,
   impliedRate,
   splitInstallments,
   formatRate,
@@ -79,4 +81,17 @@ test('splitInstallments divides in whole cents and gives the leftover to the fir
     splitInstallments(987654, 7).reduce((sum, part) => sum + part, 0),
     987654,
   );
+});
+
+test('pesos and dollars are turned into each other with a rate of pesos per dollar', () => {
+  assert.equal(convertBetween(1000, 'USD', 'ARS', 1250.5), 1250500);
+  assert.equal(convertBetween(125050, 'ARS', 'USD', 1250.5), 100);
+  assert.equal(convertBetween(999, 'ARS', 'ARS', 1250.5), 999);
+});
+
+test('an amount is near another when it is within a share of it', () => {
+  assert.equal(isNear(11900, 10000, 0.2), true);
+  assert.equal(isNear(12000, 10000, 0.2), true);
+  assert.equal(isNear(12001, 10000, 0.2), false);
+  assert.equal(isNear(7999, 10000, 0.2), false);
 });

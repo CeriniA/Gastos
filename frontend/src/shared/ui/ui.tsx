@@ -111,23 +111,28 @@ export function PageTitle({ children, action }: { children: ReactNode; action?: 
   );
 }
 
-/** A row of mutually exclusive choices that switches what the screen shows below it. */
+/**
+ * A row of mutually exclusive choices that switches what the screen shows
+ * below it. Many choices wrap in rows of `columns`, so they fit on a phone.
+ */
 export function Tabs<T extends string>({
   options,
   value,
   label,
   onChange,
+  columns = options.length,
 }: {
   options: readonly T[];
   value: T;
   label: (option: T) => string;
   onChange: (option: T) => void;
+  columns?: number;
 }) {
   return (
     <div
       role="tablist"
       className="mb-4 grid gap-1 rounded-lg border border-line bg-surface p-1"
-      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
     >
       {options.map((option) => (
         <button

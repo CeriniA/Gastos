@@ -5,7 +5,10 @@ import type { FiledAmount, Split, Transaction } from '@gastos/shared';
  * category, or each part to its own. A refund takes away. A transfer adds nothing.
  */
 export function filedAmounts(
-  transaction: Pick<Transaction, 'type' | 'refund' | 'currency' | 'amountCents' | 'categoryId' | 'splits'>,
+  transaction: Pick<
+    Transaction,
+    'id' | 'date' | 'type' | 'refund' | 'currency' | 'amountCents' | 'categoryId' | 'splits'
+  >,
 ): FiledAmount[] {
   if (transaction.type === 'transfer') return [];
   const { type: kind, currency } = transaction;
@@ -15,6 +18,8 @@ export function filedAmounts(
       ? transaction.splits
       : [{ categoryId: transaction.categoryId, amountCents: transaction.amountCents }];
   return parts.map((part) => ({
+    transactionId: transaction.id,
+    date: transaction.date,
     kind,
     currency,
     categoryId: part.categoryId,

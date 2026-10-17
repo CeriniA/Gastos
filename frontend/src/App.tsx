@@ -14,6 +14,8 @@ import { HomePage } from './features/home/HomePage';
 import { InstitutionsPage } from './features/institutions/InstitutionsPage';
 import { LegalPage } from './features/legal/LegalPage';
 import { MorePage } from './features/more/MorePage';
+import { RatesPage } from './features/rates/RatesPage';
+import { RecurringsPage } from './features/recurrings/RecurringsPage';
 import { ReportsPage } from './features/reports/ReportsPage';
 import { TagsPage } from './features/tags/TagsPage';
 import { TransactionFormPage } from './features/transactions/TransactionFormPage';
@@ -62,6 +64,8 @@ function SignedIn() {
         <Route path="mas/datos" element={<DataPage />} />
         <Route path="mas/contrasena" element={<PasswordPage />} />
         <Route path="mas/usuarios" element={<UsersPage />} />
+        <Route path="mas/fijos" element={<RecurringsPage />} />
+        <Route path="mas/tasas" element={<RatesPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

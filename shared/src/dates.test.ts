@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import {
   formatTime,
   addDays,
+  dayInMonth,
+  dayOfMonth,
   formatMoment,
   hoursBetween,
   addMonths,
@@ -67,4 +69,11 @@ test('hours between two moments, and a moment as the user reads it', () => {
     formatMoment('2026-10-12T17:30:00.000Z', 'America/Argentina/Buenos_Aires'),
     '12/10/2026 14:30',
   );
+});
+
+test('a day of a month is clamped to the months that are shorter', () => {
+  assert.equal(dayOfMonth('2026-10-05'), 5);
+  assert.equal(dayInMonth('2026-10', 15), '2026-10-15');
+  assert.equal(dayInMonth('2026-02', 31), '2026-02-28');
+  assert.equal(dayInMonth('2028-02', 30), '2028-02-29');
 });

@@ -14,6 +14,7 @@ import { useAccounts } from '../accounts/api';
 import { driveBackupNeedsAttention, useDriveBackup } from '../data/api';
 import { usePendingDocuments } from '../documents/api';
 import { useCategories } from '../categories/api';
+import { useRecurrings } from '../recurrings/api';
 import { TransactionRow } from '../transactions/TransactionRow';
 import { useMonthSummary, useTransactions } from '../transactions/api';
 
@@ -67,6 +68,9 @@ export function HomePage() {
   const pending = usePendingDocuments();
   const pendingCount = pending.data?.length ?? 0;
   const driveBackup = useDriveBackup();
+  const recurrings = useRecurrings();
+  const fixedAttention =
+    recurrings.data?.items.filter((item) => item.state === 'late' || item.state === 'changed').length ?? 0;
 
   return (
     <>
@@ -78,6 +82,16 @@ export function HomePage() {
           className="mb-4 flex min-h-12 items-center justify-between rounded-lg border border-attention bg-attention-soft px-4 font-semibold"
         >
           {es.documents.banner(pendingCount)}
+          <span aria-hidden="true">›</span>
+        </Link>
+      ) : null}
+
+      {fixedAttention > 0 ? (
+        <Link
+          to="/mas/fijos"
+          className="mb-4 flex min-h-12 items-center justify-between rounded-lg border border-attention bg-attention-soft px-4 font-semibold"
+        >
+          {es.recurrings.attention(fixedAttention)}
           <span aria-hidden="true">›</span>
         </Link>
       ) : null}

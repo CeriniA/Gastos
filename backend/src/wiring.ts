@@ -27,10 +27,13 @@ import {
   type InstitutionsService,
 } from './modules/institutions/institutions.service';
 import { createDocumentsService, type DocumentsService } from './modules/documents/documents.service';
+import type { ExchangeRatesRepository } from './modules/exchange-rates/exchangeRates.repository';
 import {
   createExchangeRatesService,
   type ExchangeRatesService,
 } from './modules/exchange-rates/exchangeRates.service';
+import type { RecurringsRepository } from './modules/recurrings/recurrings.repository';
+import { createRecurringsService, type RecurringsService } from './modules/recurrings/recurrings.service';
 import { createReportsService, type ReportsService } from './modules/reports/reports.service';
 import { createSpreadsheetService, type SpreadsheetService } from './modules/spreadsheet/spreadsheet.service';
 import type { TagsRepository } from './modules/tags/tags.repository';
@@ -50,8 +53,10 @@ export interface Repositories {
   categories: CategoriesRepository;
   categoryRules: CategoryRulesRepository;
   documents: DocumentsRepository;
+  exchangeRates: ExchangeRatesRepository;
   installmentPlans: InstallmentPlansRepository;
   institutions: InstitutionsRepository;
+  recurrings: RecurringsRepository;
   tags: TagsRepository;
   transactions: TransactionsRepository;
 }
@@ -73,6 +78,8 @@ export interface Runtime {
   schedule: (work: () => Promise<void>) => void;
   /** The user the running code works for. */
   owner: () => string;
+  /** Counts a document the running user sends to the AI; throws past their daily limit. */
+  takeAiReading: () => Promise<void>;
   onError: (error: unknown, context: object) => void;
 }
 
@@ -86,6 +93,7 @@ export interface Services {
   exchangeRates: ExchangeRatesService;
   installmentPlans: InstallmentPlansService;
   institutions: InstitutionsService;
+  recurrings: RecurringsService;
   reports: ReportsService;
   tags: TagsService;
   transactions: TransactionsService;
@@ -117,7 +125,9 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
   const accounts: AccountsService = createAccountsService(repositories.accounts, {
     countTransactions: transactions.countByAccount,
     countCardPeriods: async (id) =>
-      (await cardPeriods.countByAccount(id)) + (await installmentPlans.countByAccount(id)),
+      (await cardPeriods.countByAccount(id)) +
+      (await installmentPlans.countByAccount(id)) +
+      (await recurrings.countByAccount(id)),
     findInstitution: (id) => institutions.find(id),
   });
 
@@ -159,8 +169,14 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     {
       countTransactions: transactions.countByCategory,
       moveTransactions: transactions.moveCategory,
-      moveRules: categoryRules.moveCategory,
-      removeRules: categoryRules.removeByCategory,
+      moveRules: async (fromId, toId, options) => {
+        await categoryRules.moveCategory(fromId, toId, options);
+        await recurrings.moveCategory(fromId, toId, options);
+      },
+      removeRules: async (categoryId, options) => {
+        await categoryRules.removeByCategory(categoryId, options);
+        await recurrings.clearCategory(categoryId, options);
+      },
     },
     runInTransaction,
   );
@@ -200,6 +216,7 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     createCardPeriods: cardPeriods.createFromDocument,
     releaseCardPeriods: cardPeriods.releaseDocument,
     continueInstallments: (input, options) => installmentPlans.continueFromStatement(input, options),
+    takeAiReading: runtime.takeAiReading,
     runInTransaction,
     today,
     now: runtime.now,
@@ -208,13 +225,32 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     onError: runtime.onError,
   });
 
-  const exchangeRates: ExchangeRatesService = createExchangeRatesService(runtime.rates);
+  const exchangeRates: ExchangeRatesService = createExchangeRatesService(
+    repositories.exchangeRates,
+    runtime.rates,
+  );
+
+  const recurrings: RecurringsService = createRecurringsService(repositories.recurrings, {
+    listRows: transactions.listReportRows,
+    findTransaction: transactions.get,
+    listAccounts: () => accounts.list(),
+    listCategories: () => categories.list(),
+    markTransaction: transactions.markRecurring,
+    releaseTransactions: transactions.releaseRecurring,
+    today,
+    runInTransaction,
+  });
 
   const consumption: ConsumptionService = createConsumptionService({ listItems: transactions.listItems });
 
   const reports: ReportsService = createReportsService({
     listFiled: transactions.listFiled,
+    listRows: transactions.listReportRows,
     listCategories: () => categories.list(),
+    listAccounts: () => accounts.list(),
+    listRates: () => exchangeRates.list(),
+    expectedRecurrings: (month) => recurrings.expected(month),
+    today,
   });
 
   return {
@@ -228,6 +264,7 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     exchangeRates,
     installmentPlans,
     institutions,
+    recurrings,
     tags,
     transactions,
     spreadsheet,

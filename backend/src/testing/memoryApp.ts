@@ -1,7 +1,8 @@
 import type { Env } from '../config/env';
 import { buildContainer } from '../container';
 import type { CollectionPort } from '../core/db/collectionPort';
-import type { UserRecord, UsersRepository } from '../modules/users';
+import { currentUserId } from '../core/context/owner';
+import type { UserRecord, UsersRepository, UsersService } from '../modules/users';
 import type { BackupStoreProvider } from '../providers/drive/googleDrive';
 import { createMemoryBackend, type MemoryBackendOptions } from './memory';
 
@@ -25,20 +26,30 @@ export function createMemoryUsers(): UsersRepository {
         usernameKey: data.usernameKey,
         role: data.role,
         active: true,
+        aiDailyLimit: null,
         createdAt: STAMP,
         passwordHash: data.passwordHash,
         sessionVersion: 0,
         driveToken: null,
+        aiUsage: null,
       };
       users.push(user);
-      return user;
+      return { ...user };
     },
     async update(id, changes, options = {}) {
       const user = users.find((candidate) => candidate.id === id);
       if (!user) return null;
       Object.assign(user, changes);
       if (options.closeSessions) user.sessionVersion += 1;
-      return user;
+      return { ...user };
+    },
+    async takeAiReading(id, day, limit) {
+      const user = users.find((candidate) => candidate.id === id);
+      if (!user || limit <= 0) return false;
+      const count = user.aiUsage?.day === day ? user.aiUsage.count : 0;
+      if (count >= limit) return false;
+      user.aiUsage = { day, count: count + 1 };
+      return true;
     },
   };
 }
@@ -56,7 +67,13 @@ export interface MemoryContainerOptions extends MemoryBackendOptions {
  * memory, so a file exported here can only be restored here.
  */
 export function createMemoryContainer(env: Env, today?: string, options: MemoryContainerOptions = {}) {
-  const backend = createMemoryBackend(today, { ...options, requireUser: true });
+  // The users are built with the container, after the services that ask them about the AI limit.
+  let users: UsersService | null = null;
+  const backend = createMemoryBackend(today, {
+    ...options,
+    requireUser: true,
+    takeAiReading: () => users!.takeAiReading(currentUserId()),
+  });
   const { store } = backend;
 
   const collectionPorts: CollectionPort[] = (Object.keys(backend.emptyStore()) as (keyof typeof store)[]).map(
@@ -86,6 +103,9 @@ export function createMemoryContainer(env: Env, today?: string, options: MemoryC
     secret: env.JWT_SECRET,
     sessionDays: env.JWT_EXPIRES_DAYS,
     passwordHashCost: FAST_HASH_COST,
+    today: () => backend.calendar.today,
+    aiDailyReadings: env.AI_DAILY_READINGS,
   });
+  users = container.users;
   return { container, backend };
 }

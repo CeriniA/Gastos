@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  MAX_AI_DAILY_READINGS,
   MAX_PASSWORD_LENGTH,
   MAX_USERNAME_LENGTH,
   MIN_PASSWORD_LENGTH,
@@ -38,6 +39,12 @@ export interface User {
   role: UserRole;
   /** An inactive user cannot sign in; their data stays. */
   active: boolean;
+  /** Documents they can send to the AI per day. Null: the installation's default. */
+  aiDailyLimit: number | null;
+  /** What they can send today: their own limit, or the installation's default. */
+  aiLimit: number;
+  /** Documents sent to the AI today. */
+  aiReadingsToday: number;
   createdAt: string;
 }
 
@@ -48,9 +55,18 @@ export const userCreateSchema = z.object({
 });
 export type UserCreate = z.infer<typeof userCreateSchema>;
 
-/** What an admin can change on a user: a new password, or whether they can sign in. */
+/**
+ * What an admin can change on a user: their name, their type, a new password,
+ * whether they can sign in and how many documents they send to the AI a day.
+ */
 export const userUpdateSchema = z
-  .object({ password: newPasswordSchema, active: z.boolean() })
+  .object({
+    username: usernameSchema,
+    role: z.enum(USER_ROLES),
+    password: newPasswordSchema,
+    active: z.boolean(),
+    aiDailyLimit: z.number().int().min(0).max(MAX_AI_DAILY_READINGS).nullable(),
+  })
   .partial()
   .refine((changes) => Object.keys(changes).length > 0, { message: 'Nothing to change' });
 export type UserUpdate = z.infer<typeof userUpdateSchema>;

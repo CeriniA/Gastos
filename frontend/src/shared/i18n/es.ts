@@ -2,6 +2,7 @@ import {
   MIN_PASSWORD_LENGTH,
   type AccountType,
   type CategoryKind,
+  type Currency,
   type DocumentErrorCode,
   type DocumentKind,
   type DriveBackupError,
@@ -11,6 +12,7 @@ import {
   type ImportIssueCode,
   type InstitutionKind,
   type ProductGroup,
+  type RecurringState,
   type TransactionType,
   type UncertainField,
   type UploadableDocumentKind,
@@ -97,6 +99,14 @@ export const es = {
       `Contraseña de ${username} cambiada. Se cerraron sus sesiones: pasale la nueva.`,
     deactivate: 'Desactivar',
     activate: 'Activar',
+    edit: 'Editar',
+    editTitle: (username: string) => `Editar a ${username}`,
+    ownRole: 'Tu propio tipo no lo podés cambiar: lo cambia otro administrador.',
+    aiUsage: (used: number, limit: number) => `Lecturas con IA hoy: ${used} de ${limit}`,
+    aiLimit: 'Lecturas con IA por día',
+    aiLimitHint:
+      'Cuántos tickets o resúmenes puede mandar a leer por día. Vacío: el mismo límite que todos. 0: no puede usar la IA.',
+    saved: (username: string) => `Cambios de ${username} guardados.`,
     deactivateConfirm: (username: string) =>
       `${username} deja de poder entrar y se cierran sus sesiones. Sus datos no se borran; lo podés volver a activar.`,
   },
@@ -483,7 +493,57 @@ export const es = {
 
   reports: {
     title: 'Informes',
-    tabs: { categories: 'Por categoría', consumption: 'Consumo' },
+    tabs: {
+      categories: 'Categorías',
+      accounts: 'Cuentas',
+      evolution: 'Meses',
+      merchants: 'Comercios',
+      projection: 'Próximos',
+      consumption: 'Consumo',
+    },
+    showIn: 'Mostrar',
+    eachCurrency: 'Cada moneda por separado',
+    allIn: { ARS: 'Todo en pesos', USD: 'Todo en dólares' } satisfies Record<Currency, string>,
+    leftOut: (count: number) =>
+      count === 1
+        ? 'Un movimiento quedó afuera porque no hay una tasa de cambio para su fecha.'
+        : `${count} movimientos quedaron afuera porque no hay una tasa de cambio para su fecha.`,
+    loadRate: 'Cargar una tasa de cambio',
+    convertedWith: 'Cada movimiento se convierte con tu tasa de cambio del día en que se hizo.',
+    accounts: {
+      empty: 'Este mes ninguna cuenta tuvo movimientos pagados.',
+      income: 'Ingresos',
+      expense: 'Egresos',
+      transfersIn: 'Transferencias recibidas',
+      transfersOut: 'Transferencias enviadas',
+      scope:
+        'Las transferencias son plata que pasó de una cuenta a otra (pagar la tarjeta, comprar dólares): no son ingreso ni egreso.',
+    },
+    evolution: {
+      empty: 'No hay ingresos ni egresos pagados en estos meses.',
+      months: (count: number) => `Últimos ${count} meses`,
+      average: (amount: string) => `Egreso promedio por mes: ${amount}`,
+      noData: 'Sin movimientos',
+    },
+    merchants: {
+      empty: 'Este mes no hay egresos pagados.',
+      total: (currency: string) => `Egresos en ${currency}`,
+      count: (count: number) => (count === 1 ? '1 compra' : `${count} compras`),
+      others: 'Otros y sin descripción',
+      scope:
+        'Agrupa los egresos por su descripción, sin distinguir mayúsculas ni acentos. Las devoluciones restan.',
+    },
+    projection: {
+      text: 'Lo que ya está cargado para cada mes, más lo que se espera: las cuotas que faltan y los movimientos fijos que todavía no aparecieron.',
+      empty: 'No hay nada cargado ni esperado para estos meses.',
+      confirmed: 'Ya cargado',
+      expected: 'Esperado',
+      balance: 'Así terminaría el mes',
+      entries: 'Lo que se espera',
+      kinds: { installment: 'Cuota', recurring: 'Fijo' },
+      noFixed: 'Marcá tus movimientos fijos (alquiler, sueldo, servicios) para que entren en la proyección.',
+      goFixed: 'Ir a Movimientos fijos',
+    },
     totalIn: (kind: string, currency: string) => `${kind} en ${currency}`,
     directly: (category: string) => `Directo en ${category}`,
     empty: 'Este mes no hay ingresos ni egresos pagados.',
@@ -491,6 +551,62 @@ export const es = {
       'Cuenta cada movimiento en el mes en que se paga, igual que el balance del Inicio. Las devoluciones restan y las transferencias no entran.',
     previousMonth: 'Mes anterior',
     nextMonth: 'Mes siguiente',
+  },
+
+  rates: {
+    title: 'Tasas de cambio',
+    text: 'Cuántos pesos vale un dólar, desde un día. Los informes las usan para mostrar todo en pesos o todo en dólares: cada movimiento se convierte con la tasa vigente el día en que se hizo. Cambiar una tasa no toca nada guardado.',
+    empty: 'Todavía no cargaste ninguna tasa. Sin tasas, los informes muestran cada moneda por separado.',
+    validFrom: 'Desde el',
+    arsPerUsd: 'Pesos por dólar',
+    arsPerUsdHint: 'La cotización que elijas: oficial, MEP, la de tu tarjeta.',
+    row: (rate: string) => `$ ${rate} por dólar`,
+    newTitle: 'Nueva tasa',
+    invalid: 'Escribí cuántos pesos vale un dólar, por ejemplo 1250,50.',
+    deleteConfirm: 'Se borra la tasa. Los informes dejan de usarla.',
+    duplicate: 'Ya hay una tasa que empieza ese día: corregí esa.',
+  },
+
+  recurrings: {
+    title: 'Movimientos fijos',
+    text: 'Lo que pagás o cobrás todos los meses: alquiler, sueldo, servicios, suscripciones. La app avisa si uno no apareció o cambió mucho, y los suma a la proyección de Informes.',
+    empty:
+      'Todavía no marcaste ningún movimiento fijo. Abrí un movimiento y tocá "Es un movimiento fijo", o aceptá una sugerencia cuando aparezca.',
+    states: {
+      seen: 'Llegó',
+      changed: 'Cambió mucho',
+      late: 'No apareció',
+      expected: 'Todavía no llegó',
+      paused: 'En pausa',
+    } satisfies Record<RecurringState, string>,
+    expectedOn: (date: string, amount: string) => `Se espera el ${date}, por ${amount}`,
+    seenAmount: (amount: string) => `Este mes: ${amount}`,
+    useSeen: 'Usar este monto de ahora en más',
+    pause: 'Pausar',
+    resume: 'Reanudar',
+    deleteConfirm: (name: string) =>
+      `Se borra el fijo "${name}". Sus movimientos quedan como están, solo pierden la marca.`,
+    name: 'Nombre',
+    expectedAmount: 'Monto esperado',
+    day: 'Día del mes',
+    dayHint: 'El día en que se paga. En los meses más cortos vale el último día.',
+    suggestionsTitle: 'Parecen fijos',
+    suggestionsText: 'Se pagaron una vez por mes, por un monto parecido, varios meses seguidos. Vos decidís.',
+    suggestion: (amount: string, months: number) => `${amount} · ${months} meses seguidos`,
+    accept: 'Es fijo',
+    reject: 'No es fijo',
+    ignoredTitle: 'No son fijos',
+    ignoredText: 'Los marcaste como no fijos: no se vuelven a sugerir.',
+    unignore: 'Volver a sugerir',
+    attention: (count: number) =>
+      count === 1
+        ? 'Un movimiento fijo no apareció o cambió mucho'
+        : `${count} movimientos fijos no aparecieron o cambiaron mucho`,
+    mark: 'Es un movimiento fijo',
+    markHint: 'Se espera todos los meses por este monto. Te avisa si no aparece o cambia mucho.',
+    marked: 'Marcado como movimiento fijo.',
+    isFixed: 'Es un movimiento fijo.',
+    seeFixed: 'Ver movimientos fijos',
   },
 
   items: {
@@ -541,6 +657,8 @@ export const es = {
     data: 'Respaldo, importación y exportación',
     password: 'Cambiar mi contraseña',
     users: 'Usuarios',
+    recurrings: 'Movimientos fijos',
+    rates: 'Tasas de cambio',
   },
 
   data: {
@@ -639,6 +757,8 @@ export const es = {
       'El archivo no es un respaldo de esta app, es de una versión más nueva, o tiene datos que hoy son de otro usuario.',
     INTEGRITY: 'El respaldo tiene datos que apuntan a cosas que no incluye. No se restauró nada.',
     AI_PROVIDER: 'El servicio de lectura no respondió. Probá de nuevo.',
+    AI_LIMIT:
+      'Ya mandaste a leer todos los documentos que podés por hoy. Mañana se renueva; si necesitás más, pedíselo a quien administra la app.',
     INTERNAL: 'Algo falló en el servidor. Probá de nuevo.',
     NETWORK: 'No hay conexión con el servidor.',
   } satisfies Record<ErrorCode | 'NETWORK', string>,
@@ -681,6 +801,11 @@ export const es = {
     'There are no installments left to create': 'Esa es la última cuota: no quedan cuotas por crear.',
     'Password is too short': `La contraseña tiene que tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`,
     'Wrong password': 'Esa no es tu contraseña actual.',
+    'Account does not exist': 'Esa cuenta no existe.',
+    'Category does not exist': 'Esa categoría no existe.',
+    'Only an income or an expense can be fixed': 'Solo un ingreso o un egreso puede ser fijo.',
+    'Give the transaction a description to mark it as fixed':
+      'Ponele una descripción al movimiento (por ejemplo, el comercio) para marcarlo como fijo.',
   } as Record<string, string>,
 
   importIssues: {

@@ -60,6 +60,16 @@ export const MIN_PASSWORD_LENGTH = 8;
 export const USER_ROLES = ['admin', 'user'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
+/**
+ * Documents each user can send to the AI per day, unless the admin gives them
+ * another limit. Everybody shares the one free quota of the AI key, so one
+ * user uploading a whole shoebox of receipts cannot leave the rest without.
+ * Thirty is more than a person loads in a normal day.
+ */
+export const DEFAULT_AI_DAILY_READINGS = 30;
+/** Highest limit the admin can give one user; above that it is not a limit. */
+export const MAX_AI_DAILY_READINGS = 1000;
+
 /** Decimals kept in an exchange rate. */
 export const RATE_DECIMALS = 6;
 
@@ -206,6 +216,38 @@ export const PRODUCT_GROUPS = [
 ] as const;
 export type ProductGroup = (typeof PRODUCT_GROUPS)[number];
 
+/** Months the evolution report shows by default, and at most. A year, so each month is next to its twin. */
+export const DEFAULT_EVOLUTION_MONTHS = 12;
+export const MAX_EVOLUTION_MONTHS = 36;
+/** Merchants the report lists one by one; the rest go together as "others". */
+export const TOP_MERCHANTS = 20;
+/** Months the projection looks ahead, this one included: the next card statements. */
+export const PROJECTION_MONTHS = 3;
+
+/**
+ * Fixed income and expenses ("recurrings"). A merchant is suggested as fixed
+ * when it was paid exactly once in each of this many months in a row, for a
+ * similar amount. Three, because two months of the same bill can be chance.
+ */
+export const RECURRING_MIN_MONTHS = 3;
+/** Months looked back for suggestions: enough for a run of three with a gap of time to spare. */
+export const RECURRING_LOOKBACK_MONTHS = 6;
+/**
+ * "Similar amount" and "changed a lot": more than this share away from the
+ * expected amount. A fifth absorbs a small rise without crying wolf.
+ */
+export const RECURRING_TOLERANCE = 0.2;
+/** Days after its usual day a fixed item may arrive before the app says it is missing. */
+export const RECURRING_GRACE_DAYS = 5;
+/** Highest day of the month a fixed item can be expected on; short months use their last day. */
+export const MAX_DAY_OF_MONTH = 31;
+/**
+ * How a fixed item stands in a month: it arrived for about what was expected,
+ * it arrived but changed a lot, it is late, it is still to come, or the user paused it.
+ */
+export const RECURRING_STATES = ['seen', 'changed', 'late', 'expected', 'paused'] as const;
+export type RecurringState = (typeof RECURRING_STATES)[number];
+
 export const MAX_CATEGORY_DEPTH = 3;
 export const TRASH_RETENTION_DAYS = 30;
 /** An upload nobody reviewed is dropped after this long, images included. */
@@ -255,6 +297,7 @@ export const ERROR_CODES = [
   'INVALID_BACKUP',
   'INTEGRITY',
   'AI_PROVIDER',
+  'AI_LIMIT',
   'INTERNAL',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

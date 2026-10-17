@@ -7,6 +7,7 @@ import {
   type ExtractedTransaction,
   type ExtractionResult,
 } from '@gastos/shared';
+import { AiLimitError } from '../../core/errors/errors';
 import { extractionFailure } from '../../providers/ai/aiExtractor';
 import { codeOf } from '../../testing/assertions';
 import { createMemoryBackend } from '../../testing/memory';
@@ -147,6 +148,28 @@ test('uploads are validated before anything is stored', async () => {
 
   const off = createMemoryBackend('2026-10-10', { aiConfigured: false });
   assert.equal(await codeOf(off.documents.upload({ kind: 'receipt' }, [photo('a')])), 'AI_PROVIDER');
+});
+
+test('each document sent to the AI counts against the daily limit; past it nothing is stored', async () => {
+  const allowance = { left: 2 };
+  const app = createMemoryBackend('2026-10-10', {
+    takeAiReading: async () => {
+      if (allowance.left === 0) throw new AiLimitError(2);
+      allowance.left -= 1;
+    },
+  });
+  const first = await app.documents.upload({ kind: 'receipt' }, [photo('uno')]);
+  // The same upload while it is still being read is the same document: it does not count again.
+  await app.documents.upload({ kind: 'receipt' }, [photo('uno')]);
+  assert.equal(allowance.left, 1);
+  await app.documents.processQueue();
+  // Reading it again asks the AI again, so it counts.
+  await app.documents.retry(first.id);
+  assert.equal(allowance.left, 0);
+
+  assert.equal(await codeOf(app.documents.upload({ kind: 'receipt' }, [photo('dos')])), 'AI_LIMIT');
+  assert.equal(await codeOf(app.documents.uploadStatement({ fileName: 'r.pdf', text: 'Visa' })), 'AI_LIMIT');
+  assert.equal(app.store.documents.length, 1);
 });
 
 test('uploading a file again reads it again, unless it is already counted', async () => {

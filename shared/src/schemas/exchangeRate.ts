@@ -1,5 +1,7 @@
 import { z } from 'zod';
-import { currencyCodeSchema } from './common';
+import { MAX_RATE } from '../constants';
+import type { IsoDate } from '../dates';
+import { currencyCodeSchema, isoDateSchema } from './common';
 
 export const referenceRateQuerySchema = z.object({ from: currencyCodeSchema, to: currencyCodeSchema });
 
@@ -17,4 +19,20 @@ export interface ReferenceRate {
   asOf: string;
   /** Who publishes it, shown next to the figure. */
   source: string;
+}
+
+/** A rate of pesos per dollar the user loads by hand, valid from a day until the next one starts. */
+export const exchangeRateInputSchema = z.object({
+  validFrom: isoDateSchema,
+  arsPerUsd: z.number().positive().max(MAX_RATE),
+});
+export type ExchangeRateInput = z.infer<typeof exchangeRateInputSchema>;
+
+export interface ExchangeRate {
+  id: string;
+  validFrom: IsoDate;
+  /** Pesos per dollar. A rate, not an amount of money. */
+  arsPerUsd: number;
+  createdAt: string;
+  updatedAt: string;
 }

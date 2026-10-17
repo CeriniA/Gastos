@@ -66,6 +66,17 @@ export function lastDayOfMonth(month: MonthKey): IsoDate {
   return `${month}-${pad(lastDay)}`;
 }
 
+/** The day of the month of a date: 5 for "2026-10-05". */
+export function dayOfMonth(date: IsoDate): number {
+  return Number(date.slice(8, 10));
+}
+
+/** That day of a month, or the month's last day when it is shorter (day 31 of February is the 28th or 29th). */
+export function dayInMonth(month: MonthKey, day: number): IsoDate {
+  const last = lastDayOfMonth(month);
+  return `${month}-${pad(Math.min(day, dayOfMonth(last)))}`;
+}
+
 /** Adds calendar months, clamping the day (Jan 31 + 1 month = Feb 28/29). */
 export function addMonths(date: IsoDate, months: number): IsoDate {
   const year = Number(date.slice(0, 4));

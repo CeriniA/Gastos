@@ -66,6 +66,13 @@ export class ForbiddenError extends AppError {
   }
 }
 
+/** The user already sent to the AI every document they can today. */
+export class AiLimitError extends AppError {
+  constructor(limit: number) {
+    super(429, 'AI_LIMIT', 'Daily AI limit reached', { limit });
+  }
+}
+
 export class AiProviderError extends AppError {
   constructor(message: string, details?: unknown) {
     super(502, 'AI_PROVIDER', message, details);

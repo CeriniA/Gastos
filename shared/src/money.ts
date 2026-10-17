@@ -90,6 +90,15 @@ export function convertCents(cents: number, rate: number): number {
 }
 
 /**
+ * An amount in pesos or dollars turned into the other, with a rate of pesos
+ * per dollar. The same currency is left as it is.
+ */
+export function convertBetween(cents: number, from: Currency, to: Currency, arsPerUsd: number): number {
+  if (from === to) return cents;
+  return from === 'USD' ? convertCents(cents, arsPerUsd) : Math.round(cents / arsPerUsd);
+}
+
+/**
  * The rate that really links an amount to the original it came from. Stored
  * instead of the rate typed, so it stays true when the total is corrected.
  */
@@ -109,6 +118,11 @@ export function splitInstallments(totalCents: number, count: number): number[] {
 /** A quantity as printed for the user: "1,5", "0,35", "12". */
 export function formatQuantity(quantity: number): string {
   return quantity.toLocaleString(APP_LOCALE, { maximumFractionDigits: 3 });
+}
+
+/** Whether an amount is no further from a reference than that share of it (0.2: a fifth). */
+export function isNear(cents: number, referenceCents: number, share: number): boolean {
+  return Math.abs(cents - referenceCents) <= Math.abs(referenceCents) * share;
 }
 
 export function sumCents(values: readonly number[]): number {

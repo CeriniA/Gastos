@@ -2,7 +2,9 @@ import {
   API_PREFIX,
   CURRENCIES,
   DEFAULT_CURRENCY,
+  RECURRING_MIN_MONTHS,
   addDays,
+  addMonths,
   parseAmountToCents,
   todayIso,
   transactionCreateSchema,
@@ -92,6 +94,20 @@ await runAsUser(admin.id, async () => {
         categoryId: categoryIds.get(sample.category),
         description: sample.description,
         tagIds: sample.type === 'expense' ? [tag.id] : [],
+      }),
+    );
+  }
+  // The same rent in each of the last months, so there is a fixed item to suggest.
+  for (let monthsAgo = 1; monthsAgo <= RECURRING_MIN_MONTHS; monthsAgo += 1) {
+    await transactions.create(
+      transactionCreateSchema.parse({
+        type: 'expense',
+        date: addMonths(today, -monthsAgo),
+        amountCents: parseAmountToCents('350000'),
+        currency: DEFAULT_CURRENCY,
+        accountId: accountIds.get('MercadoPago'),
+        categoryId: categoryIds.get('Vivienda'),
+        description: 'Alquiler',
       }),
     );
   }

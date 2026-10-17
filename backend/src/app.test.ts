@@ -214,6 +214,15 @@ test('each user has their own data, and none of it reaches another', async () =>
     await data<{ items: { id: string; accountId: string }[] }>(await call('GET', '/transactions'))
   ).items;
   assert.ok(mine);
+  // A rate and a fixed item of his.
+  const rate = await data<{ id: string }>(
+    await call('POST', '/exchange-rates', { validFrom: '2026-10-01', arsPerUsd: 1200 }),
+    201,
+  );
+  const fixed = await data<{ id: string }>(
+    await call('POST', '/recurrings/from-transaction', { transactionId: mine.id }),
+    201,
+  );
   await data(await call('POST', '/users', { username: 'Ana', password: USER_PASSWORD }), 201);
 
   token = await signIn('ana', USER_PASSWORD);
@@ -233,6 +242,18 @@ test('each user has their own data, and none of it reaches another', async () =>
     await call('GET', '/reports/categories?month=2026-10'),
   );
   assert.deepEqual(report.currencies, []);
+  assert.deepEqual(await data<unknown[]>(await call('GET', '/exchange-rates')), []);
+  const recurrings = await data<{ items: unknown[]; ignored: unknown[] }>(await call('GET', '/recurrings'));
+  assert.deepEqual([recurrings.items, recurrings.ignored], [[], []]);
+  for (const path of [
+    '/reports/accounts?month=2026-10',
+    '/reports/merchants?month=2026-10',
+    '/reports/evolution?to=2026-10&months=2',
+    '/reports/projection',
+    '/reports/categories?month=2026-10&in=USD',
+  ]) {
+    assert.doesNotMatch(JSON.stringify(await data(await call('GET', path))), /1540050|Edesur|Banco/, path);
+  }
   assert.doesNotMatch(
     JSON.stringify(await data(await call('GET', '/transactions/summary?month=2026-10'))),
     /1540050/,
@@ -251,8 +272,23 @@ test('each user has their own data, and none of it reaches another', async () =>
     ['DELETE', `/transactions/${mine.id}`],
     ['GET', `/accounts/${mine.accountId}`],
     ['DELETE', `/accounts/${mine.accountId}`],
+    ['DELETE', `/exchange-rates/${rate.id}`],
+    ['PATCH', `/exchange-rates/${rate.id}`],
+    ['DELETE', `/recurrings/${fixed.id}`],
+    ['PATCH', `/recurrings/${fixed.id}`],
+    ['POST', '/recurrings/from-transaction'],
   ] as const) {
-    const response = await call(method, path, method === 'PATCH' ? { description: 'mío' } : undefined);
+    const bodies: Partial<Record<string, object>> = {
+      [`/transactions/${mine.id}`]: { description: 'mío' },
+      [`/exchange-rates/${rate.id}`]: { validFrom: '2026-10-02', arsPerUsd: 1 },
+      [`/recurrings/${fixed.id}`]: { name: 'mío' },
+      '/recurrings/from-transaction': { transactionId: mine.id },
+    };
+    const response = await call(
+      method,
+      path,
+      method === 'DELETE' || method === 'GET' ? undefined : bodies[path],
+    );
     assert.equal((await failure(response, 404)).code, 'NOT_FOUND', `${method} ${path}`);
   }
   const borrowed = await call('POST', '/transactions', {

@@ -9,7 +9,10 @@ import {
   type DocumentDetail,
   type InstallmentPlan,
   type Institution,
+  type ExchangeRate,
   type ExtractionResult,
+  type Recurring,
+  type ReportRow,
   type Tag,
   type Transaction,
 } from '@gastos/shared';
@@ -22,6 +25,8 @@ import type { CategoryRulesRepository, StoredRule } from '../modules/category-ru
 import type { DocumentsRepository, StoredFile } from '../modules/documents/documents.repository';
 import type { InstallmentPlansRepository } from '../modules/installment-plans/installmentPlans.repository';
 import type { InstitutionsRepository } from '../modules/institutions/institutions.repository';
+import type { ExchangeRatesRepository } from '../modules/exchange-rates/exchangeRates.repository';
+import type { RecurringsRepository } from '../modules/recurrings/recurrings.repository';
 import type { TagsRepository } from '../modules/tags/tags.repository';
 import { duplicateKey, installmentKey } from '../modules/transactions/duplicateKey';
 import { filedAmounts } from '../modules/transactions/splits';
@@ -49,6 +54,28 @@ interface Store {
   transactions: Transaction[];
   rules: StoredRule[];
   documents: (DocumentDetail & { sha256: string; files: StoredFile[] })[];
+  exchangeRates: ExchangeRate[];
+  recurrings: Recurring[];
+}
+
+/** What the reports read of a transaction. */
+function toReportRow(transaction: Transaction): ReportRow {
+  return {
+    id: transaction.id,
+    type: transaction.type,
+    refund: transaction.refund,
+    status: transaction.status,
+    date: transaction.date,
+    paymentDate: transaction.paymentDate,
+    amountCents: transaction.amountCents,
+    currency: transaction.currency,
+    accountId: transaction.accountId,
+    toAccountId: transaction.toAccountId,
+    toAmountCents: transaction.toAmountCents,
+    description: transaction.description,
+    recurringId: transaction.recurringId,
+    installment: transaction.installment,
+  };
 }
 
 const STAMP = '2026-10-01T00:00:00.000Z';
@@ -63,6 +90,8 @@ export interface MemoryBackendOptions {
   readInBackground?: boolean;
   /** Refuses to touch data unless the code runs as a user, like the database does. */
   requireUser?: boolean;
+  /** The users' daily AI limit. Without it, nobody has one. */
+  takeAiReading?: () => Promise<void>;
 }
 
 /** Whose data it is when nobody says: the only user of a test that has none. */
@@ -83,6 +112,8 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
     transactions: [],
     rules: [],
     documents: [],
+    exchangeRates: [],
+    recurrings: [],
   });
   /**
    * Each user has their own arrays, like each has their own documents in the
@@ -590,6 +621,23 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
         .sort((a, b) => b.date.localeCompare(a.date));
       return { rate: latest?.original?.rate ?? null, date: latest?.date ?? null };
     },
+    async findReportRows(range) {
+      return store.transactions
+        .filter((transaction) => transaction.deletedAt === null && transaction.status !== 'draft')
+        .filter((transaction) => transaction.paymentDate >= range.from && transaction.paymentDate <= range.to)
+        .sort((a, b) => a.paymentDate.localeCompare(b.paymentDate) || a.date.localeCompare(b.date))
+        .map(toReportRow);
+    },
+    async setRecurring(id, recurringId) {
+      store.transactions = store.transactions.map((transaction) =>
+        transaction.id === id ? { ...transaction, recurringId } : transaction,
+      );
+    },
+    async clearRecurring(recurringId) {
+      store.transactions = store.transactions.map((transaction) =>
+        transaction.recurringId === recurringId ? { ...transaction, recurringId: null } : transaction,
+      );
+    },
     async findFiledByMonth(month) {
       return store.transactions
         .filter(
@@ -662,6 +710,78 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
     async moveCategory(fromId, toId) {
       store.rules = store.rules.map((rule) =>
         rule.categoryId === fromId ? { ...rule, categoryId: toId } : rule,
+      );
+    },
+  };
+
+  const exchangeRates: ExchangeRatesRepository = {
+    async findAll() {
+      return [...store.exchangeRates].sort((a, b) => a.validFrom.localeCompare(b.validFrom));
+    },
+    async findByValidFrom(validFrom) {
+      return store.exchangeRates.find((rate) => rate.validFrom === validFrom) ?? null;
+    },
+    async create(data) {
+      const rate: ExchangeRate = { ...data, id: nextId(), ...stamps };
+      store.exchangeRates.push(rate);
+      return rate;
+    },
+    async update(id, data) {
+      const index = store.exchangeRates.findIndex((rate) => rate.id === id);
+      const current = store.exchangeRates[index];
+      if (!current) return null;
+      const next = { ...current, ...data };
+      store.exchangeRates[index] = next;
+      return next;
+    },
+    async delete(id) {
+      const before = store.exchangeRates.length;
+      store.exchangeRates = store.exchangeRates.filter((rate) => rate.id !== id);
+      return store.exchangeRates.length < before;
+    },
+  };
+
+  const recurrings: RecurringsRepository = {
+    async findAll() {
+      return [...store.recurrings].sort((a, b) => (keys.get(a.id) ?? '').localeCompare(keys.get(b.id) ?? ''));
+    },
+    async findById(id) {
+      return store.recurrings.find((recurring) => recurring.id === id) ?? null;
+    },
+    async findByNameKey(key) {
+      return store.recurrings.find((recurring) => keys.get(recurring.id) === key) ?? null;
+    },
+    async create(record) {
+      const { nameKey, ...rest } = record;
+      const recurring: Recurring = { ...rest, id: nextId(), ...stamps };
+      keys.set(recurring.id, nameKey);
+      store.recurrings.push(recurring);
+      return recurring;
+    },
+    async update(id, changes) {
+      const index = store.recurrings.findIndex((recurring) => recurring.id === id);
+      const current = store.recurrings[index];
+      if (!current) return null;
+      const { nameKey, ...rest } = changes;
+      if (nameKey !== undefined) keys.set(id, nameKey);
+      const next = { ...current, ...rest };
+      store.recurrings[index] = next;
+      return next;
+    },
+    async delete(id) {
+      store.recurrings = store.recurrings.filter((recurring) => recurring.id !== id);
+    },
+    async countByAccount(accountId) {
+      return store.recurrings.filter((recurring) => recurring.accountId === accountId).length;
+    },
+    async moveCategory(fromId, toId) {
+      store.recurrings = store.recurrings.map((recurring) =>
+        recurring.categoryId === fromId ? { ...recurring, categoryId: toId } : recurring,
+      );
+    },
+    async clearCategory(categoryId) {
+      store.recurrings = store.recurrings.map((recurring) =>
+        recurring.categoryId === categoryId ? { ...recurring, categoryId: null } : recurring,
       );
     },
   };
@@ -758,8 +878,10 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
       categories,
       categoryRules,
       documents,
+      exchangeRates,
       installmentPlans,
       institutions,
+      recurrings,
       tags,
       transactions,
     },
@@ -781,6 +903,7 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
         if (options.readInBackground) work().catch((error: unknown) => errors.push({ error, context: {} }));
       },
       owner,
+      takeAiReading: () => options.takeAiReading?.() ?? Promise.resolve(),
       onError: (error, context) => errors.push({ error, context }),
     },
   );

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DEFAULT_TIMEZONE, SESSION_DAYS } from '@gastos/shared';
+import { DEFAULT_AI_DAILY_READINGS, DEFAULT_TIMEZONE, SESSION_DAYS } from '@gastos/shared';
 
 /**
  * The only file that reads process.env. Everything else imports `env`.
@@ -47,6 +47,8 @@ const envSchema = z.object({
   /** Empty means AI reading is off: uploads are refused with a clear message. */
   GEMINI_API_KEY: optionalSecret,
   GEMINI_MODEL: z.string().min(1).default('gemini-3.5-flash-lite'),
+  /** Documents each user can send to the AI per day; the admin can give someone another limit. */
+  AI_DAILY_READINGS: z.coerce.number().int().min(0).default(DEFAULT_AI_DAILY_READINGS),
   /**
    * The automatic copy to Google Drive. The OAuth client comes from Google
    * Cloud and is the app's; each user then connects their own Drive from the

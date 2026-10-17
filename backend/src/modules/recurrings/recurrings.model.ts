@@ -1,10 +1,16 @@
 import { Schema, model } from 'mongoose';
-import { CATEGORY_KINDS, CURRENCIES, type CategoryKind, type Currency } from '@gastos/shared';
+import {
+  CATEGORY_KINDS,
+  CURRENCIES,
+  MAX_DAY_OF_MONTH,
+  type CategoryKind,
+  type Currency,
+} from '@gastos/shared';
 import { COLLECTIONS } from '../../core/db/collections';
 import { ownedByUser, uniquePerUser } from '../../core/db/ownerPlugin';
 import type { ObjectId } from '../../core/db/ids';
 
-/** Stage 4: an income or expense the user marked as fixed, expected every month. */
+/** An income or expense the user marked as fixed, expected every month. */
 export interface RecurringDoc {
   _id: ObjectId;
   name: string;
@@ -16,11 +22,13 @@ export interface RecurringDoc {
   categoryId: ObjectId | null;
   dayOfMonth: number;
   active: boolean;
+  /** The user said this merchant is not fixed: it is not suggested again. */
+  ignored: boolean;
+  /** The normalised description its transactions are recognised by. */
+  merchantKey: string;
   createdAt: Date;
   updatedAt: Date;
 }
-
-const LAST_DAY_OF_MONTH = 31;
 
 const schema = new Schema<RecurringDoc>(
   {
@@ -31,8 +39,10 @@ const schema = new Schema<RecurringDoc>(
     currency: { type: String, required: true, enum: [...CURRENCIES] },
     accountId: { type: Schema.Types.ObjectId, required: true },
     categoryId: { type: Schema.Types.ObjectId, default: null },
-    dayOfMonth: { type: Number, required: true, min: 1, max: LAST_DAY_OF_MONTH },
+    dayOfMonth: { type: Number, required: true, min: 1, max: MAX_DAY_OF_MONTH },
     active: { type: Boolean, required: true, default: true },
+    ignored: { type: Boolean, required: true, default: false },
+    merchantKey: { type: String, default: '' },
   },
   { timestamps: true },
 );

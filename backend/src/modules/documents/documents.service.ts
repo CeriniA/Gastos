@@ -97,6 +97,11 @@ export interface DocumentDependencies {
   findInstallments(
     candidates: readonly { number: number; total: number; amountCents: number; currency: string }[],
   ): Promise<boolean[]>;
+  /**
+   * Counts one more document sent to the AI by the running user, or throws
+   * once they reached their daily limit: everybody shares one AI quota.
+   */
+  takeAiReading(): Promise<void>;
   runInTransaction: TransactionRunner;
   today(): IsoDate;
   now(): Date;
@@ -344,6 +349,7 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
       });
     }
 
+    await deps.takeAiReading();
     const created = await repository.create({
       ...data,
       fileName: data.fileName.slice(0, TEXT_LIMITS.description) || 'document',
@@ -470,6 +476,7 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
       if (document.status !== 'error' && document.status !== 'ready' && !waiting) {
         throw new ConflictError('Only a document waiting for review, or a failed one, can be read again');
       }
+      await deps.takeAiReading();
       // Asked by the user: right now, and with the automatic retries counted afresh.
       const updated = await repository.update(id, {
         status: 'processing',

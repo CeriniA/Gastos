@@ -30,27 +30,110 @@ function PasswordInput({ value, onChange }: { value: string; onChange: (value: s
   );
 }
 
+/** Name, type and daily AI limit of a user, as the admin edits them. */
+function EditUserForm({
+  user,
+  isSelf,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  user: User;
+  isSelf: boolean;
+  busy: boolean;
+  onSave: (changes: { username: string; role: UserRole; aiDailyLimit: string }) => Promise<boolean>;
+  onCancel: () => void;
+}) {
+  const [username, setUsername] = useState(user.username);
+  const [role, setRole] = useState<UserRole>(user.role);
+  const [aiDailyLimit, setAiDailyLimit] = useState(
+    user.aiDailyLimit === null ? '' : String(user.aiDailyLimit),
+  );
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    if (await onSave({ username, role, aiDailyLimit })) onCancel();
+  };
+
+  return (
+    <form onSubmit={(event) => void save(event)} className="space-y-2" noValidate>
+      <Field label={es.users.username}>
+        <TextInput
+          autoCapitalize="none"
+          autoComplete="off"
+          value={username}
+          maxLength={MAX_USERNAME_LENGTH}
+          onChange={(event) => setUsername(event.target.value)}
+        />
+      </Field>
+      <Field label={es.users.role} hint={isSelf ? es.users.ownRole : undefined}>
+        <RoleSelect value={role} disabled={isSelf} onChange={setRole} />
+      </Field>
+      <Field label={es.users.aiLimit} hint={es.users.aiLimitHint}>
+        <TextInput
+          inputMode="numeric"
+          value={aiDailyLimit}
+          onChange={(event) => setAiDailyLimit(event.target.value.replace(/D/g, ''))}
+        />
+      </Field>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={busy || !username.trim()}>
+          {es.common.save}
+        </Button>
+        <Button variant="secondary" onClick={onCancel}>
+          {es.common.cancel}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function RoleSelect({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: UserRole;
+  disabled?: boolean;
+  onChange: (role: UserRole) => void;
+}) {
+  return (
+    <Select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value as UserRole)}>
+      {USER_ROLES.map((option) => (
+        <option key={option} value={option}>
+          {es.users.roles[option]}
+        </option>
+      ))}
+    </Select>
+  );
+}
+
+type Opened = 'none' | 'edit' | 'password';
+
 function UserRow({
   user,
   isSelf,
   busy,
+  onEdit,
   onPassword,
   onActive,
 }: {
   user: User;
   isSelf: boolean;
   busy: boolean;
+  onEdit: (changes: { username: string; role: UserRole; aiDailyLimit: string }) => Promise<boolean>;
   onPassword: (password: string) => Promise<boolean>;
   onActive: (active: boolean) => void;
 }) {
-  const [resetting, setResetting] = useState(false);
+  const [opened, setOpened] = useState<Opened>('none');
   const [password, setPassword] = useState('');
+  const toggle = (what: Opened) => setOpened(opened === what ? 'none' : what);
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (await onPassword(password)) {
       setPassword('');
-      setResetting(false);
+      setOpened('none');
     }
   };
 
@@ -65,25 +148,42 @@ function UserRow({
           <span className="block text-sm text-muted">
             {[es.users.roles[user.role], user.active ? null : es.users.inactive].filter(Boolean).join(', ')}
           </span>
-        </span>
-        {/* Their own password and sessions are changed from Más, like anybody's. */}
-        {isSelf ? null : (
-          <span className="flex shrink-0 flex-wrap justify-end gap-1">
-            <Button variant="quiet" disabled={busy} onClick={() => setResetting(!resetting)}>
-              {es.users.resetPassword}
-            </Button>
-            <Button
-              variant="quiet"
-              className={user.active ? 'text-expense' : ''}
-              disabled={busy}
-              onClick={() => onActive(!user.active)}
-            >
-              {user.active ? es.users.deactivate : es.users.activate}
-            </Button>
+          <span className="block text-sm text-muted">
+            {es.users.aiUsage(user.aiReadingsToday, user.aiLimit)}
           </span>
-        )}
+        </span>
+        <span className="flex shrink-0 flex-wrap justify-end gap-1">
+          <Button variant="quiet" disabled={busy} onClick={() => toggle('edit')}>
+            {es.users.edit}
+          </Button>
+          {/* Their own password and sessions are changed from Más, like anybody's. */}
+          {isSelf ? null : (
+            <>
+              <Button variant="quiet" disabled={busy} onClick={() => toggle('password')}>
+                {es.users.resetPassword}
+              </Button>
+              <Button
+                variant="quiet"
+                className={user.active ? 'text-expense' : ''}
+                disabled={busy}
+                onClick={() => onActive(!user.active)}
+              >
+                {user.active ? es.users.deactivate : es.users.activate}
+              </Button>
+            </>
+          )}
+        </span>
       </div>
-      {resetting ? (
+      {opened === 'edit' ? (
+        <EditUserForm
+          user={user}
+          isSelf={isSelf}
+          busy={busy}
+          onSave={onEdit}
+          onCancel={() => setOpened('none')}
+        />
+      ) : null}
+      {opened === 'password' ? (
         <form onSubmit={(event) => void save(event)} className="space-y-2" noValidate>
           <Field label={es.users.newPassword(user.username)} hint={es.password.hint(MIN_PASSWORD_LENGTH)}>
             <PasswordInput value={password} onChange={setPassword} />
@@ -92,7 +192,7 @@ function UserRow({
             <Button type="submit" disabled={busy || !password}>
               {es.common.save}
             </Button>
-            <Button variant="secondary" onClick={() => setResetting(false)}>
+            <Button variant="secondary" onClick={() => setOpened('none')}>
               {es.common.cancel}
             </Button>
           </div>
@@ -141,6 +241,23 @@ export function UsersPage() {
     return changed;
   };
 
+  const edit = async (user: User, changes: { username: string; role: UserRole; aiDailyLimit: string }) => {
+    setDone(null);
+    const parsed = userUpdateSchema.safeParse({
+      username: changes.username,
+      // Their own type is not theirs to change; the server refuses it too.
+      ...(user.id === session?.userId ? {} : { role: changes.role }),
+      aiDailyLimit: changes.aiDailyLimit === '' ? null : Number(changes.aiDailyLimit),
+    });
+    if (!parsed.success) {
+      setFailure(firstProblem(parsed.error.issues));
+      return false;
+    }
+    const changed = await run(() => update.mutateAsync({ id: user.id, changes: parsed.data }));
+    if (changed) setDone(es.users.saved(parsed.data.username ?? user.username));
+    return changed;
+  };
+
   const setActive = (user: User, active: boolean) => {
     setDone(null);
     if (!active && !window.confirm(es.users.deactivateConfirm(user.username))) return;
@@ -170,6 +287,7 @@ export function UsersPage() {
                 user={user}
                 isSelf={user.id === session?.userId}
                 busy={busy}
+                onEdit={(changes) => edit(user, changes)}
                 onPassword={(newPassword) => resetPassword(user, newPassword)}
                 onActive={(active) => setActive(user, active)}
               />
@@ -195,13 +313,7 @@ export function UsersPage() {
             <PasswordInput value={password} onChange={setPassword} />
           </Field>
           <Field label={es.users.role}>
-            <Select value={role} onChange={(event) => setRole(event.target.value as UserRole)}>
-              {USER_ROLES.map((option) => (
-                <option key={option} value={option}>
-                  {es.users.roles[option]}
-                </option>
-              ))}
-            </Select>
+            <RoleSelect value={role} onChange={setRole} />
           </Field>
           <Button type="submit" disabled={busy || !username.trim() || !password}>
             {create.isPending ? es.common.saving : es.common.add}

@@ -70,9 +70,13 @@ Pesos (ARS) y dólares (USD). Cada movimiento se guarda en su moneda y nunca se 
   ticket se convierten con el mismo cambio.
 - El cambio se puede corregir después, al editar el movimiento: cambiar el cambio recalcula el monto, y
   cambiar el monto recalcula el cambio. Los dos datos nunca quedan en desacuerdo.
-- Vista consolidada (etapa 4): todo en pesos o todo en dólares, usando una **tasa de cambio cargada a
-  mano** con fecha de inicio. Cada movimiento se convierte con la tasa vigente en su fecha; cambiar la
-  tasa hoy no altera los meses anteriores. Si un período no tiene tasa, la vista avisa y no inventa.
+- Vista consolidada (hecho, 17/10/2026): cada informe se puede ver con cada moneda por separado (como
+  arranca), todo en pesos o todo en dólares, usando una **tasa de cambio cargada a mano** con fecha de
+  inicio (Más → Tasas de cambio: cuántos pesos vale un dólar desde un día). Cada movimiento se convierte
+  con la tasa vigente el día del movimiento, que es la última que empezó ese día o antes; cambiar la tasa
+  hoy no altera los meses anteriores. Si un día no tiene tasa, el movimiento queda afuera y la vista avisa
+  cuántos quedaron, con un enlace para cargar una: no inventa. Dos tasas no empiezan el mismo día. Una tasa
+  se corrige o se borra cuando se quiere: no cambia nada guardado.
 
 ## 4. Cuentas
 
@@ -228,16 +232,50 @@ fuerza nada: queda la sugerencia de la IA.
 - Del resumen se ignoran saldo y pago anteriores; la suma de lo extraído se controla contra el total del
   resumen.
 
-## 9. Movimientos fijos (etapa 4)
+## 9. Movimientos fijos (hecho, 17/10/2026)
 
-Cuando un comercio aparece con monto parecido en meses seguidos, la app lo señala como posible fijo
-(regla del backend, no IA). El usuario lo marca o lo deja; también puede marcar cualquier movimiento a
-mano. Un fijo se espera cada mes, entra en la proyección y avisa si no apareció o cambió mucho.
+Un fijo es un ingreso o egreso que se espera todos los meses por un monto parecido: alquiler, sueldo,
+servicios, suscripciones. Se ven en Más → Movimientos fijos.
 
-## 10. Informes (balance mensual en etapa 1; el resto en etapa 4)
+- **Sugerencia** (regla del backend, no IA): un comercio que se pagó **exactamente una vez por mes**, en al
+  menos **3 meses seguidos**, por un monto que no se aleja más de un **20 %** del último, aparece en "Parecen
+  fijos". La racha termina este mes o el anterior (el de este mes puede no haber llegado). El usuario toca
+  "Es fijo" o "No es fijo"; nada se marca solo. Un comercio marcado como no fijo no se vuelve a sugerir, y
+  queda en una lista donde se puede deshacer.
+- **Marca a mano**: al abrir cualquier ingreso o egreso con descripción, "Es un movimiento fijo". El fijo
+  toma el nombre (la descripción), el monto, la cuenta, la categoría y el día de pago de ese movimiento. Si
+  su comercio ya es un fijo, el movimiento se suma a ese.
+- **Cómo se reconoce cada mes**: por los movimientos marcados con él y por los de su mismo tipo, moneda y
+  descripción (sin distinguir mayúsculas ni acentos) que no estén marcados con otro. Cuenta por **fecha de
+  pago**, como el balance: una suscripción con tarjeta se espera en el mes en que se paga.
+- **Estado del mes**: llegó; cambió mucho (más de un 20 % de diferencia con lo esperado, con un botón para
+  usar el monto nuevo de ahí en más); no apareció (pasaron 5 días de su día); todavía no llegó; en pausa.
+- **Aviso**: el Inicio avisa cuántos fijos no aparecieron o cambiaron mucho este mes.
+- **Proyección**: los fijos activos que todavía no llegaron entran en "Próximos" de Informes (sección 10).
+- Se edita el nombre, el monto esperado, el día, la cuenta (y con ella la moneda) y la categoría; se pausa o
+  se borra. Borrarlo no toca los movimientos: solo pierden la marca. Una cuenta con un fijo no se borra; una
+  categoría borrada deja al fijo sin categoría, y una unida a otra lo lleva con ella.
 
-Balance del mes por moneda; gasto por categoría con apertura del árbol; por cuenta; evolución mensual;
-principales comercios; cuotas y fijos pendientes; buscador con filtros; exportación a Excel.
+## 10. Informes (hecho)
+
+Pestañas: **Categorías, Cuentas, Meses, Comercios, Próximos y Consumo**. Todas, salvo Consumo, se ven con
+cada moneda por separado o todo en una (sección 3). Todas cuentan igual que el balance del Inicio: por fecha
+de pago, las devoluciones restan, las transferencias no son ingreso ni egreso y la papelera no entra. El
+buscador con filtros está en Movimientos y la exportación a Excel en Más → Respaldo y datos.
+
+**Por cuenta.** Para el mes, cada cuenta que tuvo movimientos con sus ingresos, sus egresos y las
+transferencias que recibió y que envió (pagar la tarjeta, comprar dólares), en su moneda.
+
+**Meses.** Los 12 meses que terminan en el elegido, del más nuevo al más viejo: ingresos, egresos y balance
+de cada uno, con barras para comparar y el egreso promedio de los meses con movimientos.
+
+**Comercios.** Los egresos del mes agrupados por su descripción (sin distinguir mayúsculas ni acentos), de
+mayor a menor, con cuántas compras fueron. Los 20 más grandes van uno por uno; el resto y lo que no tiene
+descripción, juntos.
+
+**Próximos (proyección).** Este mes y los dos siguientes. Por moneda: lo ya cargado que se paga en ese mes
+(incluidas las compras con tarjeta hechas antes), lo esperado (cuotas proyectadas y fijos que todavía no
+llegaron) y cómo terminaría el mes. Debajo, la lista de lo esperado con su fecha. Se calcula, no se guarda.
 
 **Por categoría (hecho).** La pestaña Informes abre en "Por categoría": para el mes elegido y por cada
 moneda, los ingresos y los egresos con su total y cada categoría principal con su monto y su porcentaje, de
@@ -262,20 +300,22 @@ detalle o con productos cargados a mano; un pago de MercadoPago sin detalle no a
 
 Diseño para celular primero. Barra inferior: **Inicio, Movimientos, +, Informes, Más**.
 
-| Pantalla                 | Qué muestra                                                                         | Etapa |
-| ------------------------ | ----------------------------------------------------------------------------------- | ----- |
-| Login                    | Usuario y contraseña; aviso si el servidor está despertando                         | 1     |
-| Inicio                   | Balance del mes por moneda, últimos movimientos                                     | 1     |
-| Movimientos              | Lista por mes con buscador y filtros; tocar uno lo edita                            | 1     |
-| Agregar                  | Carga manual (etapa 1); foto o archivo (etapa 2)                                    | 1 y 2 |
-| Más                      | Cuentas, tarjetas, categorías, bancos, etiquetas, papelera, respaldo e importación  | 1 y 3 |
-| Contraseña               | En Más: cada usuario cambia la suya                                                 | 1     |
-| Usuarios                 | En Más, solo para el administrador: crear, cambiar contraseña, activar o desactivar | 1     |
-| Pendientes               | Bandeja única de todo lo que espera una decisión                                    | 2     |
-| Revisión                 | Imagen y datos extraídos                                                            | 2     |
-| Tarjetas                 | Compras desde el último cierre, cada resumen con lo cargado, alta de cierres        | 3     |
-| Privacidad y condiciones | `/privacidad` y `/condiciones`: páginas públicas, se leen sin iniciar sesión        | 1     |
-| Informes                 | Ver sección 10                                                                      | 4     |
+| Pantalla                 | Qué muestra                                                                        | Etapa |
+| ------------------------ | ---------------------------------------------------------------------------------- | ----- |
+| Login                    | Usuario y contraseña; aviso si el servidor está despertando                        | 1     |
+| Inicio                   | Balance del mes por moneda, últimos movimientos                                    | 1     |
+| Movimientos              | Lista por mes con buscador y filtros; tocar uno lo edita                           | 1     |
+| Agregar                  | Carga manual (etapa 1); foto o archivo (etapa 2)                                   | 1 y 2 |
+| Más                      | Cuentas, tarjetas, categorías, bancos, etiquetas, papelera, respaldo e importación | 1 y 3 |
+| Contraseña               | En Más: cada usuario cambia la suya                                                | 1     |
+| Usuarios                 | En Más, solo para el administrador: crear, editar, cambiar contraseña, desactivar  | 1     |
+| Pendientes               | Bandeja única de todo lo que espera una decisión                                   | 2     |
+| Revisión                 | Imagen y datos extraídos                                                           | 2     |
+| Tarjetas                 | Compras desde el último cierre, cada resumen con lo cargado, alta de cierres       | 3     |
+| Movimientos fijos        | En Más: cada fijo y cómo está este mes, sugerencias, los marcados como no fijos    | 4     |
+| Tasas de cambio          | En Más: pesos por dólar desde cada día, para ver los informes en una moneda        | 4     |
+| Privacidad y condiciones | `/privacidad` y `/condiciones`: páginas públicas, se leen sin iniciar sesión       | 1     |
+| Informes                 | Ver sección 10                                                                     | 4     |
 
 Toda pantalla contempla: cargando, lista vacía con indicación de qué hacer, error con reintento y
 servidor despertando.
@@ -284,20 +324,20 @@ servidor despertando.
 
 MongoDB. Los nombres están en inglés; ver `GLOSARIO.md`.
 
-| Colección          | Guarda                                      | Apunta a                                                                                       | Etapa |
-| ------------------ | ------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----- |
-| `accounts`         | Cuentas                                     |                                                                                                | 1     |
-| `categories`       | Árbol de categorías                         | `categories` (padre)                                                                           | 1     |
-| `tags`             | Etiquetas                                   |                                                                                                | 1     |
-| `transactions`     | Movimientos, con ítems y divisiones adentro | `accounts`, `categories`, `tags`, `documents`, `installmentPlans`, `cardPeriods`, `recurrings` | 1     |
-| `documents`        | Archivos subidos y su extracción            | `accounts`                                                                                     | 2     |
-| `categoryRules`    | Comercio → categoría                        | `categories`                                                                                   | 2     |
-| `installmentPlans` | Compras en cuotas                           | `accounts`                                                                                     | 3     |
-| `cardPeriods`      | Períodos de tarjeta                         | `accounts`, `documents`                                                                        | 3     |
-| `recurrings`       | Movimientos fijos                           | `accounts`, `categories`                                                                       | 4     |
-| `exchangeRates`    | Tasas de cambio por fecha                   |                                                                                                | 4     |
-| `migrations`       | Migraciones ya aplicadas                    |                                                                                                | 1     |
-| `users`            | Quién puede entrar, y su permiso de Drive   |                                                                                                | 1     |
+| Colección          | Guarda                                       | Apunta a                                                                                       | Etapa |
+| ------------------ | -------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----- |
+| `accounts`         | Cuentas                                      |                                                                                                | 1     |
+| `categories`       | Árbol de categorías                          | `categories` (padre)                                                                           | 1     |
+| `tags`             | Etiquetas                                    |                                                                                                | 1     |
+| `transactions`     | Movimientos, con ítems y divisiones adentro  | `accounts`, `categories`, `tags`, `documents`, `installmentPlans`, `cardPeriods`, `recurrings` | 1     |
+| `documents`        | Archivos subidos y su extracción             | `accounts`                                                                                     | 2     |
+| `categoryRules`    | Comercio → categoría                         | `categories`                                                                                   | 2     |
+| `installmentPlans` | Compras en cuotas                            | `accounts`                                                                                     | 3     |
+| `cardPeriods`      | Períodos de tarjeta                          | `accounts`, `documents`                                                                        | 3     |
+| `recurrings`       | Movimientos fijos, y comercios que no lo son | `accounts`, `categories`                                                                       | 4     |
+| `exchangeRates`    | Tasas de cambio por fecha                    |                                                                                                | 4     |
+| `migrations`       | Migraciones ya aplicadas                     |                                                                                                | 1     |
+| `users`            | Quién puede entrar, y su permiso de Drive    |                                                                                                | 1     |
 
 Todas las colecciones, salvo `migrations` y `users`, guardan datos de un usuario: cada documento lleva su
 dueño (`userId`) y lo que no puede repetirse (el nombre de una cuenta, una regla por comercio) es único
@@ -361,8 +401,17 @@ MongoDB no impide una referencia rota; lo hace el backend:
 **Usuarios.** Cada persona entra con su nombre de usuario y su contraseña. Hay dos tipos:
 
 - **Usuario**: usa la app con sus propios datos.
-- **Administrador**: además crea usuarios, les pone una contraseña nueva y los activa o desactiva, desde
-  Más → Usuarios. **No ve los datos de nadie**: no hay pantalla ni ruta para eso.
+- **Administrador**: además crea usuarios, les cambia el nombre y el tipo, les pone una contraseña nueva,
+  los activa o desactiva y les fija el límite diario de lectura con IA, desde Más → Usuarios. **No ve los
+  datos de nadie**: no hay pantalla ni ruta para eso. Un administrador no puede desactivarse ni cambiarse
+  el tipo a sí mismo, así siempre queda uno.
+
+**Límite de lectura con IA.** Todos los usuarios comparten el cupo gratuito de la misma clave de Gemini.
+Para que uno no lo gaste entero, cada usuario puede mandar a leer una cantidad de documentos por día: 30, o
+lo que diga la variable `AI_DAILY_READINGS`, salvo que el administrador le dé otro (0 lo deja sin IA).
+Cuenta cada ticket, captura o resumen mandado a leer y cada "Volver a leer"; los reintentos automáticos
+cuando la IA no tiene cupo no cuentan. Pasado el límite, la subida se rechaza con un aviso y no se guarda
+nada; al día siguiente vuelve a cero. En Más → Usuarios se ve cuántas lleva cada uno hoy.
 
 No hay registro abierto: solo un administrador crea usuarios. Un usuario nuevo arranca con las categorías,
 cuentas y bancos iniciales. El primer administrador sale de las variables `AUTH_USERNAME` y

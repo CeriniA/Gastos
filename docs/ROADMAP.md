@@ -6,8 +6,9 @@ Cada etapa termina en algo que funciona. Si una se complica, lo anterior ya sirv
 
 | Qué                                                          | Estado                                                                                                                                                              |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasa en la PC del usuario el 13/10/2026 con usuarios y datos por usuario (185 pruebas)                                                                              |
-| Usuarios y datos por usuario contra MongoDB Atlas            | **Sin probar.** Escrito el 13/10/2026; la migración que le pone dueño a los datos corre por primera vez en el próximo despliegue. Bajar un respaldo antes           |
+| `npm run check` (tipos, lint, auditoría de código y pruebas) | Pasa en la PC del usuario el 17/10/2026 con la etapa 4 (201 pruebas)                                                                                                |
+| Usuarios y datos por usuario contra MongoDB Atlas            | Funciona en Render desde el 13/10/2026; la migración de dueños corrió sin errores                                                                                   |
+| Etapa 4 contra MongoDB Atlas                                 | **Sin probar.** Escrita el 17/10/2026 y probada en memoria y por HTTP                                                                                               |
 | Pantallas de la etapa 1 en un navegador                      | Recorridas el 13/10/2026 contra la demo en memoria (`npm run demo`), tamaño celular: flujo y textos. Sin mirar el aspecto ni probar las descargas                   |
 | Lectura de resúmenes en PDF                                  | Escrita el 12/10/2026 sin ningún resumen real a mano: la lectura del PDF, el tapado de datos y las instrucciones a la IA se ajustan con el primer resumen verdadero |
 | Compilación de backend y frontend (`npm run build`)          | Render compiló los dos el 11/10/2026; se repite en cada push                                                                                                        |
@@ -18,90 +19,56 @@ Cada etapa termina en algo que funciona. Si una se complica, lo anterior ya sirv
 
 Las versiones de `package.json` se escribieron sin acceso al registro de npm; la instalación funcionó.
 
-## Dónde quedamos (13/10/2026)
+## Dónde quedamos (17/10/2026)
 
 Para retomar. Se borra o se reescribe al empezar la próxima sesión.
 
-**Ya subido (commit y push hechos por el usuario):** resúmenes en PDF, devoluciones, cuotas desde el
-resumen, cuotas según el cierre y la copia automática en Drive (`c4c16f7`); y lo del 13/10/2026 (`270603c`):
+**Subido antes (commit y push del usuario):** todo hasta `b58f5a3`: usuarios con datos propios, Drive por
+usuario, pago de tarjeta, informe por categoría, política de privacidad y condiciones. Funciona en Render
+desde el 13/10/2026.
 
-1. Intereses, impuestos y comisiones leídos de un documento se proponen en "Cargos financieros"
-   (instrucciones versión 8). Sin migración: no cambia nada de lo guardado.
-2. La pantalla Agregar muestra sus errores con `useAction`, como el resto.
+**Hecho el 17/10/2026, con commit y sin push:**
 
-También subido (`020c281`, repaso de la etapa 1): la demo en memoria (`npm run demo`), las pruebas por HTTP
-(`backend/src/app.test.ts`), el arreglo de los movimientos divididos que no se reconocían como repetidos al
-importar, la confirmación al borrar una cuenta y `useAction` en Login, Más y el formulario de movimientos.
+1. Usuarios: el administrador renombra a un usuario, le cambia el tipo (no el suyo propio) y le fija un
+   límite diario de lecturas con IA (Más → Usuarios → Editar). Ahí también se ve cuántas lleva hoy cada uno.
+2. Límite de lectura con IA por usuario: 30 documentos por día, o lo que diga `AI_DAILY_READINGS`. Pasado
+   el límite, la subida se rechaza con un aviso.
+3. Etapa 4 completa:
+   - Informes nuevos: Cuentas, Meses (evolución), Comercios y Próximos (proyección).
+   - Tasas de cambio (Más → Tasas de cambio) y "Mostrar: todo en pesos / todo en dólares" en los informes.
+   - Movimientos fijos (Más → Movimientos fijos): sugerencias, "Es un movimiento fijo" en cada movimiento,
+     estado de cada mes, aviso en el Inicio y entrada en la proyección.
+4. Política de privacidad actualizada (fecha 17/10/2026): dice que se guardan fijos, tasas y la cuenta de
+   lecturas del día.
+5. Migración `2026-10-17-recurring-merchant`: completa dos campos nuevos de los fijos. No hay fijos guardados
+   todavía, así que normalmente no cambia nada.
 
-Y el repaso de las etapas 2 y 3 (`4806090`): la demo simula la IA y el lector de PDF, y los dos arreglos de
-la pantalla de revisión (a dónde va al confirmar, y la tarjeta elegida con "Cuenta para todos").
+**Para subirlo:**
 
-**Hecho después, en la carpeta del usuario, sin commit: usuarios (ver la sección "Usuarios" más abajo).**
+1. `npm run check` pasó el 17/10/2026 (201 pruebas).
+2. Commit hecho el 17/10/2026.
+3. Push. En Render no hace falta ninguna variable nueva: `AI_DAILY_READINGS` es opcional (30 si no está).
+4. Después del despliegue: Más → Usuarios muestra "Lecturas con IA hoy" de cada uno; Informes tiene seis
+   pestañas.
 
-1. Usuarios en MongoDB con contraseña en hash y sesión por JWT. El administrador crea usuarios, les cambia
-   la contraseña y los activa o desactiva (Más → Usuarios). Cada uno cambia la suya (Más → Cambiar mi
-   contraseña).
-2. Cada dato tiene dueño y nadie ve los de otro. El dueño lo pone y lo filtra un solo lugar
-   (`core/db/ownerPlugin.ts`); sin usuario, tocar datos da error.
-3. Respaldo, restauración, exportación, cola de documentos y limpiezas son de cada usuario.
-4. Cada usuario conecta su propio Google Drive desde la app. En Render quedan `DRIVE_CLIENT_ID`,
-   `DRIVE_CLIENT_SECRET` y `PUBLIC_API_URL`; `DRIVE_REFRESH_TOKEN` ya no se usa.
-5. Se fueron `npm run seed` y `npm run drive-auth`: los datos iniciales se dan solos a cada usuario nuevo.
-
-**Y tres mejoras más, también sin commit:**
-
-1. Al unir categorías, las partes de un movimiento dividido que quedan en la misma categoría se juntan (era
-   el problema que había quedado anotado sin corregir).
-2. Pagar la tarjeta: "Registrar un pago" en cada resumen de Más → Tarjetas. Es una transferencia ligada al
-   resumen, que muestra lo pagado y lo que falta.
-3. Informe por categoría, con ingresos y egresos y el árbol de categorías. Informes ahora tiene dos
-   pestañas: "Por categoría" y "Consumo".
-
-**Subido y funcionando en Render (`bca99dc`):** usuarios, Drive por usuario, pago de tarjeta e informe por
-categoría. El usuario confirmó el 13/10/2026 que funciona; la migración de dueños corrió sin errores.
-
-**También subido (`1b15111`):** política de privacidad (`/privacidad`) y condiciones de uso
-(`/condiciones`), públicas, enlazadas desde el login y desde Más. Queda del lado del usuario cargar
-`VITE_CONTACT_EMAIL` en el sitio de Render y poner las dos direcciones en Google Cloud.
-
-**Lo que sigue era el plan de la subida anterior; queda como registro.**
-
-**Primer paso al retomar. Leer entero antes de subir: este cambio toca todos los datos guardados.**
-
-1. `npm run check`: pasó el 13/10/2026 (185 pruebas).
-2. **Bajar un respaldo desde la app en producción (Más → Respaldo y datos), antes del push.** La versión
-   nueva lo sabe restaurar aunque no tenga dueños.
-3. Commit: `feat: users with their own data, per-user Drive, card payments, report by category`
-4. Push. Al arrancar, Render:
-   - crea el primer usuario, administrador, con `AUTH_USERNAME` y `AUTH_PASSWORD_HASH`;
-   - corre la migración `2026-10-13-data-owners`: todo lo guardado pasa a ser de ese usuario y los índices
-     únicos se rehacen por usuario.
-5. Entrar de nuevo (las sesiones viejas dejan de valer) y revisar que estén las cuentas y los movimientos.
-   Si algo falta o el servidor no arranca, mirar los registros de Render; con el respaldo del paso 2 se
-   recupera todo.
-6. Crear un segundo usuario y comprobar que no ve nada.
-
-**No probado contra una base real:** la migración, los índices por usuario y el filtro por dueño están
-probados sobre Mongoose sin base y sobre el backend en memoria (incluido por HTTP, con dos usuarios). Contra
-MongoDB Atlas corren por primera vez en el paso 4. Lo más prudente es probarlo antes en la base `gastos-dev`
-(`npm run dev:backend` con `MONGODB_URI` apuntando ahí, después de restaurarle el respaldo).
+**No probado contra una base real:** las consultas nuevas (informes, fijos, tasas, el contador de lecturas)
+están probadas sobre el backend en memoria y por HTTP. Contra MongoDB Atlas corren por primera vez al subir.
 
 **Pendiente del usuario (no es código):**
 
-- Bajar un respaldo desde la app (Más → Datos) antes de subir lo de usuarios.
-- Configurar Google una vez con `docs/RESPALDO_DRIVE.md` (credencial de tipo "Aplicación web", tres
-  variables en Render) y después conectar el Drive desde la app y probar "Copiar ahora". Si ya se había
-  creado la credencial de tipo "App de escritorio", hay que crear una nueva.
-- Crear los usuarios que hagan falta en Más → Usuarios y pasarles su contraseña.
+- Cargar `VITE_CONTACT_EMAIL` en el sitio de Render y poner las direcciones de `/privacidad` y
+  `/condiciones` en Google Cloud.
+- Configurar Google una vez con `docs/RESPALDO_DRIVE.md` y probar "Copiar ahora" con un Drive de verdad.
 - Que el amigo pruebe un resumen real: qué quedó sin tapar en el texto, si la suma da igual al total y si
   los intereses, impuestos y comisiones salen en "Cargos financieros".
+- Decidir el margen de días para la misma compra cargada por dos vías (ver abajo).
 
 **Lo próximo que se puede programar:**
 
 - Ajustar el tapado y las instrucciones con el primer resumen real.
-- La misma compra cargada por dos vías (ticket y resumen): detectarla y proponer unirla. Antes hay que
-  definir el margen de días (está abierto en `DECISIONES.md`; se propuso 3, con mismo monto y cuenta).
-- Etapa 4: los informes que faltan (por cuenta, evolución mensual, comercios) y movimientos fijos.
+- La misma compra cargada por dos vías (ticket y resumen): detectarla y proponer unirla. Falta definir el
+  margen de días (abierto en `DECISIONES.md`; se propuso 3, con mismo monto y cuenta).
+- Recordar una corrección de producto o grupo para el próximo ticket; comparar precios en el tiempo.
 - Uso sin conexión: está en la segunda versión; el usuario decidió no adelantarlo por ahora.
 
 **Cómo se trabaja (recordatorio para el asistente):**
@@ -130,10 +97,10 @@ Hecho:
 
 Falta:
 
-- Probarlo contra MongoDB Atlas (ver "Dónde quedamos").
 - Probar la conexión de Drive con Google de verdad: hasta ahora, con un Google simulado.
-- Que el administrador pueda renombrar un usuario o cambiarle el tipo (hoy se crea otro).
-- Un límite de uso de la IA por usuario: hoy todos comparten el mismo cupo de Gemini.
+
+Hecho (17/10/2026): el administrador renombra a un usuario y le cambia el tipo, y cada usuario tiene un
+límite diario de documentos mandados a la IA (30, `AI_DAILY_READINGS`, o el que le dé el administrador).
 
 ## Etapa 1: base usable (este repositorio)
 
@@ -296,10 +263,15 @@ pagado y lo que falta a la vista.
 
 Hecho (13/10/2026): informe por categoría, de ingresos y egresos, con el árbol de categorías.
 
-- Informes por cuenta, evolución mensual, comercios.
-- Tasas de cambio manuales (`exchange-rates`) y vista consolidada.
-- Movimientos fijos (`recurrings`): sugerencia, marca manual, proyección y avisos.
-- Proyección de cuotas y fijos.
+Hecho (17/10/2026), probado en memoria y por HTTP, sin probar contra Atlas:
+
+- Informes por cuenta, evolución mensual (Meses) y comercios.
+- Tasas de cambio manuales (`exchange-rates`) y vista en una moneda en todos los informes salvo Consumo.
+- Movimientos fijos (`recurrings`): sugerencia, marca manual, estado del mes, aviso en el Inicio.
+- Proyección de este mes y los dos siguientes: lo cargado, las cuotas por venir y los fijos sin aparecer.
+
+Falta: nada pendiente de programar. Queda usarla y ajustar los números de la regla de fijos (3 meses, 20 %,
+5 días) si avisan de más o de menos.
 
 ## Segunda versión
 
