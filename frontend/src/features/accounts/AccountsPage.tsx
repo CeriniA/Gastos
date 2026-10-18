@@ -227,7 +227,7 @@ export function AccountsPage() {
 
       <QueryState query={accounts} empty={es.accounts.empty}>
         {(items) => (
-          <ul className="mb-6 divide-y divide-line rounded-xl border border-line bg-surface">
+          <ul className="mb-6 divide-y divide-line rounded-2xl bg-surface shadow-card">
             {items.map((account) => (
               <li key={account.id}>
                 <div className="space-y-1 p-3">

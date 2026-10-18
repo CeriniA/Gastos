@@ -1,9 +1,19 @@
 import { Link } from 'react-router-dom';
-import { formatDate, formatMoney, type Account, type Category, type Transaction } from '@gastos/shared';
+import {
+  DEFAULT_TIMEZONE,
+  formatMoney,
+  formatShortDate,
+  todayIso,
+  type Account,
+  type Category,
+  type Transaction,
+} from '@gastos/shared';
 import { es } from '../../shared/i18n/es';
+import { LookBadge, transactionLook } from '../../shared/ui/categoryLook';
 
 const SIGN = { income: '+', expense: '−', transfer: '' } as const;
-const TONE = { income: 'text-income', expense: 'text-expense', transfer: 'text-muted' } as const;
+/** Money in stands out in green; spending stays calm, in the text colour. */
+const TONE = { income: 'text-income', expense: 'text-ink', transfer: 'text-muted' } as const;
 
 export function TransactionRow({
   transaction,
@@ -23,14 +33,15 @@ export function TransactionRow({
       ? es.transactions.transferTo(accountName(transaction.toAccountId))
       : (category?.name ?? es.transactions.noDescription));
 
+  // The category first: it is what tells movements apart, and it should not be the part cut off.
   const details = [
-    formatDate(transaction.date),
-    accountName(transaction.accountId),
     transaction.type === 'transfer'
       ? null
       : transaction.splits.length > 0
         ? es.transactions.split.summary(transaction.splits.length)
         : (category?.name ?? es.transactions.noCategory),
+    formatShortDate(transaction.date, todayIso(DEFAULT_TIMEZONE)),
+    accountName(transaction.accountId),
     transaction.installment
       ? es.transactions.installment(transaction.installment.number, transaction.installment.total)
       : null,
@@ -40,10 +51,11 @@ export function TransactionRow({
 
   return (
     <li>
-      <Link to={`/movimientos/${transaction.id}`} className="flex items-center justify-between gap-3 p-3">
-        <span className="min-w-0">
+      <Link to={`/movimientos/${transaction.id}`} className="flex items-center gap-3 px-3 py-2.5">
+        <LookBadge look={transactionLook(transaction, categories)} />
+        <span className="min-w-0 flex-1">
           <span className="block truncate font-medium">{title}</span>
-          <span className="block truncate text-sm text-muted">{details.join(', ')}</span>
+          <span className="block truncate text-sm text-muted">{details.join(' · ')}</span>
         </span>
         <span
           className={`amount shrink-0 font-semibold ${transaction.refund ? TONE.income : TONE[transaction.type]}`}

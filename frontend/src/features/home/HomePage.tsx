@@ -1,3 +1,13 @@
+import type { ReactNode } from 'react';
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  ChevronRight,
+  Receipt,
+  Repeat,
+  TriangleAlert,
+  type LucideIcon,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   DEFAULT_TIMEZONE,
@@ -9,7 +19,7 @@ import {
 } from '@gastos/shared';
 import { es } from '../../shared/i18n/es';
 import { QueryState } from '../../shared/ui/QueryState';
-import { Card, Notice } from '../../shared/ui/ui';
+import { Notice } from '../../shared/ui/ui';
 import { useAccounts } from '../accounts/api';
 import { driveBackupNeedsAttention, useDriveBackup } from '../data/api';
 import { usePendingDocuments } from '../documents/api';
@@ -17,45 +27,77 @@ import { useCategories } from '../categories/api';
 import { useRecurrings } from '../recurrings/api';
 import { TransactionRow } from '../transactions/TransactionRow';
 import { useMonthSummary, useTransactions } from '../transactions/api';
+import { ICON_SIZE } from '../../shared/ui/icons';
 
 /**
- * One currency's month: the balance, and a bar whose two parts are as wide
- * as income and expense are large, so the month reads at a glance.
+ * One currency's month: the balance in large, and what came in and went out
+ * on two soft tiles beside each other, so the month reads at a glance.
  */
-/** With nothing in the month, the bar shows two equal halves. */
-const HALF_PERCENT = 50;
-
-function MonthBalance({ totals }: { totals: CurrencyTotals }) {
-  const volume = totals.incomeCents + totals.expenseCents;
-  const incomeShare = volume === 0 ? HALF_PERCENT : Math.round((totals.incomeCents / volume) * 100);
-  const positive = totals.balanceCents >= 0;
+function MonthBalance({ totals, showCurrency }: { totals: CurrencyTotals; showCurrency: boolean }) {
+  const tiles = [
+    {
+      label: es.home.income,
+      cents: totals.incomeCents,
+      icon: ArrowDownLeft,
+      tone: 'bg-income-soft text-income',
+    },
+    {
+      label: es.home.expense,
+      cents: totals.expenseCents,
+      icon: ArrowUpRight,
+      tone: 'bg-expense-soft text-expense',
+    },
+  ] as const;
   return (
-    <Card>
+    <section>
       <p className="text-sm text-muted">
-        {es.home.balance} {totals.currency}
+        {showCurrency ? es.home.balanceIn(totals.currency) : es.home.balance}
       </p>
-      <p className={`amount text-4xl font-bold tracking-tight ${positive ? 'text-income' : 'text-expense'}`}>
+      <p
+        className={`amount mb-3 text-4xl font-bold tracking-tight ${totals.balanceCents < 0 ? 'text-expense' : ''}`}
+      >
         {formatMoney(totals.balanceCents, totals.currency)}
       </p>
-      <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-line" aria-hidden="true">
-        <div className="bg-income" style={{ width: `${incomeShare}%` }} />
-        <div className="bg-expense" style={{ width: `${100 - incomeShare}%` }} />
-      </div>
-      <dl className="mt-3 grid grid-cols-2 gap-3">
-        <div>
-          <dt className="text-sm text-muted">{es.home.income}</dt>
-          <dd className="amount font-semibold text-income">
-            {formatMoney(totals.incomeCents, totals.currency)}
-          </dd>
-        </div>
-        <div className="text-right">
-          <dt className="text-sm text-muted">{es.home.expense}</dt>
-          <dd className="amount font-semibold text-expense">
-            {formatMoney(totals.expenseCents, totals.currency)}
-          </dd>
-        </div>
+      <dl className="grid grid-cols-2 gap-3">
+        {tiles.map(({ label, cents, icon: Icon, tone }) => (
+          <div key={label} className={`rounded-2xl p-3 ${tone}`}>
+            <Icon size={ICON_SIZE.regular} aria-hidden="true" />
+            <dt className="mt-1 text-sm">{label}</dt>
+            <dd className="amount font-semibold">{formatMoney(cents, totals.currency)}</dd>
+          </div>
+        ))}
       </dl>
-    </Card>
+    </section>
+  );
+}
+
+const BANNER_TONES = {
+  primary: 'bg-primary-soft text-primary-ink',
+  attention: 'bg-attention-soft text-ink',
+  danger: 'bg-expense-soft text-expense',
+} as const;
+
+/** Something waiting for the user, with where to go to deal with it. */
+function Banner({
+  to,
+  tone,
+  icon: Icon,
+  children,
+}: {
+  to: string;
+  tone: keyof typeof BANNER_TONES;
+  icon: LucideIcon;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      to={to}
+      className={`mb-3 flex min-h-12 items-center gap-3 rounded-2xl px-4 py-3 font-semibold ${BANNER_TONES[tone]}`}
+    >
+      <Icon size={ICON_SIZE.regular} className="shrink-0" aria-hidden="true" />
+      <span className="flex-1">{children}</span>
+      <ChevronRight size={ICON_SIZE.chevron} className="shrink-0" aria-hidden="true" />
+    </Link>
   );
 }
 
@@ -77,33 +119,19 @@ export function HomePage() {
       <h1 className="mb-4 text-2xl font-bold tracking-tight first-letter:uppercase">{formatMonth(month)}</h1>
 
       {pendingCount > 0 ? (
-        <Link
-          to="/pendientes"
-          className="mb-4 flex min-h-12 items-center justify-between rounded-lg border border-attention bg-attention-soft px-4 font-semibold"
-        >
+        <Banner to="/pendientes" tone="primary" icon={Receipt}>
           {es.documents.banner(pendingCount)}
-          <span aria-hidden="true">›</span>
-        </Link>
+        </Banner>
       ) : null}
-
       {fixedAttention > 0 ? (
-        <Link
-          to="/mas/fijos"
-          className="mb-4 flex min-h-12 items-center justify-between rounded-lg border border-attention bg-attention-soft px-4 font-semibold"
-        >
+        <Banner to="/mas/fijos" tone="attention" icon={Repeat}>
           {es.recurrings.attention(fixedAttention)}
-          <span aria-hidden="true">›</span>
-        </Link>
+        </Banner>
       ) : null}
-
       {driveBackupNeedsAttention(driveBackup.data) ? (
-        <Link
-          to="/mas/datos"
-          className="mb-4 flex min-h-12 items-center justify-between rounded-lg border border-expense px-4 font-semibold text-expense"
-        >
+        <Banner to="/mas/datos" tone="danger" icon={TriangleAlert}>
           {es.data.drive.attention}
-          <span aria-hidden="true">›</span>
-        </Link>
+        </Banner>
       ) : null}
 
       <QueryState query={summary}>
@@ -111,9 +139,9 @@ export function HomePage() {
           data.totals.length === 0 ? (
             <Notice>{es.home.emptyMonth}</Notice>
           ) : (
-            <div className="space-y-3">
+            <div className="mt-2 space-y-6">
               {data.totals.map((totals) => (
-                <MonthBalance key={totals.currency} totals={totals} />
+                <MonthBalance key={totals.currency} totals={totals} showCurrency={data.totals.length > 1} />
               ))}
             </div>
           )
@@ -122,20 +150,20 @@ export function HomePage() {
 
       <div className="mb-2 mt-8 flex items-baseline justify-between">
         <h2 className="text-lg font-semibold">{es.home.recent}</h2>
-        <Link to="/movimientos" className="text-sm font-semibold text-income">
+        <Link to="/movimientos" className="text-sm font-semibold text-primary">
           {es.home.seeAll}
         </Link>
       </div>
       <QueryState
         query={{ ...recent, data: recent.data?.items }}
         empty={
-          <Link to="/movimientos/nuevo" className="font-semibold text-income">
+          <Link to="/movimientos/nuevo" className="font-semibold text-primary">
             {es.home.addFirst}
           </Link>
         }
       >
         {(items) => (
-          <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+          <ul className="divide-y divide-line rounded-2xl bg-surface shadow-card">
             {items.map((transaction) => (
               <TransactionRow
                 key={transaction.id}

@@ -151,7 +151,7 @@ export function RatesPage() {
               <Notice>{es.rates.empty}</Notice>
             </div>
           ) : (
-            <ul className="mb-6 divide-y divide-line rounded-xl border border-line bg-surface">
+            <ul className="mb-6 divide-y divide-line rounded-2xl bg-surface shadow-card">
               {/* The newest first: it is the one in use today. */}
               {[...items].reverse().map((rate) => (
                 <RateRow

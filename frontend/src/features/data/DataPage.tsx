@@ -57,7 +57,7 @@ function FilePicker({
     if (file) onFile(file);
   };
   return (
-    <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg border border-line bg-surface px-4 text-base font-semibold">
+    <label className="inline-flex min-h-11 cursor-pointer items-center rounded-2xl bg-surface shadow-card px-4 text-base font-semibold">
       {label}
       <input type="file" accept={accept} className="sr-only" onChange={change} />
     </label>
@@ -282,7 +282,7 @@ export function DataPage() {
             </div>
 
             {original && original.unknownAccounts.length > 0 ? (
-              <fieldset className="mt-4 space-y-3 rounded-lg border border-line p-3">
+              <fieldset className="mt-4 space-y-3 rounded-2xl border border-line p-3">
                 <legend className="px-1 text-sm font-semibold">{es.data.preview.accountsTitle}</legend>
                 <p className="text-sm text-muted">{es.data.preview.accountsText}</p>
                 {original.unknownAccounts.map((name) => (
@@ -314,7 +314,7 @@ export function DataPage() {
             ) : null}
 
             {original && original.newCategories.length > 0 ? (
-              <fieldset className="mt-4 space-y-3 rounded-lg border border-line p-3">
+              <fieldset className="mt-4 space-y-3 rounded-2xl border border-line p-3">
                 <legend className="px-1 text-sm font-semibold">{es.data.preview.categoriesTitle}</legend>
                 <p className="text-sm text-muted">{es.data.preview.categoriesText}</p>
                 {original.newCategories.map((ref) => {

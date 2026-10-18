@@ -279,7 +279,7 @@ export function UsersPage() {
 
       <QueryState query={users}>
         {(items) => (
-          <ul className="mb-6 divide-y divide-line rounded-xl border border-line bg-surface">
+          <ul className="mb-6 divide-y divide-line rounded-2xl bg-surface shadow-card">
             {items.map((user) => (
               <UserRow
                 key={user.id}

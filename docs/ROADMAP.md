@@ -23,12 +23,13 @@ Las versiones de `package.json` se escribieron sin acceso al registro de npm; la
 
 Para retomar. Se borra o se reescribe al empezar la próxima sesión.
 
-**Subido (push del 17/10/2026):** todo hasta `c611087`: usuarios con límite de IA, la etapa 4, resúmenes de
-cuenta, saldos y la documentación al día. Falta confirmar en el celular que Render lo publicó.
+**Subido (push del 17/10/2026):** todo hasta `f72812a`: usuarios con límite de IA, la etapa 4, resúmenes de
+cuenta, saldos, la hoja "Productos" del Excel, los productos corregidos que se recuerdan, Más → Lo que la app
+recuerda y el informe por cuenta con el saldo de cada una. Falta confirmar en el celular que Render lo publicó.
 
-**Hecho después, con commit y sin push (el que sigue a `c611087`):** la hoja "Productos" en el Excel exportado, recordar los productos corregidos
-para los próximos tickets (colección nueva `productRules`, sin migración: arranca vacía) y la pantalla Más → Lo
-que la app recuerda (reglas de categoría, productos corregidos y documentos confirmados). 215 pruebas.
+**Hecho después, sin commit:** el estilo nuevo en toda la app (fondo lavanda, tarjetas blancas, violeta,
+íconos, modo oscuro revisado). Ver `DECISIONES.md`, "Estilo nuevo". No cambia datos ni rutas: no trae
+migraciones. Suma la dependencia `lucide-react` al frontend. 217 pruebas.
 
 **Para subirlo:**
 
@@ -52,7 +53,7 @@ que la app recuerda (reglas de categoría, productos corregidos y documentos con
 
 **Lo próximo que se puede programar:**
 
-- Las mejoras visuales propuestas (sección de abajo), las que el usuario elija.
+- Separar Movimientos por día ("Hoy", "Ayer", "15 de octubre"), la única mejora visual propuesta que falta.
 
 - Ajustar el tapado y las instrucciones con el primer resumen real, de tarjeta y de cuenta.
 - Comparar el precio de un mismo producto a lo largo del tiempo.
@@ -121,7 +122,8 @@ En el repaso visual (17/10/2026, demo en tamaño celular, modo claro y oscuro):
 
 ## Mejoras visuales propuestas (17/10/2026)
 
-Del mismo repaso. No son errores: son cambios de diseño que conviene decidir antes de hacer.
+Del mismo repaso. No son errores: son cambios de diseño que conviene decidir antes de hacer. Con el estilo
+nuevo (ver `DECISIONES.md`, "Estilo nuevo") quedaron hechas todas menos la 5, que sigue abierta.
 
 1. **Bordes de los campos para escribir muy suaves** (contraste 1,3; la norma pide 3 para el borde de un control).
    Al sol, en el celular, cuesta ver dónde se escribe. Un borde más oscuro solo para los campos.

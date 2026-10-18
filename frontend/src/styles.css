@@ -2,39 +2,88 @@
 
 /*
  * Design tokens. Every colour in the interface comes from here.
- * Green is income and the primary action, brick is expense, amber marks
- * whatever is waiting for the user's decision.
+ * Violet is the app's own colour: buttons, tabs, links, what is selected.
+ * Green is money coming in, brick is money going out, amber marks whatever is
+ * waiting for the user's decision. Text pairs were checked for contrast
+ * (4.5:1, 3:1 for the border of a field), in light and in dark.
  */
 @theme {
-  --color-paper: #f3f6f4;
+  --color-paper: #f6f5fa;
   --color-surface: #ffffff;
-  --color-ink: #16242a;
-  --color-muted: #5b6a6f;
-  --color-line: #dbe3e0;
-  --color-income: #0e6b5c;
-  --color-income-soft: #dcefe9;
-  --color-expense: #b3402e;
-  --color-expense-soft: #f6e1dc;
+  --color-ink: #1f1d2b;
+  --color-muted: #6b6780;
+  /* Dividers and card edges: quiet on purpose. */
+  --color-line: #eceaf3;
+  /* The border of a field the user types in: it has to be seen. */
+  --color-edge: #8f8aa3;
+  --color-primary: #5b4bc4;
+  --color-on-primary: #ffffff;
+  --color-primary-soft: #f1eefd;
+  --color-primary-ink: #3c3289;
+  --color-income: #1b7a4b;
+  --color-income-soft: #e4f6ec;
+  --color-expense: #b44a30;
+  --color-expense-soft: #fdeae4;
   /* Dark enough to be read as text on white (4.5:1), not only as a border. */
   --color-attention: #8a6508;
-  --color-attention-soft: #fbf0cf;
+  --color-attention-soft: #fff1d6;
+
+  /* Soft colours for category icons: a tinted background and its icon colour. */
+  --color-tone-green-bg: #e4f6ec;
+  --color-tone-green-fg: #1b7a4b;
+  --color-tone-peach-bg: #fdeae4;
+  --color-tone-peach-fg: #b44a30;
+  --color-tone-blue-bg: #e6eefd;
+  --color-tone-blue-fg: #2f5fb8;
+  --color-tone-violet-bg: #f1eefd;
+  --color-tone-violet-fg: #5b4bc4;
+  --color-tone-amber-bg: #fff1d6;
+  --color-tone-amber-fg: #8a6508;
+  --color-tone-pink-bg: #fce7f0;
+  --color-tone-pink-fg: #a8336a;
+  --color-tone-gray-bg: #efeef4;
+  --color-tone-gray-fg: #5e5a70;
+
+  --shadow-card: 0 1px 2px rgb(31 29 43 / 0.05), 0 4px 16px rgb(31 29 43 / 0.04);
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-paper: #101a1d;
-    --color-surface: #18262b;
-    --color-ink: #e8efec;
-    --color-muted: #9aaba9;
-    --color-line: #2a3b41;
-    --color-income: #4fc3a8;
-    --color-income-soft: #173a35;
-    --color-expense: #ef8a76;
-    --color-expense-soft: #40221d;
-    --color-attention: #e2ad2b;
+    --color-paper: #121118;
+    --color-surface: #1c1b24;
+    --color-ink: #eeedf5;
+    --color-muted: #a8a4b8;
+    --color-line: #2c2a37;
+    --color-edge: #77728a;
+    --color-primary: #a99bff;
+    --color-on-primary: #16131f;
+    --color-primary-soft: #2b2550;
+    --color-primary-ink: #d9d3ff;
+    --color-income: #5fd49a;
+    --color-income-soft: #173a2a;
+    --color-expense: #ff957a;
+    --color-expense-soft: #43241c;
+    --color-attention: #e9b949;
     --color-attention-soft: #3a3013;
+
+    --color-tone-green-bg: #173a2a;
+    --color-tone-green-fg: #5fd49a;
+    --color-tone-peach-bg: #43241c;
+    --color-tone-peach-fg: #ff957a;
+    --color-tone-blue-bg: #1a2847;
+    --color-tone-blue-fg: #8fb2ff;
+    --color-tone-violet-bg: #2b2550;
+    --color-tone-violet-fg: #a99bff;
+    --color-tone-amber-bg: #3a3013;
+    --color-tone-amber-fg: #e9b949;
+    --color-tone-pink-bg: #42192c;
+    --color-tone-pink-fg: #f58bbe;
+    --color-tone-gray-bg: #2c2a37;
+    --color-tone-gray-fg: #b9b5c9;
+
+    --shadow-card: 0 0 0 1px var(--color-line);
   }
 }
 
@@ -56,8 +105,14 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* Checkboxes and radio buttons in the app's colour. */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--color-primary);
+}
+
 :focus-visible {
-  outline: 2px solid var(--color-income);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 

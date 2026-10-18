@@ -248,7 +248,7 @@ export function RecurringsPage() {
             {data.items.length === 0 ? (
               <Notice>{es.recurrings.empty}</Notice>
             ) : (
-              <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+              <ul className="divide-y divide-line rounded-2xl bg-surface shadow-card">
                 {data.items.map((item) => (
                   <ItemRow
                     key={item.recurring.id}
@@ -289,7 +289,7 @@ export function RecurringsPage() {
               <section>
                 <h2 className="text-lg font-semibold">{es.recurrings.ignoredTitle}</h2>
                 <p className="mb-2 mt-1 text-sm text-muted">{es.recurrings.ignoredText}</p>
-                <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+                <ul className="divide-y divide-line rounded-2xl bg-surface shadow-card">
                   {data.ignored.map((recurring) => (
                     <li key={recurring.id} className="flex items-center justify-between gap-3 py-2 pl-3 pr-2">
                       <span className="min-w-0 break-words">{recurring.name}</span>

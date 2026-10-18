@@ -1,4 +1,5 @@
 import { useRef, useState, type ChangeEvent } from 'react';
+import { Camera, FileText, Images, PenLine } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MAX_DOCUMENT_FILES, UPLOADABLE_DOCUMENT_KINDS, type UploadableDocumentKind } from '@gastos/shared';
 import { es } from '../../shared/i18n/es';
@@ -8,6 +9,13 @@ import { useAccounts } from '../accounts/api';
 import { useDocumentMutations } from './api';
 import { compressImage } from './compress';
 import { uploadFailure } from './uploadFailure';
+import { ICON_SIZE } from '../../shared/ui/icons';
+
+/** A big button with its icon over its name, so both photo options fit side by side. */
+const PHOTO_TILE = 'flex min-h-20 flex-col items-center justify-center gap-1 py-3 text-sm';
+/** A link that looks like a secondary button. */
+const LINK_BUTTON =
+  'flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary-soft px-4 font-semibold text-primary-ink';
 
 /** The "+" screen: read a photo with the AI, or type a transaction by hand. */
 export function AddPage() {
@@ -76,10 +84,17 @@ export function AddPage() {
         <p className="mb-3 mt-1 text-sm text-muted">{es.add.photoText}</p>
 
         <div className="grid grid-cols-2 gap-2">
-          <Button onClick={() => cameraInput.current?.click()} disabled={busy}>
+          <Button onClick={() => cameraInput.current?.click()} disabled={busy} className={PHOTO_TILE}>
+            <Camera size={ICON_SIZE.large} aria-hidden="true" />
             {es.add.takePhoto}
           </Button>
-          <Button variant="secondary" onClick={() => galleryInput.current?.click()} disabled={busy}>
+          <Button
+            variant="secondary"
+            onClick={() => galleryInput.current?.click()}
+            disabled={busy}
+            className={PHOTO_TILE}
+          >
+            <Images size={ICON_SIZE.large} aria-hidden="true" />
             {es.add.chooseFiles}
           </Button>
         </div>
@@ -106,13 +121,13 @@ export function AddPage() {
           <div className="mt-4 space-y-3">
             <p className="font-medium">{es.add.selected(files.length)}</p>
 
-            <fieldset className="grid grid-cols-2 gap-1 rounded-lg border border-line bg-paper p-1">
+            <fieldset className="grid grid-cols-2 gap-1 rounded-2xl bg-paper p-1">
               <legend className="sr-only">{es.add.kind}</legend>
               {UPLOADABLE_DOCUMENT_KINDS.map((option) => (
                 <label
                   key={option}
-                  className={`flex min-h-10 cursor-pointer items-center justify-center rounded-md px-2 text-center text-sm font-semibold ${
-                    kind === option ? 'bg-income text-surface' : 'text-muted'
+                  className={`flex min-h-10 cursor-pointer items-center justify-center rounded-xl px-2 text-center text-sm font-semibold ${
+                    kind === option ? 'bg-primary text-on-primary' : 'text-muted'
                   }`}
                 >
                   <input
@@ -174,20 +189,16 @@ export function AddPage() {
       <Card className="mb-4">
         <h2 className="text-lg font-semibold">{es.add.statementTitle}</h2>
         <p className="mb-3 mt-1 text-sm text-muted">{es.add.statementText}</p>
-        <Link
-          to="/agregar/resumen"
-          className="flex min-h-11 items-center justify-center rounded-lg border border-line bg-surface px-4 font-semibold"
-        >
+        <Link to="/agregar/resumen" className={LINK_BUTTON}>
+          <FileText size={ICON_SIZE.regular} aria-hidden="true" />
           {es.add.statement}
         </Link>
       </Card>
 
       <Card>
         <h2 className="mb-3 text-lg font-semibold">{es.add.manualTitle}</h2>
-        <Link
-          to="/movimientos/nuevo"
-          className="flex min-h-11 items-center justify-center rounded-lg border border-line bg-surface px-4 font-semibold"
-        >
+        <Link to="/movimientos/nuevo" className={LINK_BUTTON}>
+          <PenLine size={ICON_SIZE.regular} aria-hidden="true" />
           {es.add.manual}
         </Link>
       </Card>

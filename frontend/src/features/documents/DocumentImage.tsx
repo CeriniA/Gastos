@@ -31,12 +31,12 @@ export function DocumentImage({ documentId, index }: { documentId: string; index
   }, [documentId, index]);
 
   if (failed) return null;
-  if (!url) return <div className="h-40 animate-pulse rounded-lg bg-line" aria-hidden="true" />;
+  if (!url) return <div className="h-40 animate-pulse rounded-2xl bg-line" aria-hidden="true" />;
   return (
     <img
       src={url}
       alt={es.documents.imageAlt(index + 1)}
-      className="w-full rounded-lg border border-line bg-surface"
+      className="w-full rounded-2xl bg-surface shadow-card"
     />
   );
 }

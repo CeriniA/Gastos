@@ -98,7 +98,7 @@ export function ItemsEditor({
 
   return (
     <div>
-      <details className="rounded-lg border border-line bg-surface">
+      <details className="rounded-2xl bg-surface shadow-card">
         <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
           {filled > 0 ? es.items.title(filled) : es.items.add}
         </summary>

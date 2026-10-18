@@ -201,6 +201,10 @@ src/
 - Toda acción que guarda algo pasa por `useAction()` (`shared/ui/useAction.ts`): un solo lugar decide cómo
   se muestra un error.
 - `shared/` no importa de `features/`.
+- Los colores son variables de `styles.css` (claro y oscuro); las pantallas usan sus nombres (`bg-surface`,
+  `text-primary`), nunca un color escrito. Botones, campos y tarjetas salen de `shared/ui/ui.tsx`; el selector
+  de mes, de `shared/ui/MonthNav.tsx`; el ícono de una categoría, de `shared/ui/categoryLook.tsx`; los tamaños
+  de los íconos, de `shared/ui/icons.ts`.
 
 ## Cómo agregar un módulo
 

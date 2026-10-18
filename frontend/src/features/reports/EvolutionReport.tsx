@@ -9,7 +9,7 @@ import {
 import { es } from '../../shared/i18n/es';
 import { QueryState } from '../../shared/ui/QueryState';
 import { Card, Notice } from '../../shared/ui/ui';
-import { MonthNav } from './MonthNav';
+import { MonthNav } from '../../shared/ui/MonthNav';
 import { ConsolidationNotice } from './ShowIn';
 import { useEvolution, type MonthReportProps } from './api';
 

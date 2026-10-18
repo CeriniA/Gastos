@@ -119,7 +119,7 @@ export function InstitutionsPage() {
           return items.length === 0 ? (
             <Notice>{es.institutions.empty}</Notice>
           ) : (
-            <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+            <ul className="divide-y divide-line rounded-2xl bg-surface shadow-card">
               {items.map((institution) => (
                 <InstitutionRow
                   key={institution.id}

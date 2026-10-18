@@ -297,13 +297,13 @@ export function TransactionFormPage() {
             <Notice tone="attention">{es.transactions.needAccount}</Notice>
           ) : (
             <form onSubmit={(event) => void submit(event)} className="space-y-4" noValidate>
-              <fieldset className="grid grid-cols-3 gap-1 rounded-lg border border-line bg-surface p-1">
+              <fieldset className="grid grid-cols-3 gap-1 rounded-2xl bg-surface shadow-card p-1">
                 <legend className="sr-only">{es.transactions.fields.type}</legend>
                 {TRANSACTION_TYPES.map((option) => (
                   <label
                     key={option}
-                    className={`flex min-h-10 cursor-pointer items-center justify-center rounded-md text-sm font-semibold ${
-                      type === option ? 'bg-income text-surface' : 'text-muted'
+                    className={`flex min-h-10 cursor-pointer items-center justify-center rounded-xl text-sm font-semibold ${
+                      type === option ? 'bg-primary text-on-primary' : 'text-muted'
                     }`}
                   >
                     <input type="radio" value={option} className="sr-only" {...form.register('type')} />
@@ -376,7 +376,7 @@ export function TransactionFormPage() {
                   </Select>
                 </Field>
               ) : isSplit ? (
-                <fieldset className="space-y-2 rounded-lg border border-line bg-surface p-3">
+                <fieldset className="space-y-2 rounded-2xl bg-surface shadow-card p-3">
                   <legend className="px-1 text-sm font-medium text-muted">
                     {es.transactions.split.title}
                   </legend>
@@ -500,7 +500,7 @@ export function TransactionFormPage() {
               ) : null}
 
               {existing.data?.installment ? (
-                <div className="rounded-lg border border-line bg-surface p-3 text-sm">
+                <div className="rounded-2xl bg-surface shadow-card p-3 text-sm">
                   <p className="font-medium">
                     {es.transactions.installment(
                       existing.data.installment.number,
@@ -549,7 +549,7 @@ export function TransactionFormPage() {
                       key={tag.id}
                       className={`cursor-pointer rounded-full border px-3 py-1 text-sm ${
                         selectedTags.includes(tag.id)
-                          ? 'border-income bg-income-soft text-income'
+                          ? 'border-primary bg-primary-soft text-primary-ink'
                           : 'border-line bg-surface text-muted'
                       }`}
                     >

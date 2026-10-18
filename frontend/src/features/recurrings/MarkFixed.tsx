@@ -15,7 +15,7 @@ export function MarkFixed({ transaction }: { transaction: Transaction }) {
     return (
       <p className="text-sm text-muted">
         {es.recurrings.isFixed}{' '}
-        <Link to="/mas/fijos" className="font-semibold text-income">
+        <Link to="/mas/fijos" className="font-semibold text-primary">
           {es.recurrings.seeFixed}
         </Link>
       </p>

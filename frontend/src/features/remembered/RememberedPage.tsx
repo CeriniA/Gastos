@@ -24,7 +24,7 @@ function Section({ title, text, children }: { title: string; text: string; child
   );
 }
 
-const LIST = 'divide-y divide-line rounded-xl border border-line bg-surface';
+const LIST = 'divide-y divide-line rounded-2xl bg-surface shadow-card';
 const ROW = 'flex items-center justify-between gap-3 py-2 pl-3 pr-2';
 
 /**

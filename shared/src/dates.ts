@@ -126,6 +126,11 @@ export function formatDate(date: IsoDate): string {
   return `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`;
 }
 
+/** "05/10" when the date is in the year of `today`; the whole date otherwise. For lists, where room is short. */
+export function formatShortDate(date: IsoDate, today: IsoDate): string {
+  return date.slice(0, 4) === today.slice(0, 4) ? `${date.slice(8, 10)}/${date.slice(5, 7)}` : formatDate(date);
+}
+
 /** "14:05": the hour and minute of a moment, in the given time zone. */
 export function formatTime(moment: string | Date, timeZone: string): string {
   return new Intl.DateTimeFormat(APP_LOCALE, {

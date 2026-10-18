@@ -273,13 +273,13 @@ function TransactionCard({
             <Notice tone="attention">{es.documents.doubtful(doubtful.join(', '))}</Notice>
           ) : null}
 
-          <fieldset className="grid grid-cols-3 gap-1 rounded-lg border border-line bg-paper p-1">
+          <fieldset className="grid grid-cols-3 gap-1 rounded-2xl bg-paper p-1">
             <legend className="sr-only">{es.transactions.fields.type}</legend>
             {TRANSACTION_TYPES.map((option) => (
               <label
                 key={option}
-                className={`flex min-h-10 cursor-pointer items-center justify-center rounded-md text-sm font-semibold ${
-                  draft.type === option ? 'bg-income text-surface' : 'text-muted'
+                className={`flex min-h-10 cursor-pointer items-center justify-center rounded-xl text-sm font-semibold ${
+                  draft.type === option ? 'bg-primary text-on-primary' : 'text-muted'
                 }`}
               >
                 <input
@@ -786,12 +786,12 @@ function ReviewForm({
   return (
     <div className="space-y-4">
       {document.text ? (
-        <details className="rounded-lg border border-line bg-surface p-3">
+        <details className="rounded-2xl bg-surface shadow-card p-3">
           <summary className="cursor-pointer font-semibold">{es.documents.sentText}</summary>
           <pre className="mt-2 max-h-[60dvh] overflow-auto whitespace-pre-wrap text-sm">{document.text}</pre>
         </details>
       ) : (
-        <div className="max-h-[60dvh] space-y-2 overflow-y-auto rounded-lg">
+        <div className="max-h-[60dvh] space-y-2 overflow-y-auto rounded-2xl">
           {Array.from({ length: document.fileCount }, (_, index) => (
             <DocumentImage key={index} documentId={document.id} index={index} />
           ))}

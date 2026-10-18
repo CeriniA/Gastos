@@ -79,7 +79,7 @@ export function TrashPage() {
         <Notice>{es.trash.empty}</Notice>
       ) : (
         <>
-          <ul className="mb-4 divide-y divide-line rounded-xl border border-line bg-surface">
+          <ul className="mb-4 divide-y divide-line rounded-2xl bg-surface shadow-card">
             {items.map((transaction) => (
               <TrashRow
                 key={transaction.id}

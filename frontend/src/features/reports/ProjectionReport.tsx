@@ -107,7 +107,7 @@ export function ProjectionReport({ showIn }: { showIn: ShowIn }) {
             {anyFixed ? null : (
               <p className="text-sm text-muted">
                 {es.reports.projection.noFixed}{' '}
-                <Link to="/mas/fijos" className="font-semibold text-income">
+                <Link to="/mas/fijos" className="font-semibold text-primary">
                   {es.reports.projection.goFixed}
                 </Link>
               </p>

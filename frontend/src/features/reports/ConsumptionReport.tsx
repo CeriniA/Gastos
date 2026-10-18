@@ -12,7 +12,7 @@ import { es } from '../../shared/i18n/es';
 import { useDebounced } from '../../shared/ui/useDebounced';
 import { QueryState } from '../../shared/ui/QueryState';
 import { Card, Notice, TextInput } from '../../shared/ui/ui';
-import { MonthNav } from './MonthNav';
+import { MonthNav } from '../../shared/ui/MonthNav';
 import { ShareRow } from './ShareRow';
 import { useConsumptionSearch, useConsumptionSummary } from './api';
 
@@ -41,7 +41,7 @@ function CurrencyCard({ entry }: { entry: CurrencyConsumption }) {
           currency={entry.currency}
           tone="expense"
         >
-          <ul className="mb-2 divide-y divide-line rounded-lg border border-line text-sm">
+          <ul className="mb-2 divide-y divide-line rounded-2xl border border-line text-sm">
             {group.products.map((product) => (
               <li key={product.product} className="flex justify-between gap-3 px-3 py-2">
                 <span className="min-w-0">

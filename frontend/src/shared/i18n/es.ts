@@ -128,7 +128,8 @@ export const es = {
   home: {
     income: 'Ingresos',
     expense: 'Egresos',
-    balance: 'Balance',
+    balance: 'Balance del mes',
+    balanceIn: (currency: string) => `Balance del mes en ${currency}`,
     emptyMonth: 'Todavía no hay movimientos pagados en este mes.',
     recent: 'Últimos movimientos',
     seeAll: 'Ver todos',
@@ -553,8 +554,8 @@ export const es = {
       consumption: 'Consumo',
     },
     showIn: 'Mostrar',
-    eachCurrency: 'Cada moneda por separado',
-    allIn: { ARS: 'Todo en pesos', USD: 'Todo en dólares' } satisfies Record<Currency, string>,
+    eachCurrency: 'Cada moneda',
+    allIn: { ARS: 'En pesos', USD: 'En dólares' } satisfies Record<Currency, string>,
     leftOut: (count: number) =>
       count === 1
         ? 'Un movimiento quedó afuera porque no hay una tasa de cambio para su fecha.'
@@ -709,6 +710,12 @@ export const es = {
 
   more: {
     title: 'Más',
+    groups: {
+      money: 'Mi plata',
+      organize: 'Cómo la ordeno',
+      data: 'Datos',
+      user: 'Mi usuario',
+    },
     accounts: 'Cuentas',
     categories: 'Categorías',
     cards: 'Tarjetas: cierres y vencimientos',

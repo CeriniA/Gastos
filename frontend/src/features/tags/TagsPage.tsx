@@ -84,7 +84,7 @@ export function TagsPage() {
               <Notice>{es.tags.empty}</Notice>
             </div>
           ) : (
-            <ul className="mb-6 divide-y divide-line rounded-xl border border-line bg-surface">
+            <ul className="mb-6 divide-y divide-line rounded-2xl bg-surface shadow-card">
               {items.map((tag) => (
                 <TagRow
                   key={tag.id}

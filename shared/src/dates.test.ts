@@ -4,6 +4,7 @@ import {
   formatTime,
   addDays,
   dayInMonth,
+  formatShortDate,
   dayOfMonth,
   formatMoment,
   hoursBetween,
@@ -76,4 +77,9 @@ test('a day of a month is clamped to the months that are shorter', () => {
   assert.equal(dayInMonth('2026-10', 15), '2026-10-15');
   assert.equal(dayInMonth('2026-02', 31), '2026-02-28');
   assert.equal(dayInMonth('2028-02', 30), '2028-02-29');
+});
+
+test('a short date leaves the year out only when it is this year', () => {
+  assert.equal(formatShortDate('2026-10-05', '2026-10-17'), '05/10');
+  assert.equal(formatShortDate('2025-12-31', '2026-10-17'), '31/12/2025');
 });

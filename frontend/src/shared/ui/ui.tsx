@@ -12,10 +12,10 @@ import { es } from '../i18n/es';
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'quiet' | 'quietDanger';
 
 const BUTTON_STYLES: Record<ButtonVariant, string> = {
-  primary: 'bg-income text-surface',
-  secondary: 'bg-surface text-ink border border-line',
-  danger: 'bg-surface text-expense border border-expense',
-  quiet: 'text-income',
+  primary: 'bg-primary text-on-primary',
+  secondary: 'bg-primary-soft text-primary-ink',
+  danger: 'bg-expense-soft text-expense',
+  quiet: 'text-primary',
   /** A quiet button that deletes or switches off: red, like the danger one. */
   quietDanger: 'text-expense',
 };
@@ -29,7 +29,7 @@ export function Button({
     <button
       type="button"
       {...props}
-      className={`min-h-11 rounded-lg px-4 text-base font-semibold disabled:opacity-50 ${BUTTON_STYLES[variant]} ${className}`}
+      className={`min-h-11 rounded-xl px-4 text-base font-semibold transition active:scale-[0.98] disabled:opacity-50 ${BUTTON_STYLES[variant]} ${className}`}
     />
   );
 }
@@ -59,7 +59,8 @@ export function Field({
   );
 }
 
-const CONTROL = 'block w-full min-h-11 rounded-lg border border-line bg-surface px-3 text-base text-ink';
+const CONTROL =
+  'block w-full min-h-12 rounded-xl border border-edge bg-surface px-3 text-base text-ink placeholder:text-muted';
 
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`${CONTROL} ${props.className ?? ''}`} />;
@@ -75,25 +76,23 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return (
-    <section className={`rounded-xl border border-line bg-surface p-4 ${className}`}>{children}</section>
-  );
+  return <section className={`rounded-2xl bg-surface p-4 shadow-card ${className}`}>{children}</section>;
 }
 
 type NoticeTone = 'info' | 'error' | 'success' | 'attention';
 
 const NOTICE_STYLES: Record<NoticeTone, string> = {
-  info: 'bg-surface text-muted border-line',
-  error: 'bg-expense-soft text-expense border-expense',
-  success: 'bg-income-soft text-income border-income',
-  attention: 'bg-attention-soft text-ink border-attention',
+  info: 'bg-surface text-muted shadow-card',
+  error: 'bg-expense-soft text-expense',
+  success: 'bg-income-soft text-income',
+  attention: 'bg-attention-soft text-ink',
 };
 
 export function Notice({ tone = 'info', children }: { tone?: NoticeTone; children: ReactNode }) {
   return (
     <p
       role={tone === 'error' ? 'alert' : 'status'}
-      className={`rounded-lg border px-3 py-2 text-sm ${NOTICE_STYLES[tone]}`}
+      className={`rounded-2xl px-4 py-3 text-sm ${NOTICE_STYLES[tone]}`}
     >
       {children}
     </p>
@@ -133,7 +132,7 @@ export function Tabs<T extends string>({
   return (
     <div
       role="tablist"
-      className="mb-4 grid gap-1 rounded-lg border border-line bg-surface p-1"
+      className="mb-4 grid gap-1 rounded-2xl bg-surface p-1 shadow-card"
       style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
     >
       {options.map((option) => (
@@ -143,7 +142,7 @@ export function Tabs<T extends string>({
           type="button"
           aria-selected={value === option}
           onClick={() => onChange(option)}
-          className={`min-h-10 rounded-md text-sm font-semibold ${value === option ? 'bg-income text-surface' : 'text-muted'}`}
+          className={`min-h-10 rounded-xl text-sm font-semibold transition ${value === option ? 'bg-primary text-on-primary' : 'text-muted'}`}
         >
           {label(option)}
         </button>

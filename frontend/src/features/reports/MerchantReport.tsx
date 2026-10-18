@@ -2,7 +2,7 @@ import { formatMoney, type CurrencyMerchants } from '@gastos/shared';
 import { es } from '../../shared/i18n/es';
 import { QueryState } from '../../shared/ui/QueryState';
 import { Card, Notice } from '../../shared/ui/ui';
-import { MonthNav } from './MonthNav';
+import { MonthNav } from '../../shared/ui/MonthNav';
 import { ConsolidationNotice } from './ShowIn';
 import { ShareRow } from './ShareRow';
 import { useMerchantReport, type MonthReportProps } from './api';

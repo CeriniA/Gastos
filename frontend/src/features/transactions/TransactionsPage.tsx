@@ -3,8 +3,6 @@ import {
   CATEGORY_KINDS,
   DEFAULT_TIMEZONE,
   TRANSACTION_TYPES,
-  addMonthsToKey,
-  formatMonth,
   monthKeyOf,
   todayIso,
   type CategoryKind,
@@ -12,6 +10,7 @@ import {
 } from '@gastos/shared';
 import { errorMessage } from '../../shared/api/errors';
 import { es } from '../../shared/i18n/es';
+import { MonthNav } from '../../shared/ui/MonthNav';
 import { useDebounced } from '../../shared/ui/useDebounced';
 import { Button, Field, Loading, Notice, PageTitle, Select, TextInput } from '../../shared/ui/ui';
 import { useAccounts } from '../accounts/api';
@@ -86,7 +85,7 @@ export function TransactionsPage() {
       </div>
 
       {open ? (
-        <div className="mb-3 space-y-3 rounded-xl border border-line bg-surface p-3">
+        <div className="mb-3 space-y-3 rounded-2xl bg-surface shadow-card p-3">
           <div className="grid grid-cols-2 gap-3">
             <Field label={es.transactions.fields.type}>
               <Select
@@ -155,25 +154,7 @@ export function TransactionsPage() {
         </div>
       ) : null}
 
-      {allTime ? null : (
-        <div className="mb-4 flex items-center justify-between rounded-lg border border-line bg-surface">
-          <Button
-            variant="quiet"
-            aria-label={es.transactions.previousMonth}
-            onClick={() => setMonth(addMonthsToKey(month, -1))}
-          >
-            ‹
-          </Button>
-          <p className="font-semibold first-letter:uppercase">{formatMonth(month)}</p>
-          <Button
-            variant="quiet"
-            aria-label={es.transactions.nextMonth}
-            onClick={() => setMonth(addMonthsToKey(month, 1))}
-          >
-            ›
-          </Button>
-        </div>
-      )}
+      {allTime ? null : <MonthNav month={month} onChange={setMonth} allowFuture />}
 
       {transactions.isPending ? (
         <Loading />
@@ -189,7 +170,7 @@ export function TransactionsPage() {
       ) : (
         <>
           <p className="mb-2 text-sm text-muted">{es.transactions.count(total)}</p>
-          <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+          <ul className="divide-y divide-line rounded-2xl bg-surface shadow-card">
             {items.map((transaction) => (
               <TransactionRow
                 key={transaction.id}

@@ -41,7 +41,7 @@ export function PendingPage() {
 
       <QueryState query={documents} empty={es.documents.empty}>
         {(items) => (
-          <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+          <ul className="divide-y divide-line rounded-2xl bg-surface shadow-card">
             {items.map((document) => (
               <li key={document.id} className="p-3">
                 <p className={`font-semibold ${document.retryAt ? 'text-attention' : TONE[document.status]}`}>
@@ -67,7 +67,7 @@ export function PendingPage() {
                     {document.status === 'ready' ? (
                       <Link
                         to={`/pendientes/${document.id}`}
-                        className="inline-flex min-h-11 items-center rounded-lg bg-income px-4 font-semibold text-surface"
+                        className="inline-flex min-h-11 items-center rounded-xl bg-primary px-4 font-semibold text-on-primary"
                       >
                         {es.documents.review}
                       </Link>

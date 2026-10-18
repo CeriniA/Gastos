@@ -8,8 +8,13 @@ import {
 import { es } from '../../shared/i18n/es';
 import { QueryState } from '../../shared/ui/QueryState';
 import { Card, Notice } from '../../shared/ui/ui';
-import { MonthNav } from './MonthNav';
+import { MonthNav } from '../../shared/ui/MonthNav';
+import { categoryLook } from '../../shared/ui/categoryLook';
+import { useCategories } from '../categories/api';
 import { ShareRow } from './ShareRow';
+
+/** Expenses first: they are what a month's report is mostly read for. */
+const KIND_ORDER = [...CATEGORY_KINDS].reverse();
 import { ConsolidationNotice } from './ShowIn';
 import { useCategoryReport, type MonthReportProps } from './api';
 
@@ -26,8 +31,14 @@ function CategoryRow({
   // What sits on the category itself, when it also has subcategories, is one more line.
   const ownCents = amount.totalCents - amount.children.reduce((sum, child) => sum + child.totalCents, 0);
   const row = { totalCents: report.totalCents, currency, tone: report.kind };
+  const categories = useCategories();
   return (
-    <ShareRow label={amount.name || es.transactions.noCategory} cents={amount.totalCents} {...row}>
+    <ShareRow
+      label={amount.name || es.transactions.noCategory}
+      cents={amount.totalCents}
+      look={categoryLook(amount.categoryId, categories.data ?? [])}
+      {...row}
+    >
       {amount.children.length === 0 ? undefined : (
         <div className="mb-2 ml-4 border-l border-line pl-3">
           {amount.children.map((child) => (
@@ -60,7 +71,7 @@ function KindCard({ report, currency }: { report: KindReport; currency: string }
 function CurrencyReport({ entry }: { entry: CurrencyCategoryReport }) {
   return (
     <>
-      {CATEGORY_KINDS.map((kind) => (
+      {KIND_ORDER.map((kind) => (
         <KindCard key={kind} report={entry[kind]} currency={entry.currency} />
       ))}
     </>

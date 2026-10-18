@@ -278,7 +278,7 @@ function CardStatementView({
             </Card>
 
             {data.periods.length > 0 ? (
-              <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+              <ul className="divide-y divide-line rounded-2xl bg-surface shadow-card">
                 {data.periods.map((period) => (
                   <PeriodRow
                     key={period.id}
