@@ -2,7 +2,8 @@ import type { Env } from '../config/env';
 import { buildContainer } from '../container';
 import type { CollectionPort } from '../core/db/collectionPort';
 import { currentUserId } from '../core/context/owner';
-import { createAiAllowance, type UserRecord, type UsersRepository } from '../modules/users';
+import { createAiAllowance } from '../modules/users/aiAllowance';
+import { type UserRecord, type UsersRepository } from '../modules/users/users.repository';
 import type { BackupStoreProvider } from '../providers/drive/googleDrive';
 import { createMemoryBackend, type MemoryBackendOptions } from './memory';
 

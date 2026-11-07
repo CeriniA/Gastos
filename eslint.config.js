@@ -8,9 +8,10 @@ import tseslint from 'typescript-eslint';
  */
 
 const crossModule = {
-  group: ['../*/*.model', '../*/*.repository', '../*/*.service', '../*/*.controller', '../*/*.routes'],
+  // Anything that starts with a letter after "../" is a sibling module ("../../core/..." is not).
+  group: ['../[a-z]*'],
   message:
-    "Import another module only through its index.ts, and only what the composition root can't provide.",
+    'A module does not import another one. What it needs from it, wiring.ts gives it as a function.',
 };
 const noDatabase = {
   group: ['mongoose', './*.model'],

@@ -3,7 +3,9 @@ import { test } from 'node:test';
 import jwt from 'jsonwebtoken';
 import { codeOf } from '../../testing/assertions';
 import { createMemoryUsers } from '../../testing/memoryApp';
-import { createAiAllowance, createUsersService, type UsersRepository } from '../users';
+import { createAiAllowance } from '../users/aiAllowance';
+import { createUsersService } from '../users/users.service';
+import { type UsersRepository } from '../users/users.repository';
 import { createAuthService } from './auth.service';
 
 /** Users and their sessions together, as they run in the app, over users kept in memory. */

@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { MIN_PASSWORD_LENGTH } from '@gastos/shared';
-import { PASSWORD_HASH_COST } from '../modules/users';
+import { PASSWORD_HASH_COST } from '../modules/users/users.service';
 
 /**
  * Prints the bcrypt hash to put in AUTH_PASSWORD_HASH: the password of the

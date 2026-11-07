@@ -248,3 +248,5 @@ rechazo del servidor y la revisión de un documento no se recorrieron a mano.
 **D14 (hallazgo nuevo, baja).** Importar un archivo `.xlsx` corrupto responde un error 500 ("Algo falló en el
 servidor") en lugar de un mensaje de validación, como sí hace la lectura de resúmenes (`documents.service.ts`).
 Falta atrapar el error de lectura en `spreadsheet.service.ts` y devolver un `VALIDATION` en el campo `file`.
+
+**D1 corregido (7/11/2026).** Los 18 `index.ts` de los módulos se borraron; `app.ts`, `composition.ts`, `container.ts`, `memoryApp.ts`, los scripts y una prueba importan del archivo que define cada cosa. El lint ahora prohíbe que un módulo importe a otro (cualquier `../<módulo>`), y se comprobó con dos archivos de prueba que lo rechaza. `migrations/index.ts` se queda (es una lista para registrar) y `shared/src/index.ts` sigue pendiente de decisión.

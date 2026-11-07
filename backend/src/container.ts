@@ -5,19 +5,12 @@ import { createTicketOffice } from './core/crypto/signedTicket';
 import type { CollectionPort } from './core/db/collectionPort';
 import type { ForEachUser } from './core/db/migrations';
 import type { TransactionRunner } from './core/db/transaction';
-import { createAuthService, type AuthService } from './modules/auth';
-import {
-  createBackupService,
-  createDriveBackup,
-  type BackupService,
-  type DriveBackup,
-} from './modules/backup';
-import {
-  createUsersService,
-  type AiAllowance,
-  type UsersRepository,
-  type UsersService,
-} from './modules/users';
+import { createAuthService, type AuthService } from './modules/auth/auth.service';
+import { createBackupService, type BackupService } from './modules/backup/backup.service';
+import { createDriveBackup, type DriveBackup } from './modules/backup/driveBackup';
+import { createUsersService, type UsersService } from './modules/users/users.service';
+import { type AiAllowance } from './modules/users/aiAllowance';
+import { type UsersRepository } from './modules/users/users.repository';
 import type { BackupStoreProvider } from './providers/drive/googleDrive';
 import { giveStarterData } from './starter';
 import type { Services } from './wiring';

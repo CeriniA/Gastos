@@ -12,7 +12,7 @@ import {
 import { createApp } from '../app';
 import { env } from '../config/env';
 import { runAsUser } from '../core/context/owner';
-import { DRIVE_CALLBACK_ROUTE } from '../modules/backup';
+import { DRIVE_CALLBACK_ROUTE } from '../modules/backup/backup.routes';
 import type { BackupStoreProvider } from '../providers/drive/googleDrive';
 import { createMemoryContainer } from '../testing/memoryApp';
 import { DEMO_STATEMENT_PAGES, demoReading } from './demoReading';

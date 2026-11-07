@@ -48,7 +48,6 @@ src/
     <nombre>.service.ts
     <nombre>.repository.ts
     <nombre>.model.ts
-    index.ts           Lo único que el resto de la app puede importar del módulo
   providers/ai/        Interfaz del lector de documentos y sus implementaciones
   providers/pdf/       Interfaz del lector de texto de PDF y su implementación (unpdf)
   providers/drive/     Dónde se guarda la copia automática del respaldo (Google Drive, por HTTPS)
@@ -221,9 +220,9 @@ src/
 
 Esta página describe lo que existe hoy. Esto es lo que va a cambiar, para no sorprender:
 
-- **Los `index.ts` de cada módulo se eliminan.** Solo los usan `composition.ts`, `container.ts` y `app.ts`;
-  pasarán a importar los archivos que definen lo que necesitan. Un módulo sigue sin importar a otro, y el lint
-  se ajusta a eso. Si `shared/src/index.ts` sigue siendo un barril es una decisión abierta.
+- **Los `index.ts` de los módulos ya se eliminaron.** `composition.ts`, `container.ts` y `app.ts` importan los archivos
+  que definen lo que necesitan. El lint prohíbe que un módulo importe a otro. Si `shared/src/index.ts` sigue siendo
+  un barril es una decisión abierta.
 - **Módulos nuevos:** `merchants` y `products`, cada uno con sus textos conocidos. **Desaparecen**
   `category-rules` y `product-rules`.
 - Los renglones de un ticket siguen **dentro** del movimiento, ahora con el id del producto.
@@ -236,7 +235,7 @@ Ejemplo: presupuestos.
 
 1. Esquemas y tipos en `shared/src/schemas/budget.ts`; exportarlos en `shared/src/index.ts`.
 2. `backend/src/modules/budgets/` con model (con `schema.plugin(ownedByUser)`), repository (incluido su
-   puerto y referencias), service, controller (que devuelve sus handlers por `asUser`), routes e `index.ts`.
+   puerto y referencias), service, controller (que devuelve sus handlers por `asUser`), y routes.
 3. En `wiring.ts`: crear el service pasándole lo que necesita de otros módulos. En `composition.ts`:
    pasar su repositorio real y agregar el puerto a `collectionPorts`. En `testing/memory.ts`: su
    repositorio en memoria.
