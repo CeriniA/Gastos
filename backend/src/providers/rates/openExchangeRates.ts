@@ -1,4 +1,4 @@
-import type { ReferenceRate } from '@gastos/shared';
+import { MS_PER_SECOND, type ReferenceRate } from '@gastos/shared';
 import type { RateProvider } from './rateProvider';
 
 /**
@@ -49,7 +49,7 @@ export function createOpenExchangeRates(options: OpenExchangeRatesOptions = {}):
       if (!response.ok) throw new Error(`Rates service answered ${response.status}`);
       const data = (await response.json()) as ApiResponse;
       if (data.result !== 'success' || !data.rates) throw new Error('Rates service answered without rates');
-      const updated = new Date((data.time_last_update_unix ?? now() / 1000) * 1000);
+      const updated = new Date((data.time_last_update_unix ?? now() / MS_PER_SECOND) * MS_PER_SECOND);
       const entry = { at: now(), asOf: updated.toISOString().slice(0, 10), rates: data.rates };
       cache.set(base, entry);
       return entry;

@@ -1,4 +1,5 @@
 import {
+  MS_PER_SECOND,
   firstDayOfMonth,
   givenBack,
   lastDayOfMonth,
@@ -17,6 +18,7 @@ import {
   type Transaction,
 } from '@gastos/shared';
 import { currentUserId, hasOwner } from '../core/context/owner';
+import { OBJECT_ID_LENGTH } from '../core/db/ids';
 import type { DbSession, TransactionRunner } from '../core/db/transaction';
 import type { AccountsRepository } from '../modules/accounts/accounts.repository';
 import type { CardPeriodsRepository } from '../modules/card-periods/cardPeriods.repository';
@@ -186,7 +188,7 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
   let sequence = 0;
   const nextId = () => {
     sequence += 1;
-    return sequence.toString(16).padStart(24, '0');
+    return sequence.toString(16).padStart(OBJECT_ID_LENGTH, '0');
   };
   const stamps = { createdAt: STAMP, updatedAt: STAMP };
 
@@ -864,7 +866,7 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
         text: data.text,
         duplicateHints: [],
         promptVersion: null,
-        createdAt: new Date(Date.parse(STAMP) + sequence * 1000).toISOString(),
+        createdAt: new Date(Date.parse(STAMP) + sequence * MS_PER_SECOND).toISOString(),
         updatedAt: STAMP,
         sha256: data.sha256,
         files: [...data.files],

@@ -19,6 +19,11 @@ export function shiftMoment(moment: Date, milliseconds: number): Date {
 }
 
 export type IsoDate = string;
+
+/** Whether a calendar day is after today (both already in the app's time zone). */
+export function isFutureDay(date: IsoDate, today: IsoDate): boolean {
+  return date > today;
+}
 export type MonthKey = string;
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;

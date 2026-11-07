@@ -96,6 +96,7 @@ export function DataPage() {
   const restore = (file: File) =>
     run(async () => {
       let backup: unknown;
+      // eslint-disable-next-line no-restricted-syntax -- checks the file the user picked; it is input validation
       try {
         backup = JSON.parse(await file.text());
       } catch {

@@ -2,6 +2,7 @@ import type { Env } from '../config/env';
 import { buildContainer } from '../container';
 import type { CollectionPort } from '../core/db/collectionPort';
 import { currentUserId } from '../core/context/owner';
+import { OBJECT_ID_LENGTH } from '../core/db/ids';
 import { createAiAllowance } from '../modules/users/aiAllowance';
 import { type UserRecord, type UsersRepository } from '../modules/users/users.repository';
 import type { BackupStoreProvider } from '../providers/drive/googleDrive';
@@ -14,7 +15,7 @@ const STAMP = '2026-10-01T00:00:00.000Z';
 /** Users kept in an array, like the rest of the in-memory backend. */
 export function createMemoryUsers(): UsersRepository {
   const users: (UserRecord & { usernameKey: string })[] = [];
-  const idOf = (position: number) => (position + 1).toString(16).padStart(24, 'a');
+  const idOf = (position: number) => (position + 1).toString(16).padStart(OBJECT_ID_LENGTH, 'a');
   return {
     findAll: async () => [...users],
     findById: async (id) => users.find((user) => user.id === id) ?? null,

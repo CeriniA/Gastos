@@ -250,3 +250,11 @@ servidor") en lugar de un mensaje de validación, como sí hace la lectura de re
 Falta atrapar el error de lectura en `spreadsheet.service.ts` y devolver un `VALIDATION` en el campo `file`.
 
 **D1 corregido (7/11/2026).** Los 18 `index.ts` de los módulos se borraron; `app.ts`, `composition.ts`, `container.ts`, `memoryApp.ts`, los scripts y una prueba importan del archivo que define cada cosa. El lint ahora prohíbe que un módulo importe a otro (cualquier `../<módulo>`), y se comprobó con dos archivos de prueba que lo rechaza. `migrations/index.ts` se queda (es una lista para registrar) y `shared/src/index.ts` sigue pendiente de decisión.
+
+**Frente de calidad cerrado (7/11/2026).**
+- **D13 corregido:** `eslint.config.js` exige ahora tamaño de archivo (400 líneas), de función (80), complejidad (15), parámetros (4) y anidado (4), y prohíbe `try/catch` propio en las pantallas. Con las líneas en blanco y los comentarios sin contar, se midió: **4 archivos** pasan de 400 líneas (`documents.service.ts`, `transactions.repository.ts`, `ReviewPage.tsx`, `TransactionFormPage.tsx`; los otros de la lista de D2 no pasan al medir así), **31 archivos** tienen alguna función de más de 80 líneas, **11** de más de 15 de complejidad y **1** de más de 4 niveles. Todos están en `lint-exceptions.js`, que solo puede achicarse. Parámetros: ninguno pasa de 4.
+- **D2:** queda como trabajo gradual: cada archivo sale de la lista cuando se parte, y se parte cuando un cambio de la lógica nueva lo toca.
+- **Números del audit:** `24`, `60` y `1000` y los códigos HTTP dejaron de estar permitidos sueltos. Eso hizo aparecer 5 casos más, ya corregidos (`MS_PER_SECOND`, y `OBJECT_ID_LENGTH` para los 24 caracteres de un id).
+- **Error #9:** la regla de fecha futura usa `isFutureDay` de `shared/src/dates.ts`.
+- **D14 corregido:** un `.xlsx` roto al importar responde `VALIDATION` en el campo `file`, con su prueba.
+- **Quedan:** el error #5 (probar restaurar un respaldo grande en Atlas), D8 (se va con el rol de categoría) y D12 (mover el `client_secret` fuera de `docs/`).

@@ -9,6 +9,7 @@ import {
   type CategoryKind,
   type UploadableDocumentKind,
 } from '@gastos/shared';
+import { OBJECT_ID_LENGTH } from '../core/db/ids';
 import { detectImageType } from '../modules/documents/fileType';
 import { failureReason, type ExtractionCategory } from '../providers/ai/aiExtractor';
 import { createGeminiExtractor } from '../providers/ai/gemini';
@@ -84,7 +85,7 @@ const categories: ExtractionCategory[] = (Object.keys(STARTER_CATEGORIES) as Cat
     STARTER_CATEGORIES[categoryKind].map((name) => ({ id: '', kind: categoryKind, path: name })),
 );
 categories.forEach((category, index) => {
-  category.id = (index + 1).toString(16).padStart(24, '0');
+  category.id = (index + 1).toString(16).padStart(OBJECT_ID_LENGTH, '0');
 });
 const categoryName = new Map(categories.map((category) => [category.id, category.path]));
 

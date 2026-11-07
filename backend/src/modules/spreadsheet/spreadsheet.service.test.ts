@@ -10,6 +10,7 @@ import {
   type ImportRow,
 } from '@gastos/shared';
 import { ValidationError } from '../../core/errors/errors';
+import { codeOf } from '../../testing/assertions';
 import { createMemoryBackend } from '../../testing/memory';
 
 /**
@@ -423,4 +424,10 @@ test('an Excel export carries the products of each purchase on a second sheet, a
   // A CSV has room for one table: no products.
   const csvFile = await app.spreadsheet.exportTransactions({ format: 'csv' });
   assert.doesNotMatch(csvFile.content.toString('utf8'), /YERBA/);
+});
+
+test('a file that is not really an Excel is a validation problem, not a server error', async () => {
+  const { app } = await setup();
+  const broken = { content: Buffer.from([0, 1, 2, 3, 4]), fileName: 'roto.xlsx' };
+  assert.equal(await codeOf(app.spreadsheet.preview(broken)), 'VALIDATION');
 });

@@ -1,7 +1,8 @@
 # Estándares de código
 
-Estado: **aprobado el 7 de noviembre de 2026 y resumido en `AGENTS.md`. El lint todavía no lo hace cumplir:
-las reglas nuevas se activan en el primer paso de la implementación.**
+Estado: **aprobado el 7 de noviembre de 2026 y resumido en `AGENTS.md`. Desde el mismo día el lint hace cumplir
+el tamaño, la complejidad, los módulos que no se importan y el `useAction()` en pantallas; los archivos que todavía
+no cumplen están en `lint-exceptions.js` (esa lista solo se achica).**
 Es lo que se exige a cualquier cambio de código, antes de empezar a implementar `LOGICA_NEGOCIO.md`.
 Complementa las reglas de `AGENTS.md`; no las reemplaza.
 
@@ -64,11 +65,11 @@ Complementa las reglas de `AGENTS.md`; no las reemplaza.
 | ----- | --------------- |
 | Capas, módulos que no se importan, `shared` sin código de plataforma | Lint (ya existe) |
 | Textos en `es.ts`, `'es-AR'` y `'ARS'` | Lint (ya existe) |
-| Números sueltos, código copiado, exports sin uso | `npm run audit:code` (ya existe, con la lista de números permitidos más ancha de lo conveniente) |
-| Tamaño de archivo, de función, complejidad, parámetros, anidado | Lint: reglas que trae ESLint, sin dependencias nuevas. Se activan con una **lista temporal de excepciones** para los archivos grandes de hoy, que se achica a medida que se parten |
-| `useAction()` en vez de `try/catch` propio en pantallas | Lint (regla nueva) |
+| Números sueltos, código copiado, exports sin uso | `npm run audit:code` (ya existe; los tiempos y los códigos HTTP ya no están permitidos sueltos: viven en `dates.ts` y `status.ts`) |
+| Tamaño de archivo (400 líneas), de función (80), complejidad (15), parámetros (4), anidado (4) | Lint (ya existe): reglas que trae ESLint, con la **lista temporal de excepciones** `lint-exceptions.js` para los archivos de hoy que no cumplen, que se achica a medida que se parten. Las líneas en blanco y los comentarios no cuentan |
+| `useAction()` en vez de `try/catch` propio en pantallas | Lint (ya existe, en `features/**/*.tsx`). Un `try/catch` que no guarda nada (leer el almacenamiento del navegador, validar un archivo) se deja con `eslint-disable` y el motivo |
 | Buscar una categoría, comercio o producto por su nombre | Lint (regla nueva) |
-| Archivos barril | Lint (regla nueva) |
+| Archivos barril de los módulos | Ya no existen, y el lint prohíbe que un módulo importe a otro. `shared/src/index.ts` queda como decisión abierta |
 
 ## 7. Alcance
 

@@ -1,5 +1,6 @@
 import {
   impliedRate,
+  isFutureDay,
   MS_PER_DAY,
   MS_PER_SECOND,
   scaleCents,
@@ -123,7 +124,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
 
     // Only projected items (future installments) may be dated ahead.
     const status = origin.status ?? previous?.status ?? 'confirmed';
-    if (input.date > refs.today && status !== 'projected') {
+    if (isFutureDay(input.date, refs.today) && status !== 'projected') {
       issues.push({ path: 'date', message: 'Date cannot be in the future' });
     }
 

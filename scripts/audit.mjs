@@ -10,7 +10,10 @@ import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const FOLDERS = ['shared/src', 'backend/src', 'frontend/src'];
 const BLOCK_LINES = 8;
-/** Numbers that are not "magic": counters, halves, percentages, HTTP statuses, date positions. */
+/**
+ * Numbers that are not "magic": counters, halves, percentages, date positions. Lengths of time live in
+ * shared/src/dates.ts (MS_PER_*) and HTTP statuses in backend/src/core/http/status.ts, so neither is allowed here.
+ */
 const ALLOWED_NUMBERS = new Set([
   '0',
   '1',
@@ -23,10 +26,7 @@ const ALLOWED_NUMBERS = new Set([
   '10',
   '12',
   '16',
-  '24',
-  '60',
   '100',
-  '1000',
 ]);
 const HTTP_STATUS = /\b(200|201|202|204|400|401|403|404|409|413|429|500|502)\b/;
 

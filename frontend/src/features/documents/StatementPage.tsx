@@ -39,6 +39,7 @@ const ACCEPTED_FILES =
 const isPdf = (file: File | null) => !file || /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
 
 function loadWords(): string[] {
+  // eslint-disable-next-line no-restricted-syntax -- reads the browser's storage; it is not a saving action
   try {
     const stored: unknown = JSON.parse(localStorage.getItem(HIDDEN_WORDS_KEY) ?? '[]');
     return Array.isArray(stored) ? stored.filter((word): word is string => typeof word === 'string') : [];
@@ -48,6 +49,7 @@ function loadWords(): string[] {
 }
 
 function saveWords(words: readonly string[]) {
+  // eslint-disable-next-line no-restricted-syntax -- writes the browser's storage; it is not a saving action
   try {
     localStorage.setItem(HIDDEN_WORDS_KEY, JSON.stringify(words));
   } catch {

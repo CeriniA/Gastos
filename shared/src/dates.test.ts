@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  isFutureDay,
   MS_PER_DAY,
   shiftMoment,
   formatTime,
@@ -90,4 +91,10 @@ test('a moment is shifted by exact milliseconds, forward and back', () => {
   const noon = new Date('2026-10-10T12:00:00.000Z');
   assert.equal(shiftMoment(noon, MS_PER_DAY).toISOString(), '2026-10-11T12:00:00.000Z');
   assert.equal(shiftMoment(noon, -30 * MS_PER_DAY).toISOString(), '2026-09-10T12:00:00.000Z');
+});
+
+test('a day is in the future only when it is after today', () => {
+  assert.equal(isFutureDay('2026-10-11', '2026-10-10'), true);
+  assert.equal(isFutureDay('2026-10-10', '2026-10-10'), false);
+  assert.equal(isFutureDay('2025-12-31', '2026-01-01'), false);
 });

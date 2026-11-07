@@ -27,7 +27,7 @@ import {
   type TransactionCreate,
 } from '@gastos/shared';
 import type { TransactionRunner, WriteOptions } from '../../core/db/transaction';
-import { ValidationError } from '../../core/errors/errors';
+import { ValidationError, fieldError } from '../../core/errors/errors';
 import { readTable, writeCsv, writeXlsx, type GeneratedFile } from './spreadsheet.files';
 
 /** What the import and export need from the rest of the app. */
@@ -171,7 +171,10 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
      * is wrong. Writes nothing.
      */
     async preview(file: { content: Buffer; fileName: string }): Promise<ImportPreview> {
-      const table = await readTable(file.content, file.fileName);
+      const table = await readTable(file.content, file.fileName).catch(() => {
+        // A file that is not really an Excel is the user's mistake, not a server failure.
+        throw fieldError('file', 'The spreadsheet could not be read');
+      });
       const [header, ...dataRows] = table;
       if (!header) throw new ValidationError('The file is empty');
       if (dataRows.length > MAX_IMPORT_ROWS) {

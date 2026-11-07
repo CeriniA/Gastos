@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import { TEMPORARY_EXCEPTIONS } from './lint-exceptions.js';
 
 /**
  * Besides the usual checks, this file enforces the architecture described in
@@ -24,6 +25,43 @@ const noRepository = {
 const noHttp = {
   group: ['express'],
   message: 'Services do not know about HTTP.',
+};
+
+/** What AGENTS.md asks of every frontend file, checked instead of trusted. */
+const FRONTEND_SYNTAX = [
+  {
+    selector: 'JSXText[value=/[A-Za-zÁÉÍÓÚáéíóúñÑ]{3,}/]',
+    message: 'User-facing text goes in frontend/src/shared/i18n/es.ts.',
+  },
+  {
+    selector:
+      'JSXAttribute[name.name=/^(aria-label|placeholder|title|alt)$/] > Literal[value=/[A-Za-zÁÉÍÓÚáéíóúñÑ]{3,}/]',
+    message: 'User-facing text goes in frontend/src/shared/i18n/es.ts.',
+  },
+  {
+    selector: "Literal[value='es-AR']",
+    message: 'Use APP_LOCALE from @gastos/shared.',
+  },
+  {
+    selector: "Literal[value='ARS']",
+    message: 'Use DEFAULT_CURRENCY from @gastos/shared.',
+  },
+];
+
+/** A screen that saves something reports its errors through useAction(), not through its own try/catch. */
+const noOwnTryCatch = {
+  selector: 'TryStatement',
+  message:
+    'Use useAction() (frontend/src/shared/ui/useAction.ts) to run a change and show its error. If this is not a saving action, say why with an eslint-disable comment.',
+};
+
+/** The limits of docs/ESTANDARES_CODIGO.md. Files that do not meet them yet are listed in lint-exceptions.js. */
+const SIZE_RULES = {
+  'max-lines': ['error', { max: 400, skipBlankLines: true, skipComments: true }],
+  'max-lines-per-function': ['error', { max: 80, skipBlankLines: true, skipComments: true }],
+  complexity: ['error', 15],
+  'max-params': ['error', 4],
+  'max-depth': ['error', 4],
 };
 
 const restrict = (files, patterns) => ({
@@ -72,26 +110,7 @@ export default tseslint.config(
     files: ['frontend/src/**/*.{ts,tsx}'],
     ignores: ['frontend/src/shared/i18n/**'],
     rules: {
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector: 'JSXText[value=/[A-Za-zÁÉÍÓÚáéíóúñÑ]{3,}/]',
-          message: 'User-facing text goes in frontend/src/shared/i18n/es.ts.',
-        },
-        {
-          selector:
-            'JSXAttribute[name.name=/^(aria-label|placeholder|title|alt)$/] > Literal[value=/[A-Za-zÁÉÍÓÚáéíóúñÑ]{3,}/]',
-          message: 'User-facing text goes in frontend/src/shared/i18n/es.ts.',
-        },
-        {
-          selector: "Literal[value='es-AR']",
-          message: 'Use APP_LOCALE from @gastos/shared.',
-        },
-        {
-          selector: "Literal[value='ARS']",
-          message: 'Use DEFAULT_CURRENCY from @gastos/shared.',
-        },
-      ],
+      'no-restricted-syntax': ['error', ...FRONTEND_SYNTAX],
     },
   },
 
@@ -100,4 +119,18 @@ export default tseslint.config(
     ['frontend/src/shared/**/*.{ts,tsx}'],
     [{ group: ['**/features/**'], message: 'shared/ cannot import from features/.' }],
   ),
+  // Screens: the same selectors, plus no try/catch of their own.
+  {
+    files: ['frontend/src/features/**/*.tsx'],
+    rules: { 'no-restricted-syntax': ['error', ...FRONTEND_SYNTAX, noOwnTryCatch] },
+  },
+
+  // Size and complexity of the code that runs in the app (tests, the in-memory backend and Spanish texts are not measured).
+  {
+    files: ['backend/src/**/*.ts', 'frontend/src/**/*.{ts,tsx}', 'shared/src/**/*.ts'],
+    ignores: ['**/*.test.ts', 'backend/src/testing/**', 'frontend/src/shared/i18n/**'],
+    rules: SIZE_RULES,
+  },
+  // The files that do not meet a limit yet (this list only gets shorter).
+  ...Object.entries(TEMPORARY_EXCEPTIONS).map(([rule, files]) => ({ files, rules: { [rule]: 'off' } })),
 );
