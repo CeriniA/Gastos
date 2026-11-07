@@ -544,6 +544,11 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
 
       return deps.runInTransaction(async (session) => {
         const options = { session };
+        // The guard comes first. The check above can be out of date by now: another request may have
+        // confirmed or deleted the document since. Taking it here, inside the transaction, makes
+        // only one of them go on; everything below is undone if this one stops or fails.
+        const taken = await repository.markConfirmed(id, options);
+        if (!taken) throw new ConflictError('Only a document ready for review can be confirmed');
         // The dates first: the purchases stored next take their payment date from them.
         if (input.cardPeriods.length > 0) await deps.createCardPeriods(input.cardPeriods, id, options);
         const entries = [];
@@ -564,7 +569,6 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
         const created = await deps.createTransactions(entries, options);
         for (const rule of input.rules) await deps.saveRule(rule, options);
         for (const rule of input.productRules) await deps.saveProductRule(rule, options);
-        await repository.update(id, { status: 'confirmed', clearFiles: true }, options);
         return { created };
       });
     },
@@ -575,9 +579,13 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
      * transactions: they stay as manual entries, or go to the trash.
      */
     async remove(id: string, transactions: 'keep' | 'delete'): Promise<void> {
-      const document = await find(id);
+      await find(id);
       await deps.runInTransaction(async (session) => {
         const options = { session };
+        // Read again inside the transaction: a confirmation that finished meanwhile
+        // decides what has to happen to the transactions it created.
+        const document = await repository.findById(id, options);
+        if (!document) throw new NotFoundError('Document', id);
         if (document.status === 'confirmed') {
           if (transactions === 'delete') await deps.trashTransactions(id, options);
           else await deps.releaseTransactions(id, options);

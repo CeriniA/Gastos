@@ -26,8 +26,6 @@ export interface DocumentChanges {
   waits?: number;
   /** Adds one to the number of reading attempts. */
   countAttempt?: boolean;
-  /** Deletes what was stored to be read: the images or the text. */
-  clearFiles?: boolean;
 }
 
 /** Pending documents are few; the list is capped so a forgotten pile cannot slow it down. */
@@ -91,8 +89,8 @@ export const documentsRepository = {
     return toDetail(doc.toObject() as DocumentDoc);
   },
 
-  async findById(id: string): Promise<DocumentDetail | null> {
-    const doc = await DocumentModel.findById(toObjectId(id), WITHOUT_BYTES).lean<LightDoc>();
+  async findById(id: string, options: WriteOptions = {}): Promise<DocumentDetail | null> {
+    const doc = await DocumentModel.findById(toObjectId(id), WITHOUT_BYTES, { session: options.session }).lean<LightDoc>();
     return doc ? toDetail(doc) : null;
   },
 
@@ -145,7 +143,7 @@ export const documentsRepository = {
     changes: DocumentChanges,
     options: WriteOptions = {},
   ): Promise<DocumentDetail | null> {
-    const { countAttempt, clearFiles, retryAt, ...rest } = changes;
+    const { countAttempt, retryAt, ...rest } = changes;
     const fields = {
       ...rest,
       ...(retryAt === undefined ? {} : { retryAt: retryAt ? new Date(retryAt) : null }),
@@ -153,9 +151,26 @@ export const documentsRepository = {
     const doc = await DocumentModel.findByIdAndUpdate(
       toObjectId(id),
       {
-        $set: { ...fields, ...(clearFiles ? { files: [], text: null } : {}) },
+        $set: fields,
         ...(countAttempt ? { $inc: { attempts: 1 } } : {}),
       },
+      { new: true, session: options.session, projection: WITHOUT_BYTES },
+    ).lean<LightDoc>();
+    return doc ? toDetail(doc) : null;
+  },
+
+  /**
+   * Confirms a document, and deletes what was stored to read it (the images or
+   * the text), only if it is still waiting for review. The condition is the
+   * guard against a second confirmation, or a deletion, happening at the same
+   * time: whoever comes second finds it already gone and gets null. It also
+   * holds when MongoDB retries the transaction, because the filter is evaluated
+   * again.
+   */
+  async markConfirmed(id: string, options: WriteOptions = {}): Promise<DocumentDetail | null> {
+    const doc = await DocumentModel.findOneAndUpdate(
+      { _id: toObjectId(id), status: 'ready' },
+      { $set: { status: 'confirmed', files: [], text: null } },
       { new: true, session: options.session, projection: WITHOUT_BYTES },
     ).lean<LightDoc>();
     return doc ? toDetail(doc) : null;

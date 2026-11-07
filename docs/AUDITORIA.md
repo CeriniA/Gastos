@@ -11,6 +11,10 @@ deuda: es la **distancia hacia el diseño nuevo** (sección 5), que toca muchos 
 
 `npm run check` pasa completo: tipos (`tsc`), lint, auditoría de código y **217 pruebas, 0 fallas**.
 
+Una revisión de lógica posterior (sección 9) encontró además errores de concurrencia en la confirmación de
+documentos y otros de menor gravedad. "Cumple casi todas las reglas" vale para el estilo y las capas, no
+para la ausencia de errores.
+
 ## 2. Lo que está bien
 
 - Ningún `any`, `@ts-ignore`, `@ts-expect-error`, `eslint-disable` ni `TODO` en el código de la app.
@@ -106,9 +110,50 @@ y los bancos y marcas por defecto, **solo cuando el usuario no tiene nada**. Por
 | Inyección de dependencias | Raíz de composición (`wiring.ts` 269 líneas, `composition.ts`, `container.ts`) | Bien: los services son funciones que reciben sus dependencias; no hay `fetch` directo; los proveedores van detrás de una interfaz. Sin librería ni clases de más |
 | Reloj | `Date.now()` o `new Date()` dentro de 4 services (9 usos) | No está inyectado. Conviene inyectarlo solo donde la lógica depende de la hora |
 
-## 9. Orden recomendado
+## 9. Errores de lógica (revisión del 7/11/2026)
 
-1. **Base de calidad**, antes de cualquier función nueva: corregir los desvíos 1 a 3 de la sección 3,
+Una revisión externa señaló los puntos de abajo. Cada uno se verificó leyendo el código. **Ninguno se
+reprodujo**: acá no hay MongoDB, y las carreras dependen de cómo se intercalan dos pedidos reales.
+
+**A. Corregir primero**
+
+| # | Hallazgo | Dónde | Qué se confirmó | Gravedad |
+| - | -------- | ----- | --------------- | -------- |
+| 1 | **Doble confirmación de un documento.** `confirm()` mira que esté listo (`ready`) fuera de la transacción, y la actualización final no pregunta el estado previo. MongoDB reintenta sola una transacción que choca (`withTransaction`), y el reintento no vuelve a mirar el estado: puede crear los movimientos dos veces | `documents.service.ts:538-567`, `documents.repository.ts:143-162`, `core/db/transaction.ts:36` | El código es como se describe. Que se duplique depende de la carrera | Alta |
+| 2 | **Confirmar y borrar a la vez.** La actualización final puede devolver `null` (el documento ya no existe) y nadie lo mira: quedan movimientos apuntando a un documento inexistente | `documents.service.ts:567`, `577-588` | Confirmado. Se arregla con la misma corrección que el punto 1 | Media |
+
+**B. Corregir en la base de calidad**
+
+| # | Hallazgo | Dónde | Qué se confirmó | Gravedad |
+| - | -------- | ----- | --------------- | -------- |
+| 3 | Una cuota proyectada que está en la papelera pasa a confirmada al llegar su fecha: `confirmProjectedUpTo` no filtra por `deletedAt` | `transactions.repository.ts:428-431` | Confirmado, pero pesa menos de lo dicho: la papelera no cuenta en los informes y restaurar es una acción del usuario. Igual conviene filtrar | Baja |
+| 5 | Restaurar un respaldo corre en **una sola transacción** (borrar e insertar todas las colecciones) | `backup.service.ts:71-85`, `collectionPort.ts:63-82` | El mecanismo está confirmado. Los topes de Atlas que cita el informe (unas 1000 operaciones, 16 MB) no se pueden verificar desde acá: se hace una operación de borrado y una de inserción por colección. El riesgo real es el tiempo máximo de una transacción (60 segundos por defecto en MongoDB) y la memoria del plan gratuito. Hay que probarlo con un respaldo grande en Atlas | Media, sin probar |
+| 7 | Un 401 lento desloguea una sesión recién iniciada: el pedido lee el token al enviarse, pero al recibir el 401 se borra el token actual sin compararlo | `client.ts:85`, `110-113` | Confirmado | Baja |
+| 8 | El tapado de datos deja pasar un celular de 10 dígitos ("11 5555-5555"; el mínimo es de 12) y un CUIT con puntos ("20.12345678.9"; el patrón acepta guiones o nada). El tapado por etiqueta cubre la línea entera | `redaction.ts:22`, `44` | Confirmado. Es privacidad: se ajusta con el primer resumen real | Media |
+| 9 | La regla "fecha no futura" vive solo en el service; `shared` valida solo el formato | `transactions.service.ts:120` | Confirmado. Necesita "hoy", que depende de la zona horaria: pasa a ser una función de `shared/dates.ts` | Baja |
+| 10 | `parseAmountToCents(1.005)` da 100 centavos (error de punto flotante en `input * 100`) | `money.ts:16` | Confirmado; solo para números, como las celdas de un Excel | Baja |
+| 11 | El botón de descartar de Pendientes no se deshabilita mientras corre; el de reintentar sí | `PendingPage.tsx:77`, `89` | Confirmado | Baja |
+
+**C. Mejora, no error**
+
+| # | Hallazgo | Dónde | Qué se confirmó |
+| - | -------- | ----- | --------------- |
+| 4 | Las cuotas importadas de una planilla quedan sin plan (`planId: null`) | `spreadsheet.service.ts:286-288` | Es cierto, pero no es un error: el mismo estado existe al leer una cuota de un resumen sin crear su plan. Mejora posible: ofrecer crear el plan |
+
+**D. Descartado**
+
+| # | Hallazgo | Dónde | Por qué |
+| - | -------- | ----- | ------- |
+| 6 | Carrera en la copia a Drive | `driveBackup.ts:95-104` | `state.running ??= attempt(...)` no ejecuta `attempt` si ya hay una copia en curso. Dos llamadas a la vez lanzan **una sola** |
+
+**E. No verificados:** subir a la vez dos veces el mismo archivo gasta cuota de IA; un Excel chico que
+descomprime a mucho carga entero en memoria antes de filtrar filas; el error de la revisión no se limpia al
+corregir un campo.
+
+## 10. Orden recomendado
+
+1. **Base de calidad**, antes de cualquier función nueva: corregir primero los errores A de la sección 9
+   (confirmación de documentos), luego los B, los desvíos 1 a 3 de la sección 3,
    quitar los archivos barril de los módulos, activar las reglas de lint nuevas con su lista temporal
    de excepciones, y ajustar la lista de números permitidos.
 2. Actualizar los documentos de `docs/`.

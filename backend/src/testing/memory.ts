@@ -147,7 +147,10 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
     getOwnPropertyDescriptor: (_target, name) => Reflect.getOwnPropertyDescriptor(mine(), name),
   });
   /** Switches a test can flip to make a write fail, to check that work is rolled back. */
-  const faults = { insertTransactions: false };
+  const faults: { insertTransactions: boolean; beforeTransaction: (() => void | Promise<void>) | null } = {
+    insertTransactions: false,
+    beforeTransaction: null,
+  };
 
   /**
    * A scripted AI: tests set what the next reading returns (or the error it
@@ -189,6 +192,8 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
 
   const runInTransaction: TransactionRunner = async (work, existing) => {
     if (existing) return work(existing);
+    // Lets a test make something else happen "at the same moment", just before this one starts.
+    await faults.beforeTransaction?.();
     const snapshot = structuredClone(mine());
     try {
       return await work({} as DbSession);
@@ -867,7 +872,7 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
       store.documents.push(document);
       return withoutBytes(document);
     },
-    async findById(id) {
+    async findById(id, _options) {
       const document = store.documents.find((candidate) => candidate.id === id);
       return document ? withoutBytes(document) : null;
     },
@@ -898,8 +903,16 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
       const index = store.documents.findIndex((document) => document.id === id);
       const current = store.documents[index];
       if (!current) return null;
-      const { countAttempt: _countAttempt, clearFiles, errorDetail: _errorDetail, ...fields } = changes;
-      const next = clearFiles ? { ...current, ...fields, files: [], text: null } : { ...current, ...fields };
+      const { countAttempt: _countAttempt, errorDetail: _errorDetail, ...fields } = changes;
+      const next = { ...current, ...fields };
+      store.documents[index] = next;
+      return withoutBytes(next);
+    },
+    async markConfirmed(id) {
+      const index = store.documents.findIndex((document) => document.id === id);
+      const current = store.documents[index];
+      if (!current || current.status !== 'ready') return null;
+      const next = { ...current, status: 'confirmed' as const, files: [], text: null };
       store.documents[index] = next;
       return withoutBytes(next);
     },

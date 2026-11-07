@@ -356,10 +356,15 @@ Falta: nada pendiente de programar. Queda usarla y ajustar los números de la re
 
 ## Etapa 5: lógica nueva y base de calidad (acordada el 7/11/2026)
 
-**Nada implementado.** Lo acordado está en `LOGICA_NEGOCIO.md`, lo medido en `AUDITORIA.md` y el criterio de
+**Hecho hasta ahora:** la confirmación de documentos ya no puede correr dos veces ni chocar con un borrado
+(`markConfirmed` toma el documento dentro de la transacción solo si sigue "listo"; borrar lo vuelve a leer
+adentro). Tiene tres pruebas nuevas. Falta el resto del paso 1.
+
+**Lo demás, sin implementar.** Lo acordado está en `LOGICA_NEGOCIO.md`, lo medido en `AUDITORIA.md` y el criterio de
 código en `ESTANDARES_CODIGO.md`. Orden previsto, cada paso con pruebas y su commit:
 
-1. **Base de calidad:** corregir los tres desvíos de `AUDITORIA.md`, quitar los archivos barril de los módulos,
+1. **Base de calidad:** corregir primero la confirmación de documentos (doble confirmación y confirmar contra
+   borrar: `AUDITORIA.md`, sección 9), luego los demás errores de esa sección, los tres desvíos, quitar los archivos barril de los módulos,
    activar las reglas nuevas del lint con su lista temporal de excepciones y ajustar los números permitidos.
 2. Listas nuevas (comercios, productos, textos conocidos, rol de categoría) y su migración, sin cambiar todavía
    las pantallas. Antes del primer arranque, un respaldo a Drive.

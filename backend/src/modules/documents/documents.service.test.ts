@@ -325,6 +325,56 @@ test('confirming creates the transactions, remembers rules and deletes the image
   assert.equal(await codeOf(app.documents.upload({ kind: 'receipt' }, [photo('luz')])), 'DUPLICATE');
 });
 
+test('a confirmation that loses the race to another confirmation creates nothing', async () => {
+  const { app, bank, power } = await setup();
+  app.ai.result = extraction(read());
+  const uploaded = await app.documents.upload({ kind: 'receipt' }, [photo('luz')]);
+  await app.documents.processQueue();
+
+  // The other request gets in after this one checked the status but before its transaction starts.
+  app.faults.beforeTransaction = async () => {
+    app.faults.beforeTransaction = null;
+    await app.documents.confirm(uploaded.id, confirmation(bank.id, power.id));
+  };
+  const outcome = await codeOf(app.documents.confirm(uploaded.id, confirmation(bank.id, power.id)));
+  assert.equal(outcome, 'CONFLICT');
+  assert.equal(app.store.transactions.length, 1);
+});
+
+test('a confirmation that finds the document deleted meanwhile creates nothing', async () => {
+  const { app, bank, power } = await setup();
+  app.ai.result = extraction(read());
+  const uploaded = await app.documents.upload({ kind: 'receipt' }, [photo('luz')]);
+  await app.documents.processQueue();
+
+  app.faults.beforeTransaction = () => {
+    app.faults.beforeTransaction = null;
+    app.store.documents = app.store.documents.filter((document) => document.id !== uploaded.id);
+  };
+  assert.equal(await codeOf(app.documents.confirm(uploaded.id, confirmation(bank.id, power.id))), 'CONFLICT');
+  assert.equal(app.store.transactions.length, 0);
+});
+
+test('deleting a document that was confirmed meanwhile still deals with its transactions', async () => {
+  const { app, bank, power } = await setup();
+  app.ai.result = extraction(read());
+  const uploaded = await app.documents.upload({ kind: 'receipt' }, [photo('luz')]);
+  await app.documents.processQueue();
+
+  app.faults.beforeTransaction = async () => {
+    app.faults.beforeTransaction = null;
+    await app.documents.confirm(uploaded.id, confirmation(bank.id, power.id));
+  };
+  await app.documents.remove(uploaded.id, 'delete');
+
+  assert.equal(app.store.documents.length, 0);
+  const live = (await app.transactions.list({ page: 1, pageSize: 50 })).items;
+  assert.equal(live.length, 0);
+  const inTrash = (await app.transactions.list({ page: 1, pageSize: 50, deleted: true })).items;
+  assert.equal(inTrash.length, 1);
+  assert.equal(inTrash[0]?.documentId, null);
+});
+
 test('a confirmation that fails half-way leaves everything as it was', async () => {
   const { app, bank, power, salary } = await setup();
   app.ai.result = extraction(read());
