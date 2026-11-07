@@ -10,6 +10,7 @@ import {
 import type { CollectionPort } from '../../core/db/collectionPort';
 import type { DbSession, TransactionRunner } from '../../core/db/transaction';
 import { AppError } from '../../core/errors/errors';
+import { HTTP_STATUS } from '../../core/http/status';
 
 export interface BackupHooks {
   /**
@@ -17,6 +18,8 @@ export interface BackupHooks {
    * had already been through, so the ones it is missing can be applied to it.
    */
   afterRestore(appliedMigrations: readonly string[]): Promise<void>;
+  /** The current moment, written into the file and into the integrity report. */
+  now(): Date;
 }
 
 /**
@@ -43,7 +46,7 @@ export function createBackupService(
       return {
         app: APP_ID,
         formatVersion: BACKUP_FORMAT_VERSION,
-        exportedAt: new Date().toISOString(),
+        exportedAt: hooks.now().toISOString(),
         collections,
       };
     },
@@ -54,10 +57,10 @@ export function createBackupService(
      */
     async restore(input: unknown): Promise<RestoreResult> {
       const parsed = backupFileSchema.safeParse(input);
-      if (!parsed.success) throw new AppError(400, 'INVALID_BACKUP', 'Not a backup file of this app');
+      if (!parsed.success) throw new AppError(HTTP_STATUS.badRequest, 'INVALID_BACKUP', 'Not a backup file of this app');
       const file = parsed.data;
       if (file.formatVersion > BACKUP_FORMAT_VERSION) {
-        throw new AppError(400, 'INVALID_BACKUP', 'Backup was made by a newer version of the app', {
+        throw new AppError(HTTP_STATUS.badRequest, 'INVALID_BACKUP', 'Backup was made by a newer version of the app', {
           formatVersion: file.formatVersion,
           supported: BACKUP_FORMAT_VERSION,
         });
@@ -65,7 +68,7 @@ export function createBackupService(
       const known = new Set(ports.map((port) => port.name));
       const unknown = Object.keys(file.collections).filter((name) => !known.has(name));
       if (unknown.length > 0) {
-        throw new AppError(400, 'INVALID_BACKUP', 'Backup contains unknown collections', { unknown });
+        throw new AppError(HTTP_STATUS.badRequest, 'INVALID_BACKUP', 'Backup contains unknown collections', { unknown });
       }
 
       const restored = await runInTransaction(async (session) => {
@@ -77,7 +80,7 @@ export function createBackupService(
         }
         const broken = await findBroken(session);
         if (broken.length > 0) {
-          throw new AppError(400, 'INTEGRITY', 'Backup has references to data it does not contain', {
+          throw new AppError(HTTP_STATUS.badRequest, 'INTEGRITY', 'Backup has references to data it does not contain', {
             broken,
           });
         }
@@ -94,7 +97,7 @@ export function createBackupService(
     /** Lists every reference that points at a document that no longer exists. */
     async integrity(): Promise<IntegrityReport> {
       const broken = await findBroken();
-      return { ok: broken.length === 0, checkedAt: new Date().toISOString(), broken };
+      return { ok: broken.length === 0, checkedAt: hooks.now().toISOString(), broken };
     },
   };
 }

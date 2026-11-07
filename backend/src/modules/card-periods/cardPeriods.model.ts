@@ -1,6 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { COLLECTIONS } from '../../core/db/collections';
-import { ownedByUser } from '../../core/db/ownerPlugin';
+import { ownedByUser, uniquePerUser } from '../../core/db/ownerPlugin';
 import type { ObjectId } from '../../core/db/ids';
 
 /** Stage 3: one credit card statement period, with its closing and due dates. */
@@ -29,7 +29,7 @@ const schema = new Schema<CardPeriodDoc>(
   { timestamps: true },
 );
 // One period per card and closing date.
-schema.index({ accountId: 1, closingDate: 1 }, { unique: true });
+uniquePerUser(schema, { accountId: 1, closingDate: 1 });
 
 schema.plugin(ownedByUser);
 

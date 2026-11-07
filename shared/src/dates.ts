@@ -7,6 +7,17 @@
 
 import { APP_LOCALE } from './constants';
 
+/** Lengths of time in milliseconds: the only place they are written out. */
+export const MS_PER_SECOND = 1000;
+export const MS_PER_MINUTE = 60 * MS_PER_SECOND;
+export const MS_PER_HOUR = 60 * MS_PER_MINUTE;
+export const MS_PER_DAY = 24 * MS_PER_HOUR;
+
+/** The moment that many milliseconds after (or, when negative, before) another. */
+export function shiftMoment(moment: Date, milliseconds: number): Date {
+  return new Date(moment.getTime() + milliseconds);
+}
+
 export type IsoDate = string;
 export type MonthKey = string;
 

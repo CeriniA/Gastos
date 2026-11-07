@@ -11,10 +11,13 @@ import {
   MAX_STATEMENT_ROWS,
   MAX_STATEMENT_TEXT_LENGTH,
   MAX_UPLOAD_BYTES,
+  MS_PER_DAY,
+  MS_PER_MINUTE,
   extractionResultSchema,
   nameKey,
   pathOf,
   redactPersonalData,
+  shiftMoment,
   type Account,
   type CardPeriodCreate,
   type Category,
@@ -45,7 +48,6 @@ import { dateInstallmentsOnClosing, tidyStatementText } from './statement';
 import { decodeText, rowsToText, statementFileType } from './statementFile';
 import { applyCategorySuggestions, applyProductRules } from './suggestions';
 
-const MINUTE_MS = 60_000;
 
 /** The field and the message each reason a PDF could not be read is reported with. */
 const PDF_FAILURE_FIELDS: Record<PdfFailure, { path: string; message: string }> = {
@@ -234,7 +236,7 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
     await repository.update(document.id, {
       errorCode,
       errorDetail: detailOf(error),
-      retryAt: new Date(deps.now().getTime() + delay * MINUTE_MS).toISOString(),
+      retryAt: shiftMoment(deps.now(), delay * MS_PER_MINUTE).toISOString(),
       waits: document.waits + 1,
       countAttempt: true,
     });
@@ -387,7 +389,7 @@ export function createDocumentsService(repository: DocumentsRepository, deps: Do
      * their images. Confirmed documents are never touched.
      */
     purgeStale(now: Date = new Date()): Promise<number> {
-      const cutoff = new Date(now.getTime() - PENDING_DOCUMENT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+      const cutoff = shiftMoment(now, -PENDING_DOCUMENT_RETENTION_DAYS * MS_PER_DAY);
       return repository.deleteUnconfirmedBefore(cutoff);
     },
 

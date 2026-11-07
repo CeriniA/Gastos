@@ -7,6 +7,7 @@ import {
 } from '@gastos/shared';
 import { asUser, noContent, ok, parse } from '../../core/http/http';
 import type { AccountsService } from './accounts.service';
+import { HTTP_STATUS } from '../../core/http/status';
 
 export function createAccountsController(service: AccountsService) {
   const list: RequestHandler = async (_req, res) => {
@@ -16,7 +17,7 @@ export function createAccountsController(service: AccountsService) {
     ok(res, await service.get(parse(idParamsSchema, req.params).id));
   };
   const create: RequestHandler = async (req, res) => {
-    ok(res, await service.create(parse(accountCreateSchema, req.body)), 201);
+    ok(res, await service.create(parse(accountCreateSchema, req.body)), HTTP_STATUS.created);
   };
   const update: RequestHandler = async (req, res) => {
     const { id } = parse(idParamsSchema, req.params);

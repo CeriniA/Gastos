@@ -1,3 +1,4 @@
+import { MS_PER_MINUTE } from '@gastos/shared';
 import express, { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { AppError } from '../../core/errors/errors';
@@ -6,7 +7,7 @@ import { createAuthController } from './auth.controller';
 import type { AuthService } from './auth.service';
 
 /** Ten wrong passwords in fifteen minutes and the login waits: enough for typos, too slow for guessing. */
-const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_WINDOW_MS = 15 * MS_PER_MINUTE;
 const LOGIN_ATTEMPTS = 10;
 
 export function createAuthRouter(service: AuthService): Router {

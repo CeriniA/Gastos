@@ -161,7 +161,7 @@ registran, `useAction` en el frontend. Se encontraron cuatro huecos:
 | - | ----- | ------ |
 | F1 | El servidor no tenía `unhandledRejection` ni `uncaughtException` | Corregido en `server.ts` |
 | F2 | El frontend no tenía `ErrorBoundary`: una pantalla que falla al dibujarse quedaba en blanco | Corregido (`ErrorBoundary.tsx`, texto en `es.crash`) |
-| F3 | Cinco pantallas (`ReviewPage`, `TransactionFormPage`, `AddPage`, `StatementPage`, `BalanceCheck`) tienen su propio `try/catch` en lugar de `useAction` | Pendiente: va con las reglas de lint (paso 1) |
+| F3 | Tres pantallas (`ReviewPage`, `TransactionFormPage`, `DataPage`) tienen su propio `try/catch` en lugar de `useAction` (la lista inicial incluía por error `AddPage`, `StatementPage` y `BalanceCheck`, que sí lo usan; se corrigió en la sección 11) | Pendiente: va con las reglas de lint (paso 1) |
 | F4 | Las cotizaciones se tragaban el motivo del fallo | Corregido: `onError` y aviso en el log. El `catch` de `backup.controller.ts` queda: el motivo ya lo registra `driveBackup` |
 
 ## 10. Orden recomendado
@@ -179,3 +179,60 @@ registran, `useAction` en el frontend. Se encontraron cuatro huecos:
 5. Movimientos con ids, sin `description` ni divisiones; migración de ambas.
 6. Informes por renglón.
 7. Tarjetas, duplicados al cargar a mano y PDF.
+
+## 11. Auditoría de cumplimiento (7/11/2026, después de los primeros arreglos)
+
+Se revisó todo el código contra `AGENTS.md`, regla por regla, con búsquedas sobre `backend/`, `frontend/` y
+`shared/`. `npm run check` pasa (typecheck, lint, audit y 222 pruebas). Las funciones largas se midieron con un
+conteo aproximado de líneas, no con una herramienta.
+
+**Se cumple**
+
+| Regla | Qué se comprobó |
+| ----- | --------------- |
+| Variables de entorno | Solo `config/env.ts` lee `process.env`. Única excepción: `scripts/try-extraction.ts`, una herramienta manual |
+| Dueños de los datos | Los 12 modelos de datos llevan `ownedByUser`; `users` es la excepción prevista. Todos los controllers usan `asUser`, salvo `auth` (previsto). `runAsSystem` solo está en las migraciones. `model.collection` solo se usa en `collectionPort.ts` |
+| Integridad | Los 12 puertos de colección están registrados en `composition.ts`, más el de migraciones |
+| Qué no hacer | No se registran contraseñas ni tokens. Las imágenes se borran al confirmar (`markConfirmed`) o a los días (`purgeStale`). El tapado de datos se usa antes de mandar texto a la IA. No hay claves en el repositorio (ver D12) |
+| Texto de pantalla | El lint pasa: no hay textos en las pantallas |
+| Idioma del código | No se encontró código ni comentarios en español fuera de `es.ts`, `legal.ts` y los scripts |
+| Fecha de pago | Solo `resolvePaymentDate` la decide; las otras veces que se escribe `paymentDate` es para dejarla vacía o copiar la de un archivo |
+
+**Desvíos**
+
+| # | Desvío | Dónde | Gravedad |
+| - | ------ | ----- | -------- |
+| D1 | **Archivos barril:** 18 `index.ts` de módulos, más `shared/src/index.ts`. `migrations/index.ts` (30 líneas) es una lista de migraciones, no un barril | `backend/src/modules/*/index.ts` | Media (ya acordado quitarlos) |
+| D2 | **Tamaño:** 8 archivos de código superan las 400 líneas: `memory.ts` 969, `ReviewPage.tsx` 929, `es.ts` 914 (es texto), `transactions.repository.ts` 706, `TransactionFormPage.tsx` 631, `documents.service.ts` 600, `transactions.service.ts` 500, `importFormat.ts` 460, `DataPage.tsx` 417. Funciones de más de 80 líneas: `TransactionFormPage` (~550), `createDocumentsService` (~465), `createTransactionsService` (~425), `DataPage` (~350), `createSpreadsheetService` (~290), `createReportsService` (~200) | Varios | Media (el lint todavía no lo exige) |
+| D3 | **Dinero fuera de `money.ts`:** el prorrateo de un renglón al cambiar el total usa `Math.round` en `transactions.service.ts:227`; el redondeo de cantidades (`* 1000 / 1000`) está en `consumption.service.ts:45` | Dos services | Media |
+| D4 | **Números y reloj sueltos:** `24 * 60 * 60 * 1000` está escrito en `documents.service.ts:390` y en `transactions.service.ts:383`; `+ 1000` en `transactions.service.ts:347`. Además hay `new Date()` directo en `transactions.service.ts` (332, 380, 496) y `backup.service.ts` (46, 97), aunque otros services reciben el reloj. El audit deja pasar estos números porque 1000 está en su lista | Varios | Media |
+| D5 | **Moneda escrita a mano:** `starter.ts` tiene `'ARS'` dos veces en lugar de `DEFAULT_CURRENCY` | `starter.ts:34,36` | Baja |
+| D6 | **Único sin usuario:** el índice `{ accountId, closingDate }` de los períodos de tarjeta usa `unique: true` y no `uniquePerUser`. Hoy no choca porque una cuenta es de un solo usuario | `cardPeriods.model.ts:32` | Baja |
+| D7 | **`try/catch` propio en pantallas** en vez de `useAction`: `ReviewPage` (3), `TransactionFormPage` (1, necesita los avisos por campo) y `DataPage` (su propio `run` con tonos de mensaje). Corrige la lista del hueco F3 de la sección 9 | Tres pantallas | Media |
+| D8 | **Búsqueda por nombre:** "Cargos financieros" se busca por su texto (`FINANCIAL_CHARGES_CATEGORY`, usado en `suggestions.ts`). Ya está previsto cambiarlo por un rol | `constants.ts:103` | Media (planificado) |
+| D9 | **Códigos HTTP sueltos** (201, 202, 400, 409, 502…) escritos en controllers y en `errors.ts`, sin constantes con nombre | Controllers y errores | Baja |
+| D10 | **`API.md` incompleto:** 14 rutas no figuran: `GET /accounts/balances`, `GET /accounts/:id/balance`, `GET /consumption/summary`, `GET /consumption/items`, `GET /documents`, `DELETE /documents/:id`, `GET /recurrings`, `GET /reports/categories`, `/accounts`, `/merchants`, `/evolution`, `GET /spreadsheet/export`, `GET /transactions/summary`, `GET /transactions/last-rate`. Pueden estar descritas en prosa; la tabla no las tiene | `docs/API.md` | Media (regla 4) |
+| D11 | **Pruebas:** `exchange-rates`, `institutions` y `tags` no tienen archivo de pruebas propio; el frontend no tiene ninguna. No se verificó ruta por ruta que la prueba de aislamiento entre usuarios las cubra | Varios | Baja |
+| D12 | **Archivo de credenciales de Google en `docs/`:** `client_secret_…json`. Git lo ignora (`.gitignore`) y nunca estuvo en el historial, pero queda dentro de la carpeta del proyecto | `docs/` | Media: moverlo fuera del proyecto |
+| D13 | **El lint no exige** tamaño, complejidad, barriles, `useAction` ni búsqueda por nombre; solo capas y textos. Por eso D1, D2, D7 y D8 pudieron aparecer | `eslint.config.js` | Media (es el paso 1 del plan) |
+
+**Lo que cambia en el plan.** D3, D4, D5, D6, D9 y D10 son arreglos chicos que entran en el paso 1, junto con los
+barriles y el lint. D2 y D7 se atacan al tocar esos archivos. D8 desaparece con el rol de categoría. D12 lo hace la
+persona dueña del proyecto: moverlo a una carpeta fuera del proyecto.
+
+**Estado de los desvíos chicos (7/11/2026, segunda pasada)**
+
+| # | Estado |
+| - | ------ |
+| D3 | Corregido: `scaleCents` y `addQuantities` en `money.ts`, con prueba. Los dos services los usan |
+| D4 | Corregido: `MS_PER_SECOND/MINUTE/HOUR/DAY` y `shiftMoment` en `shared/src/dates.ts`; `server.ts`, `auth.routes.ts` y los dos services los usan. El reloj (`now`) se inyecta en `transactions` y en `backup` (`wiring.ts`, `container.ts`). Quedan constantes locales de tiempo en `googleDrive.ts`, `auth.service.ts`, `openExchangeRates.ts` y `gemini.ts`: son propias de cada archivo y ya tienen nombre y motivo |
+| D5 | Corregido: `starter.ts` usa `DEFAULT_CURRENCY` |
+| D6 | Corregido: el índice usa `uniquePerUser`. En una base que ya existe, MongoDB crea el índice nuevo y deja el viejo (`accountId_1_closingDate_1`); es inofensivo, y se puede borrar a mano desde Atlas cuando se quiera |
+| D9 | Corregido: `core/http/status.ts` (`HTTP_STATUS`) en controllers, errores y el manejador de errores |
+| D10 | **Era un falso positivo de esta auditoría:** comparé mal las rutas que en `API.md` llevan `?mes=…`. Con la comparación corregida, las 69 rutas están documentadas |
+
+**Fechas y horas.** Ninguno de estos cambios toca los días de calendario, que siguen como texto `YYYY-MM-DD`
+y solo se calculan en `shared/src/dates.ts`. `shiftMoment` y `MS_PER_*` se usan únicamente con instantes (cuándo
+se mandó algo a la papelera, cuándo vence un reintento), que se guardan como `Date` en UTC y no dependen de la zona
+horaria. Los días de gracia de la papelera se cuentan en milisegundos, así que un cambio de horario de verano
+no los corre.

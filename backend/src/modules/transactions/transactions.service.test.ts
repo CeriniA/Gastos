@@ -118,6 +118,7 @@ function setup() {
     listTags: async () => tags,
     listCardPeriods: async () => [],
     today: () => '2026-10-10',
+    now: () => new Date('2026-10-10T12:00:00.000Z'),
   });
   return { service, stored };
 }

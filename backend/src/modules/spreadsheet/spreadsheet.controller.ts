@@ -3,6 +3,7 @@ import { exportQuerySchema, importCommitSchema, importReviewSchema } from '@gast
 import { ValidationError } from '../../core/errors/errors';
 import { asUser, ok, parse, sendFile } from '../../core/http/http';
 import type { SpreadsheetService } from './spreadsheet.service';
+import { HTTP_STATUS } from '../../core/http/status';
 
 export function createSpreadsheetController(service: SpreadsheetService) {
   const exportTransactions: RequestHandler = async (req, res) => {
@@ -16,7 +17,7 @@ export function createSpreadsheetController(service: SpreadsheetService) {
     ok(res, await service.preview({ content: req.file.buffer, fileName: req.file.originalname }));
   };
   const commit: RequestHandler = async (req, res) => {
-    ok(res, await service.commit(parse(importCommitSchema, req.body)), 201);
+    ok(res, await service.commit(parse(importCommitSchema, req.body)), HTTP_STATUS.created);
   };
   const review: RequestHandler = async (req, res) => {
     ok(res, await service.review(parse(importReviewSchema, req.body)));

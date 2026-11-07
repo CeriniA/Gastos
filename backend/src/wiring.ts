@@ -129,6 +129,7 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     listTags: (options) => tags.list(options),
     listCardPeriods: (options) => cardPeriods.listDates(options),
     today,
+    now: runtime.now,
   });
 
   const accounts: AccountsService = createAccountsService(repositories.accounts, {

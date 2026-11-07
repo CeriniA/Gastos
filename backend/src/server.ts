@@ -1,3 +1,4 @@
+import { MS_PER_DAY, MS_PER_HOUR, MS_PER_MINUTE } from '@gastos/shared';
 import { createApp } from './app';
 import { createContainer } from './composition';
 import { env } from './config/env';
@@ -6,9 +7,6 @@ import { runMigrations } from './core/db/migrations';
 import { logger } from './core/logger';
 import { migrations } from './migrations';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const HOUR_MS = 60 * 60 * 1000;
-const MINUTE_MS = 60 * 1000;
 /** Time given to finish open requests on shutdown before forcing the exit. */
 const SHUTDOWN_GRACE_MS = 10_000;
 
@@ -48,10 +46,10 @@ async function main(): Promise<void> {
   const resumeDocuments = () => forEveryUser('documents', async () => container.documents.resume());
 
   await cleanUp();
-  setInterval(() => void cleanUp(), DAY_MS).unref();
+  setInterval(() => void cleanUp(), MS_PER_DAY).unref();
   void backUp();
-  setInterval(() => void backUp(), HOUR_MS).unref();
-  setInterval(() => void resumeDocuments(), MINUTE_MS).unref();
+  setInterval(() => void backUp(), MS_PER_HOUR).unref();
+  setInterval(() => void resumeDocuments(), MS_PER_MINUTE).unref();
 
   const server = createApp(container, env).listen(env.PORT, () => {
     logger.info(

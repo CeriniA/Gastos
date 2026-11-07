@@ -2,6 +2,7 @@ import type { RequestHandler } from 'express';
 import { exchangeRateInputSchema, idParamsSchema, referenceRateQuerySchema } from '@gastos/shared';
 import { asUser, noContent, ok, parse } from '../../core/http/http';
 import type { ExchangeRatesService } from './exchangeRates.service';
+import { HTTP_STATUS } from '../../core/http/status';
 
 export function createExchangeRatesController(service: ExchangeRatesService) {
   const reference: RequestHandler = async (req, res) => {
@@ -12,7 +13,7 @@ export function createExchangeRatesController(service: ExchangeRatesService) {
     ok(res, await service.list());
   };
   const create: RequestHandler = async (req, res) => {
-    ok(res, await service.create(parse(exchangeRateInputSchema, req.body)), 201);
+    ok(res, await service.create(parse(exchangeRateInputSchema, req.body)), HTTP_STATUS.created);
   };
   const update: RequestHandler = async (req, res) => {
     const { id } = parse(idParamsSchema, req.params);

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  MS_PER_DAY,
+  shiftMoment,
   formatTime,
   addDays,
   dayInMonth,
@@ -82,4 +84,10 @@ test('a day of a month is clamped to the months that are shorter', () => {
 test('a short date leaves the year out only when it is this year', () => {
   assert.equal(formatShortDate('2026-10-05', '2026-10-17'), '05/10');
   assert.equal(formatShortDate('2025-12-31', '2026-10-17'), '31/12/2025');
+});
+
+test('a moment is shifted by exact milliseconds, forward and back', () => {
+  const noon = new Date('2026-10-10T12:00:00.000Z');
+  assert.equal(shiftMoment(noon, MS_PER_DAY).toISOString(), '2026-10-11T12:00:00.000Z');
+  assert.equal(shiftMoment(noon, -30 * MS_PER_DAY).toISOString(), '2026-09-10T12:00:00.000Z');
 });

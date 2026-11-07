@@ -11,6 +11,7 @@ import {
 } from '@gastos/shared';
 import { asUser, noContent, ok, parse } from '../../core/http/http';
 import type { DocumentsService } from './documents.service';
+import { HTTP_STATUS } from '../../core/http/status';
 
 export function createDocumentsController(service: DocumentsService) {
   const list: RequestHandler = async (req, res) => {
@@ -22,14 +23,14 @@ export function createDocumentsController(service: DocumentsService) {
       parse(documentUploadSchema, req.body),
       files.map((file) => ({ originalName: file.originalname, content: file.buffer })),
     );
-    ok(res, created, 202);
+    ok(res, created, HTTP_STATUS.accepted);
   };
   const previewStatement: RequestHandler = async (req, res) => {
     const { password } = parse(statementPreviewSchema, req.body);
     ok(res, await service.previewStatement(req.file?.buffer ?? null, password));
   };
   const uploadStatement: RequestHandler = async (req, res) => {
-    ok(res, await service.uploadStatement(parse(statementUploadSchema, req.body)), 202);
+    ok(res, await service.uploadStatement(parse(statementUploadSchema, req.body)), HTTP_STATUS.accepted);
   };
   const get: RequestHandler = async (req, res) => {
     ok(res, await service.get(parse(idParamsSchema, req.params).id));
@@ -42,11 +43,11 @@ export function createDocumentsController(service: DocumentsService) {
     res.send(stored.content);
   };
   const retry: RequestHandler = async (req, res) => {
-    ok(res, await service.retry(parse(idParamsSchema, req.params).id), 202);
+    ok(res, await service.retry(parse(idParamsSchema, req.params).id), HTTP_STATUS.accepted);
   };
   const confirm: RequestHandler = async (req, res) => {
     const { id } = parse(idParamsSchema, req.params);
-    ok(res, await service.confirm(id, parse(documentConfirmSchema, req.body)), 201);
+    ok(res, await service.confirm(id, parse(documentConfirmSchema, req.body)), HTTP_STATUS.created);
   };
   const remove: RequestHandler = async (req, res) => {
     const { id } = parse(idParamsSchema, req.params);

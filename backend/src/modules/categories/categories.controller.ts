@@ -7,13 +7,14 @@ import {
 } from '@gastos/shared';
 import { asUser, noContent, ok, parse } from '../../core/http/http';
 import type { CategoriesService } from './categories.service';
+import { HTTP_STATUS } from '../../core/http/status';
 
 export function createCategoriesController(service: CategoriesService) {
   const list: RequestHandler = async (_req, res) => {
     ok(res, await service.list());
   };
   const create: RequestHandler = async (req, res) => {
-    ok(res, await service.create(parse(categoryCreateSchema, req.body)), 201);
+    ok(res, await service.create(parse(categoryCreateSchema, req.body)), HTTP_STATUS.created);
   };
   const update: RequestHandler = async (req, res) => {
     const { id } = parse(idParamsSchema, req.params);

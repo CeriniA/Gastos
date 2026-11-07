@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  addQuantities,
+  scaleCents,
   centsToDecimalString,
   averageCents,
   convertBetween,
@@ -101,4 +103,11 @@ test('an amount is near another when it is within a share of it', () => {
 test('an average is in whole cents, and zero for nothing', () => {
   assert.equal(averageCents([100, 200, 201]), 167);
   assert.equal(averageCents([]), 0);
+});
+
+test('an amount is scaled in whole cents, and quantities add without floating point noise', () => {
+  assert.equal(scaleCents(1000, 2000, 3000), 1500);
+  assert.equal(scaleCents(333, 1000, 500), 167); // 166.5 rounds up
+  assert.equal(addQuantities(0.1, 0.2), 0.3);
+  assert.equal(addQuantities(0.35, 1.5), 1.85);
 });

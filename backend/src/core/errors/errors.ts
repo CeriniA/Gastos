@@ -1,4 +1,5 @@
 import type { ErrorCode } from '@gastos/shared';
+import { HTTP_STATUS } from '../http/status';
 
 /**
  * Services throw these; the error middleware turns them into HTTP responses.
@@ -19,13 +20,13 @@ export class AppError extends Error {
 
 export class NotFoundError extends AppError {
   constructor(entity: string, id?: string) {
-    super(404, 'NOT_FOUND', `${entity} not found`, { entity, id });
+    super(HTTP_STATUS.notFound, 'NOT_FOUND', `${entity} not found`, { entity, id });
   }
 }
 
 export class ValidationError extends AppError {
   constructor(message: string, details?: unknown) {
-    super(400, 'VALIDATION', message, details);
+    super(HTTP_STATUS.badRequest, 'VALIDATION', message, details);
   }
 }
 
@@ -36,7 +37,7 @@ export function fieldError(path: string, message: string): ValidationError {
 
 export class ConflictError extends AppError {
   constructor(message: string, details?: unknown, code: ErrorCode = 'CONFLICT') {
-    super(409, code, message, details);
+    super(HTTP_STATUS.conflict, code, message, details);
   }
 }
 
@@ -55,26 +56,26 @@ export class InUseError extends ConflictError {
 
 export class UnauthorizedError extends AppError {
   constructor(code: 'UNAUTHORIZED' | 'INVALID_CREDENTIALS' = 'UNAUTHORIZED') {
-    super(401, code, code === 'UNAUTHORIZED' ? 'Authentication required' : 'Wrong username or password');
+    super(HTTP_STATUS.unauthorized, code, code === 'UNAUTHORIZED' ? 'Authentication required' : 'Wrong username or password');
   }
 }
 
 /** Signed in, but this is not for them (only an admin manages users). */
 export class ForbiddenError extends AppError {
   constructor() {
-    super(403, 'FORBIDDEN', 'Not allowed');
+    super(HTTP_STATUS.forbidden, 'FORBIDDEN', 'Not allowed');
   }
 }
 
 /** The user already sent to the AI every document they can today. */
 export class AiLimitError extends AppError {
   constructor(limit: number) {
-    super(429, 'AI_LIMIT', 'Daily AI limit reached', { limit });
+    super(HTTP_STATUS.tooManyRequests, 'AI_LIMIT', 'Daily AI limit reached', { limit });
   }
 }
 
 export class AiProviderError extends AppError {
   constructor(message: string, details?: unknown) {
-    super(502, 'AI_PROVIDER', message, details);
+    super(HTTP_STATUS.badGateway, 'AI_PROVIDER', message, details);
   }
 }

@@ -1,5 +1,9 @@
 import {
   impliedRate,
+  MS_PER_DAY,
+  MS_PER_SECOND,
+  scaleCents,
+  shiftMoment,
   spendingCents,
   TRASH_RETENTION_DAYS,
   descendantIds,
@@ -36,6 +40,8 @@ export interface TransactionDependencies {
   listCardPeriods(options?: WriteOptions): Promise<PeriodDates[]>;
   /** Today's calendar day in the app's time zone. */
   today(): IsoDate;
+  /** The current moment: when something is sent to the trash and when the trash is old enough to empty. */
+  now(): Date;
 }
 
 /** The lookups every validation needs, loaded once per operation. */
@@ -224,7 +230,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
     if (!stillConverted || amountCents === previous.amountCents) return previous.items;
     return previous.items.map((item) => ({
       ...item,
-      amountCents: Math.round((item.amountCents * amountCents) / previous.amountCents),
+      amountCents: scaleCents(item.amountCents, previous.amountCents, amountCents),
     }));
   }
 
@@ -329,7 +335,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
 
     /** Moves the transaction to the trash, where it stays TRASH_RETENTION_DAYS. */
     async remove(id: string): Promise<void> {
-      if (!(await repository.setDeleted(id, new Date()))) throw new NotFoundError('Transaction', id);
+      if (!(await repository.setDeleted(id, deps.now()))) throw new NotFoundError('Transaction', id);
     },
 
     async restore(id: string): Promise<Transaction> {
@@ -343,8 +349,8 @@ export function createTransactionsService(repository: TransactionsRepository, de
     },
 
     /** Deletes for good everything in the trash, and says how many there were. */
-    emptyTrash(now: Date = new Date()): Promise<number> {
-      return repository.purgeDeletedBefore(new Date(now.getTime() + 1000));
+    emptyTrash(now: Date = deps.now()): Promise<number> {
+      return repository.purgeDeletedBefore(shiftMoment(now, MS_PER_SECOND));
     },
 
     /**
@@ -377,10 +383,10 @@ export function createTransactionsService(repository: TransactionsRepository, de
     confirmDue: (): Promise<number> => repository.confirmProjectedUpTo(deps.today()),
 
     trashByPlan: (planId: string, options: WriteOptions = {}) =>
-      repository.trashByPlan(planId, new Date(), options),
+      repository.trashByPlan(planId, deps.now(), options),
 
-    purgeTrash(now: Date = new Date()): Promise<number> {
-      const cutoff = new Date(now.getTime() - TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    purgeTrash(now: Date = deps.now()): Promise<number> {
+      const cutoff = shiftMoment(now, -TRASH_RETENTION_DAYS * MS_PER_DAY);
       return repository.purgeDeletedBefore(cutoff);
     },
 
@@ -493,7 +499,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
       repository.releaseDocument(documentId, options),
     /** The document is going away and takes its transactions to the trash. */
     trashByDocument: (documentId: string, options: WriteOptions) =>
-      repository.trashByDocument(documentId, new Date(), options),
+      repository.trashByDocument(documentId, deps.now(), options),
   };
 }
 

@@ -121,9 +121,23 @@ export function splitInstallments(totalCents: number, count: number): number[] {
   return Array.from({ length: count }, (_, index) => (index === 0 ? totalCents - base * (count - 1) : base));
 }
 
+/** An amount changed in the same proportion as another went from `from` to `to`, in whole cents. */
+export function scaleCents(cents: number, from: number, to: number): number {
+  return Math.round((cents * to) / from);
+}
+
+/** A quantity is kept to this many decimals (grams in a kilo). */
+const QUANTITY_DECIMALS = 3;
+
+/** Adds two quantities without the noise of floating point ("0.1 + 0.2"). */
+export function addQuantities(a: number, b: number): number {
+  const factor = 10 ** QUANTITY_DECIMALS;
+  return Math.round((a + b) * factor) / factor;
+}
+
 /** A quantity as printed for the user: "1,5", "0,35", "12". */
 export function formatQuantity(quantity: number): string {
-  return quantity.toLocaleString(APP_LOCALE, { maximumFractionDigits: 3 });
+  return quantity.toLocaleString(APP_LOCALE, { maximumFractionDigits: QUANTITY_DECIMALS });
 }
 
 /** Whether an amount is no further from a reference than that share of it (0.2: a fifth). */

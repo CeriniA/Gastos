@@ -9,6 +9,7 @@ import {
 } from '@gastos/shared';
 import { asUser, noContent, ok, parse } from '../../core/http/http';
 import type { TransactionsService } from './transactions.service';
+import { HTTP_STATUS } from '../../core/http/status';
 
 export function createTransactionsController(service: TransactionsService) {
   const list: RequestHandler = async (req, res) => {
@@ -24,7 +25,7 @@ export function createTransactionsController(service: TransactionsService) {
     ok(res, await service.get(parse(idParamsSchema, req.params).id));
   };
   const create: RequestHandler = async (req, res) => {
-    ok(res, await service.create(parse(transactionCreateSchema, req.body)), 201);
+    ok(res, await service.create(parse(transactionCreateSchema, req.body)), HTTP_STATUS.created);
   };
   const update: RequestHandler = async (req, res) => {
     const { id } = parse(idParamsSchema, req.params);

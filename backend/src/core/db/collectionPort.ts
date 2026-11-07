@@ -4,6 +4,7 @@ import { AppError } from '../errors/errors';
 import { isDuplicateKey } from './mongoErrors';
 import { ownedOnly, stampOwner } from './ownerPlugin';
 import type { DbSession } from './transaction';
+import { HTTP_STATUS } from '../http/status';
 
 const { EJSON } = mongoose.mongo.BSON;
 /** How many broken references of one kind the integrity check lists. */
@@ -72,7 +73,7 @@ export function createCollectionPort<T>(
       } catch (error) {
         // The same documents already exist as somebody else's: ids are unique across users.
         if (isDuplicateKey(error)) {
-          throw new AppError(400, 'INVALID_BACKUP', 'The backup holds data that another user has', {
+          throw new AppError(HTTP_STATUS.badRequest, 'INVALID_BACKUP', 'The backup holds data that another user has', {
             reason: 'other_user',
             collection: name,
           });

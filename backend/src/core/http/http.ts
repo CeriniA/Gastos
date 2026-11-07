@@ -4,6 +4,7 @@ import type { ApiSuccessBody } from '@gastos/shared';
 import { runAsUser } from '../context/owner';
 import { ValidationError } from '../errors/errors';
 import { sessionOf } from '../middleware/auth';
+import { HTTP_STATUS } from './status';
 
 /**
  * Validates request data against a shared schema. Controllers call this for
@@ -39,13 +40,13 @@ export function asUser<T extends Record<string, RequestHandler>>(handlers: T): T
 }
 
 /** Every successful JSON response has the same envelope: { data }. */
-export function ok<T>(res: Response, data: T, status = 200): void {
+export function ok<T>(res: Response, data: T, status: number = HTTP_STATUS.ok): void {
   const body: ApiSuccessBody<T> = { data };
   res.status(status).json(body);
 }
 
 export function noContent(res: Response): void {
-  res.status(204).end();
+  res.status(HTTP_STATUS.noContent).end();
 }
 
 export function sendFile(

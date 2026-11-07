@@ -1,4 +1,5 @@
 import {
+  addQuantities,
   firstDayOfMonth,
   lastDayOfMonth,
   nameKey,
@@ -42,7 +43,7 @@ function addToProduct(products: Map<string, ProductConsumption>, item: Consumpti
   current.quantity =
     current.quantity === null || item.quantity === null
       ? null
-      : Math.round((current.quantity + item.quantity) * 1000) / 1000;
+      : addQuantities(current.quantity, item.quantity);
 }
 
 /**

@@ -1,4 +1,5 @@
 import {
+  DEFAULT_CURRENCY,
   DEFAULT_INSTITUTIONS,
   FINANCIAL_CHARGES_CATEGORY,
   INSTITUTION_KINDS,
@@ -31,9 +32,9 @@ export const STARTER_CATEGORIES: Record<CategoryKind, string[]> = {
 };
 
 export const STARTER_ACCOUNTS = [
-  { name: 'Efectivo', type: 'cash', currency: 'ARS' },
+  { name: 'Efectivo', type: 'cash', currency: DEFAULT_CURRENCY },
   { name: 'Efectivo USD', type: 'cash', currency: 'USD' },
-  { name: 'MercadoPago', type: 'wallet', currency: 'ARS' },
+  { name: 'MercadoPago', type: 'wallet', currency: DEFAULT_CURRENCY },
 ] as const;
 
 /**

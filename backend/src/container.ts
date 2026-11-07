@@ -78,7 +78,7 @@ export function buildContainer(parts: ContainerParts): Container {
 
   const backup = createBackupService(
     parts.collectionPorts,
-    { afterRestore: parts.afterRestore },
+    { afterRestore: parts.afterRestore, now: parts.now },
     parts.runInTransaction,
   );
 
