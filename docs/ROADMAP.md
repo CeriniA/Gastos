@@ -23,17 +23,20 @@ Las versiones de `package.json` se escribieron sin acceso al registro de npm; la
 
 Para retomar. Se borra o se reescribe al empezar la próxima sesión.
 
+**Desde el 4/11/2026** se pensó la lógica nueva y no se tocó código: ver "Etapa 5". `npm run check` pasa el
+7/11/2026 con 217 pruebas.
+
 **Subido (push del 17/10/2026):** todo hasta `f72812a`: usuarios con límite de IA, la etapa 4, resúmenes de
 cuenta, saldos, la hoja "Productos" del Excel, los productos corregidos que se recuerdan, Más → Lo que la app
 recuerda y el informe por cuenta con el saldo de cada una. Falta confirmar en el celular que Render lo publicó.
 
-**Hecho después, sin commit:** el estilo nuevo en toda la app (fondo lavanda, tarjetas blancas, violeta,
+**Hecho después (commit `ccc3819`, ya en `origin/main`):** el estilo nuevo en toda la app (fondo lavanda, tarjetas blancas, violeta,
 íconos, modo oscuro revisado). Ver `DECISIONES.md`, "Estilo nuevo". No cambia datos ni rutas: no trae
 migraciones. Suma la dependencia `lucide-react` al frontend. 217 pruebas.
 
 **Para subirlo:**
 
-1. Commit y push de lo que falta. En Render no hace falta ninguna variable nueva: `AI_DAILY_READINGS` es opcional (30 si no está;
+1. Ya está en `origin/main`; confirmar que Render lo publicó. En Render no hace falta ninguna variable nueva: `AI_DAILY_READINGS` es opcional (30 si no está;
    `render.yaml` ya la trae).
 2. Al arrancar corren solas las migraciones nuevas: `2026-10-17-recurring-merchant`,
    `2026-10-17-account-opening-balance`, `2026-10-17-recurring-name-index` (rehace un índice) y
@@ -350,6 +353,25 @@ Hecho (17/10/2026), probado en memoria y por HTTP, sin probar contra Atlas:
 
 Falta: nada pendiente de programar. Queda usarla y ajustar los números de la regla de fijos (3 meses, 20 %,
 5 días) si avisan de más o de menos.
+
+## Etapa 5: lógica nueva y base de calidad (acordada el 7/11/2026)
+
+**Nada implementado.** Lo acordado está en `LOGICA_NEGOCIO.md`, lo medido en `AUDITORIA.md` y el criterio de
+código en `ESTANDARES_CODIGO.md`. Orden previsto, cada paso con pruebas y su commit:
+
+1. **Base de calidad:** corregir los tres desvíos de `AUDITORIA.md`, quitar los archivos barril de los módulos,
+   activar las reglas nuevas del lint con su lista temporal de excepciones y ajustar los números permitidos.
+2. Listas nuevas (comercios, productos, textos conocidos, rol de categoría) y su migración, sin cambiar todavía
+   las pantallas. Antes del primer arranque, un respaldo a Drive.
+3. Movimientos con ids, sin descripción ni divisiones; migración de ambas. Se parten al tocarlos los archivos
+   grandes que cambian.
+4. Informes por renglón (categoría, consumo, comercios).
+5. Tarjetas: estado del resumen, recordatorio dentro de la app y control con el resumen siguiente.
+6. Aviso de movimiento parecido al cargar a mano.
+7. PDF de ticket o factura.
+8. Recién entonces, el diseño de los ingresos.
+
+El recordatorio de resumen vencido (paso 5) se adelanta de la segunda versión porque el usuario lo pidió.
 
 ## Segunda versión
 

@@ -1,7 +1,9 @@
 # Reglas del proyecto para asistentes de IA
 
 Este proyecto lo mantiene una persona que no programa, con ayuda de asistentes. Antes de cambiar algo,
-leé `docs/ARQUITECTURA.md` y `docs/ESPECIFICACION.md`. Estas reglas no son opcionales.
+leé `docs/ARQUITECTURA.md`, `docs/ESPECIFICACION.md` y `docs/ESTANDARES_CODIGO.md`. Si el cambio toca comercios,
+productos, categorías, tarjetas o la forma de cargar, leé también `docs/LOGICA_NEGOCIO.md`: tiene lo acordado
+que todavía no está implementado. Estas reglas no son opcionales.
 
 ## Idioma
 
@@ -44,6 +46,19 @@ tocar un modelo, un controller o una tarea en segundo plano.
 - `runAsSystem` es solo para migraciones marcadas `system`. No lo uses para "que ande".
 - `users` no es dato de nadie: no lleva el plugin ni puerto de respaldo. Contraseñas y permisos no salen
   en ninguna respuesta ni en ningún respaldo.
+
+## Calidad del código
+
+El detalle y los límites están en `docs/ESTANDARES_CODIGO.md`. Lo esencial:
+
+- Un archivo hace una cosa. Al tocar un archivo grande, partilo; no lo hagas crecer.
+- Un valor con significado de negocio va en `shared/`. Uno técnico de un solo archivo es una constante con
+  nombre y motivo, arriba de ese archivo. Ni números, ni direcciones, ni textos sueltos en el medio.
+- Sin archivos barril: un `index.ts` que solo reexporta no se escribe. Se importa del archivo que define lo
+  que se necesita.
+- Lo que varía o se reemplaza en las pruebas (datos, red, reloj, archivos) se recibe como dependencia. Una
+  función pura o una constante no se inyecta.
+- Una categoría, un comercio o un producto no se busca por su nombre: se usa su id o su rol.
 
 ## Capas del backend
 

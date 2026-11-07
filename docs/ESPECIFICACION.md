@@ -5,6 +5,10 @@ coinciden, uno de los dos está mal y hay que resolverlo.
 
 Cada sección indica en qué etapa se construye (`ROADMAP.md`). Lo marcado **etapa 1** ya está en esta base.
 
+**Nota (7/11/2026):** la lógica nueva acordada (comercios y productos como listas, categorías por producto,
+sin descripción ni divisiones, tarjetas con recordatorio) está en `LOGICA_NEGOCIO.md` y **todavía no está
+implementada**. Este documento describe lo que la app hace hoy; cuando se implemente cada parte, se pasa acá.
+
 ## 1. Propósito y alcance
 
 App web personal para registrar ingresos, egresos y transferencias, y ver el resultado de cada mes. Se usa
@@ -103,8 +107,8 @@ resumen (sección 6).
 
 ## 5. Categorías y etiquetas
 
-**Categorías**: árbol de hasta **tres niveles**, con listas separadas para ingresos y egresos. Se arman
-sobre la marcha.
+**Categorías**: árbol de hasta **tres niveles**, con listas separadas para ingresos y egresos. Cada usuario nuevo
+arranca con una lista inicial (`starter.ts`) y desde ahí las edita.
 
 - Un movimiento se puede asignar a cualquier nivel.
 - Los totales suben: lo cargado en "Luz" suma en "Servicios" y en "Vivienda".

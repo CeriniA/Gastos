@@ -256,9 +256,36 @@ Cada decisión tomada en el diseño, con su motivo. Una decisión nueva o que ca
 | Más agrupa sus opciones en cuatro grupos con título                                                             | Trece opciones seguidas costaba recorrerlas                                                                                                                                                                                               |
 | Informes: "Mostrar" es un selector de tres píldoras, y los egresos van antes que los ingresos                   | Ocupa menos lugar, y los egresos es lo que más se mira                                                                                                                                                                                    |
 
+## Lógica nueva (4 al 7/11/2026, pendiente de implementar)
+
+El detalle está en `LOGICA_NEGOCIO.md`. Nada de esto está en el código todavía.
+
+| Decisión                                                                                                         | Motivo                                                                                                                           |
+| ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Una transferencia es un solo movimiento con origen y destino, no dos que se compensan                            | No infla ingresos ni egresos y no se puede borrar una sola punta                                                                 |
+| Todo lo que un informe agrupa es una lista que se elige por id: categorías, comercios, productos, etiquetas, cuentas | Evita los errores de tipeo ("Super", "Mercadito") y renombrar vale para todo lo ya cargado                                       |
+| Lo usado se archiva, no se borra; unir reapunta lo viejo                                                         | Ya es así en las categorías; ahora vale para toda lista                                                                          |
+| El comercio es una lista opcional; la descripción desaparece y queda la nota                                     | La descripción era el comercio escrito a mano, y dos campos de texto libre se confundían                                         |
+| Los textos conocidos (texto impreso → comercio o producto) reemplazan a las reglas de comercio y de producto     | Un solo mecanismo para reconocer "COTO CICSA 0123" y "YERB.PLAY 1000"                                                            |
+| Tres niveles: categoría → producto → texto impreso; los 16 grupos fijos pasan a ser categorías                   | Los grupos repetían a las categorías y no se podían editar                                                                       |
+| Los renglones reparten el gasto entre categorías; la división manual se elimina                                  | Era rebuscada, y un remedio comprado en el súper tiene que contar como Farmacia                                                  |
+| Lo que los renglones no cubren queda en la categoría del pago                                                    | El total del mes nunca cambia por tener renglones                                                                                |
+| Un renglón sin producto puede llevar su categoría                                                                | Permite migrar las divisiones viejas sin perder nada, y cubre lo que no se reconoció                                             |
+| Los productos solo van en egresos                                                                                | El consumo solo lee egresos; en un ingreso no tenían uso                                                                         |
+| Las categorías que la app reconoce llevan un rol, no se buscan por su nombre                                     | "Cargos financieros" renombrada dejaría de usarse en silencio                                                                    |
+| Pagar la tarjeta es una transferencia; registrarlo es opcional con ayuda; el estado del resumen se calcula       | El pago no es un gasto (las compras ya contaron), y la proyección no depende de registrarlo                                      |
+| El recordatorio de un resumen vencido sin pagar vive dentro de la app, y no inventa intereses                    | Lo pidió el usuario (estaba en la segunda versión). Los intereses dependen del banco: aparecen en el resumen siguiente           |
+| Un movimiento parecido avisa y no bloquea: mismo monto y moneda con fecha a ±3 días, o la misma cuota            | El resumen trae la fecha de acreditación, que puede diferir unos días de la compra                                               |
+| Todo PDF pasa a texto y el usuario lo revisa antes de mandarlo a la IA; las imágenes de tickets van tal cual   | Lo que pasa a texto puede traer datos sensibles; una foto de un ticket no                                                        |
+| Los ingresos se diseñan después de implementar lo pactado                                                        | El usuario los usa solo para sumar plata a una cuenta y ver el saldo                                                             |
+| Estándar de código: sin archivos barril, reglas de tamaño en el lint con excepciones temporales, partir al tocar | El código tiene que seguir siendo sostenible. Detalle en `ESTANDARES_CODIGO.md`; lo medido en `AUDITORIA.md`                     |
+
 ## Abiertas
 
-| Tema                                           | Cuándo se define               |
-| ---------------------------------------------- | ------------------------------ |
-| Contrato exacto de la IA por tipo de documento | Etapa 2, con documentos reales |
-| Qué cotización usar como referencia            | La carga el usuario a mano     |
+| Tema                                                                 | Cuándo se define                                 |
+| -------------------------------------------------------------------- | ------------------------------------------------ |
+| Contrato exacto de la IA por tipo de documento                       | Etapa 2, con documentos reales                   |
+| Qué cotización usar como referencia                                  | La carga el usuario a mano                       |
+| Diseño de los ingresos                                               | Después de implementar la lógica nueva           |
+| Que el texto de un PDF conserve los renglones de un ticket           | Al implementarlo, con documentos reales          |
+| Si `shared/src/index.ts` sigue siendo un archivo barril              | Cuando termine la base de calidad                |

@@ -103,3 +103,23 @@ Cada concepto con su nombre en pantalla y en el código. Usar siempre estos tér
 | Producto corregido (regla de producto)                              | `productRule`                                                | Renglón impreso → producto y grupo; se ofrece en los próximos tickets             |
 | Lo que la app recuerda                                              | `remembered`                                                 | Pantalla de Más con reglas, productos corregidos y documentos confirmados         |
 | Hoja Productos                                                      | `PRODUCTS_SHEET_NAME` / `productSheetRows`                   | Segunda hoja del Excel exportado; no se importa                                   |
+
+## Cambios de términos acordados (7/11/2026, pendientes de implementar)
+
+Hasta que se implementen, valen los términos de arriba. Cuando se haga cada cambio, se reescribe la fila que corresponda.
+
+| Hoy                                                          | Pasará a ser                                            | Notas                                                                        |
+| ------------------------------------------------------------ | ------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Descripción (`description`)                                  | Se elimina                                              | Quedan el comercio (lista) y la nota                                         |
+| Comercio: texto de la descripción, `merchantKey`             | Comercio, una lista: `merchant` (`merchantId`)          | Opcional; puede tener una categoría habitual (`defaultCategoryId`)           |
+| Regla de categoría (`categoryRule`)                          | Se elimina                                              | La reemplaza la categoría habitual del comercio                              |
+| Producto corregido (`productRule`)                           | Se elimina                                              | La reemplazan los textos conocidos del producto                              |
+| Producto = renglón de un ticket (`item`)                     | **Renglón** (`item`)                                    | Con el texto impreso, el monto, la cantidad y su producto                    |
+| `product`, el nombre genérico del renglón                    | Producto, una lista: `product` (`productId`)            | Cada producto apunta a una categoría                                         |
+| Grupo de producto (`ProductGroup`, `PRODUCT_GROUPS`)         | Se elimina                                              | Cada uno de los 16 pasa a ser una categoría del usuario                      |
+| División (`split`)                                           | Se elimina                                              | La reemplazan los renglones                                                  |
+| (no existe)                                                  | Texto conocido: `merchantAlias` / `productAlias`        | Texto impreso vinculado a un comercio o a un producto                        |
+| (no existe)                                                  | Rol de una categoría: `role`                            | Marca las que la app reconoce, sin buscarlas por su nombre                   |
+| Cargos financieros (`FINANCIAL_CHARGES_CATEGORY`)            | Una categoría con rol, con subcategorías                | Intereses, Impuestos, Mantenimiento y comisiones                             |
+| Datos iniciales (`giveStarterData`)                          | Lista nueva con subcategorías                           | Para usuarios nuevos; "Agregar categorías sugeridas" para quien ya usa la app |
+| (no existe)                                                  | Estado del resumen: pagado, parcial, impago, vencido    | Se calcula, no se guarda                                                     |

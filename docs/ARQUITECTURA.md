@@ -206,6 +206,19 @@ src/
   de mes, de `shared/ui/MonthNav.tsx`; el ícono de una categoría, de `shared/ui/categoryLook.tsx`; los tamaños
   de los íconos, de `shared/ui/icons.ts`.
 
+## Cambios acordados (7/11/2026, pendientes de implementar)
+
+Esta página describe lo que existe hoy. Esto es lo que va a cambiar, para no sorprender:
+
+- **Los `index.ts` de cada módulo se eliminan.** Solo los usan `composition.ts`, `container.ts` y `app.ts`;
+  pasarán a importar los archivos que definen lo que necesitan. Un módulo sigue sin importar a otro, y el lint
+  se ajusta a eso. Si `shared/src/index.ts` sigue siendo un barril es una decisión abierta.
+- **Módulos nuevos:** `merchants` y `products`, cada uno con sus textos conocidos. **Desaparecen**
+  `category-rules` y `product-rules`.
+- Los renglones de un ticket siguen **dentro** del movimiento, ahora con el id del producto.
+- Reglas de tamaño, complejidad y archivos barril en el lint, y el criterio para inyectar dependencias:
+  `ESTANDARES_CODIGO.md`. Lo medido hoy: `AUDITORIA.md`.
+
 ## Cómo agregar un módulo
 
 Ejemplo: presupuestos.
