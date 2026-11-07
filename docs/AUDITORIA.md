@@ -236,3 +236,15 @@ y solo se calculan en `shared/src/dates.ts`. `shiftMoment` y `MS_PER_*` se usan 
 se mandó algo a la papelera, cuándo vence un reintento), que se guardan como `Date` en UTC y no dependen de la zona
 horaria. Los días de gracia de la papelera se cuentan en milisegundos, así que un cambio de horario de verano
 no los corre.
+
+**D7 corregido (7/11/2026).** `ReviewPage`, `TransactionFormPage` y `DataPage` ya no arman su propio estado de
+error: todo guardado pasa por `useAction`. El hook acepta ahora `run(trabajo, { onError })`: si `onError`
+devuelve `true`, la pantalla ya marcó los campos que el servidor rechazó y no se arma el aviso general. En
+`ReviewPage`, corregir un campo también limpia el aviso de arriba, que antes quedaba colgado. `DataPage` conserva
+su estado para los resultados que no son errores ("restaurado", "integridad rota"). Se comprobó con `npm run check`
+y con la pantalla de datos en la demo (un archivo roto muestra el aviso de error); el envío de un movimiento con
+rechazo del servidor y la revisión de un documento no se recorrieron a mano.
+
+**D14 (hallazgo nuevo, baja).** Importar un archivo `.xlsx` corrupto responde un error 500 ("Algo falló en el
+servidor") en lugar de un mensaje de validación, como sí hace la lectura de resúmenes (`documents.service.ts`).
+Falta atrapar el error de lectura en `spreadsheet.service.ts` y devolver un `VALIDATION` en el campo `file`.

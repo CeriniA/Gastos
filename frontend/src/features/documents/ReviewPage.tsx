@@ -26,6 +26,7 @@ import {
 } from '@gastos/shared';
 import { ApiError } from '../../shared/api/client';
 import { errorMessage, fieldMessage } from '../../shared/api/errors';
+import { useAction } from '../../shared/ui/useAction';
 import { es } from '../../shared/i18n/es';
 import { Button, Card, Field, Loading, Notice, PageTitle, Select, TextInput } from '../../shared/ui/ui';
 import { useAccounts } from '../accounts/api';
@@ -559,7 +560,7 @@ function ReviewForm({
   );
   const [errors, setErrors] = useState<Record<number, DraftErrors>>({});
   const [periodErrors, setPeriodErrors] = useState<Record<number, PeriodErrors>>({});
-  const [failure, setFailure] = useState<string | null>(null);
+  const { failure, setFailure, run } = useAction();
   /** Products corrected here are offered for the same receipt line next time, unless the user says no. */
   const [rememberProducts, setRememberProducts] = useState(true);
 
@@ -568,6 +569,7 @@ function ReviewForm({
       current.map((period, position) => (position === index ? { ...period, ...changes } : period)),
     );
     setPeriodErrors((current) => ({ ...current, [index]: {} }));
+    setFailure(null);
   };
 
   const change = (index: number, changes: Partial<Draft>) => {
@@ -575,6 +577,7 @@ function ReviewForm({
       current.map((draft, position) => (position === index ? { ...draft, ...changes } : draft)),
     );
     setErrors((current) => ({ ...current, [index]: {} }));
+    setFailure(null);
   };
   const setAccountForAll = (accountId: string) => {
     // On a statement the choice is a card: its dollar lines go to its dollar
@@ -604,6 +607,7 @@ function ReviewForm({
       );
     }
     setErrors({});
+    setFailure(null);
   };
 
   const included = drafts.flatMap((draft, index) => (draft.include ? [index] : []));
@@ -713,28 +717,29 @@ function ReviewForm({
         cardPeriods: kept.periods,
       });
       if (parsed.success) {
-        try {
-          await confirm.mutateAsync({ id: document.id, input: parsed.data });
-          void navigate('/movimientos');
-          return;
-        } catch (error) {
-          // The server names the position of the transaction it rejected.
-          if (error instanceof ApiError && error.code === 'DUPLICATE') {
-            setFailure(es.documents.periodExists);
-            return;
-          }
-          const details =
-            error instanceof ApiError ? (error.details as ServerRejection | undefined) : undefined;
-          const position = details?.index === undefined ? undefined : included[details.index];
-          if (position === undefined || !details?.cause?.issues) {
-            setFailure(errorMessage(error));
-            return;
-          }
-          for (const issue of details.cause.issues) {
-            const key = issue.path.split('.')[0] ?? '';
-            flag(position, FIELD_OF[key] ?? (key as keyof Draft), fieldMessage(issue.message));
-          }
-        }
+        const saved = await run(() => confirm.mutateAsync({ id: document.id, input: parsed.data }), {
+          onError: (error) => {
+            if (error instanceof ApiError && error.code === 'DUPLICATE') {
+              setFailure(es.documents.periodExists);
+              return true;
+            }
+            // The server names the position of the transaction it rejected.
+            const details =
+              error instanceof ApiError ? (error.details as ServerRejection | undefined) : undefined;
+            const position = details?.index === undefined ? undefined : included[details.index];
+            if (position === undefined || !details?.cause?.issues) return false;
+            for (const issue of details.cause.issues) {
+              const key = issue.path.split('.')[0] ?? '';
+              flag(position, FIELD_OF[key] ?? (key as keyof Draft), fieldMessage(issue.message));
+            }
+            setErrors(found);
+            setPeriodErrors(foundInPeriods);
+            setFailure(es.documents.fixErrors);
+            return true;
+          },
+        });
+        if (saved) void navigate('/movimientos');
+        return;
       } else {
         for (const issue of parsed.error.issues) {
           if (issue.path[0] === 'cardPeriods') {
@@ -760,21 +765,12 @@ function ReviewForm({
 
   const discardDocument = async () => {
     if (!window.confirm(es.documents.discardConfirm)) return;
-    try {
-      await discard.mutateAsync(document.id);
-      void navigate('/pendientes');
-    } catch (error) {
-      setFailure(errorMessage(error));
-    }
+    if (await run(discard.mutateAsync(document.id))) void navigate('/pendientes');
   };
 
   /** Throws away what was read and asks the AI again; the screen follows the document's status. */
   const reread = async () => {
-    try {
-      await retry.mutateAsync(document.id);
-    } catch (error) {
-      setFailure(errorMessage(error));
-    }
+    await run(retry.mutateAsync(document.id));
   };
 
   const activeAccounts = accounts.filter((account) => !account.archived);

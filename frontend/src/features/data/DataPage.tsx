@@ -9,7 +9,7 @@ import {
   type ImportPreview,
   type ImportRow,
 } from '@gastos/shared';
-import { errorMessage } from '../../shared/api/errors';
+import { useAction } from '../../shared/ui/useAction';
 import { es } from '../../shared/i18n/es';
 import { Button, Card, Field, Notice, PageTitle, Select } from '../../shared/ui/ui';
 import { useAccounts } from '../accounts/api';
@@ -67,7 +67,9 @@ function FilePicker({
 export function DataPage() {
   const client = useQueryClient();
   const [busy, setBusy] = useState(false);
+  /** Failures come from `useAction`; this holds what worked, or needs the user's attention. */
   const [message, setMessage] = useState<Message | null>(null);
+  const { failure, run: act } = useAction();
   const [restoreConfirmed, setRestoreConfirmed] = useState(false);
   const accounts = useAccounts();
   const categories = useCategories();
@@ -83,14 +85,12 @@ export function DataPage() {
   const run = async (work: () => Promise<Message | void>) => {
     setBusy(true);
     setMessage(null);
-    try {
-      const result = await work();
-      if (result) setMessage(result);
-    } catch (error) {
-      setMessage({ tone: 'error', text: errorMessage(error) });
-    } finally {
-      setBusy(false);
-    }
+    const outcome: { message?: Message } = {};
+    await act(async () => {
+      outcome.message = (await work()) || undefined;
+    });
+    if (outcome.message) setMessage(outcome.message);
+    setBusy(false);
   };
 
   const restore = (file: File) =>
@@ -187,6 +187,7 @@ export function DataPage() {
     <>
       <PageTitle>{es.data.title}</PageTitle>
       <div className="space-y-4">
+        {failure ? <Notice tone="error">{failure}</Notice> : null}
         {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
 
         <Section title={es.data.backupTitle} text={es.data.backupText}>

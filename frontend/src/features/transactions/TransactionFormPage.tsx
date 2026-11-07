@@ -232,36 +232,39 @@ export function TransactionFormPage() {
       ...(!id || itemsTouched || input.type === 'transfer' ? { items: readItems.items } : {}),
     };
 
-    try {
-      if (id) {
-        const parsed = transactionUpdateSchema.safeParse(payload);
-        if (!parsed.success) {
-          showIssues(
-            parsed.error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
-          );
-          return;
-        }
-        await update.mutateAsync({ id, changes: parsed.data });
-      } else {
-        const parsed = transactionCreateSchema.safeParse(payload);
-        if (!parsed.success) {
-          showIssues(
-            parsed.error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
-          );
-          return;
-        }
-        const count = Number(installments);
-        if (canSplitInInstallments && count >= 2) {
-          await createInstallments.mutateAsync({ transaction: parsed.data, installments: count });
-        } else {
-          await create.mutateAsync(parsed.data);
-        }
+    let save: () => Promise<unknown>;
+    if (id) {
+      const parsed = transactionUpdateSchema.safeParse(payload);
+      if (!parsed.success) {
+        showIssues(
+          parsed.error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
+        );
+        return;
       }
-      void navigate('/movimientos');
-    } catch (error) {
-      if (error instanceof ApiError && error.issues.length > 0) showIssues(error.issues);
-      else setFailure(errorMessage(error));
+      save = () => update.mutateAsync({ id, changes: parsed.data });
+    } else {
+      const parsed = transactionCreateSchema.safeParse(payload);
+      if (!parsed.success) {
+        showIssues(
+          parsed.error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
+        );
+        return;
+      }
+      const count = Number(installments);
+      save =
+        canSplitInInstallments && count >= 2
+          ? () => createInstallments.mutateAsync({ transaction: parsed.data, installments: count })
+          : () => create.mutateAsync(parsed.data);
     }
+    // The server can reject single fields: those are marked on the form instead of shown as a banner.
+    const saved = await run(save, {
+      onError: (error) => {
+        if (!(error instanceof ApiError) || error.issues.length === 0) return false;
+        showIssues(error.issues);
+        return true;
+      },
+    });
+    if (saved) void navigate('/movimientos');
   });
 
   const addTag = async () => {
