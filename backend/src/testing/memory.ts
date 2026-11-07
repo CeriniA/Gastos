@@ -586,7 +586,7 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
     async confirmProjectedUpTo(date) {
       let count = 0;
       store.transactions = store.transactions.map((transaction) => {
-        if (transaction.status !== 'projected' || transaction.date > date) return transaction;
+        if (transaction.status !== 'projected' || transaction.deletedAt || transaction.date > date) return transaction;
         count += 1;
         return { ...transaction, status: 'confirmed' };
       });

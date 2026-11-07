@@ -32,6 +32,7 @@ test('parseAmountToCents avoids floating point drift', () => {
   assert.equal(parseAmountToCents('0,29'), 29);
   assert.equal(parseAmountToCents('1,005'), 100500);
   assert.equal(parseAmountToCents(0.1 + 0.2), 30);
+  assert.equal(parseAmountToCents(1.005), 101); // 1.005 * 100 is 100.49999999999999 in floating point
 });
 
 test('parseAmountToCents rejects text that is not a number', () => {

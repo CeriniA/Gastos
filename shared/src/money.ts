@@ -6,6 +6,12 @@ import { APP_LOCALE, RATE_DECIMALS, type Currency } from './constants';
  */
 
 /**
+ * A double keeps about 15 reliable digits. Cutting there drops the noise left by
+ * the product ("1.005 * 100" is 100.49999999999999) before rounding to cents.
+ */
+const FLOAT_SAFE_DIGITS = 15;
+
+/**
  * Parses a human-written amount into cents. Accepts "15400,50", "15.400,50",
  * "15400.50", "1,234.56" and plain numbers. A single separator followed by
  * exactly three digits ("1.500") is read as a thousands separator.
@@ -13,7 +19,7 @@ import { APP_LOCALE, RATE_DECIMALS, type Currency } from './constants';
  */
 export function parseAmountToCents(input: string | number): number | null {
   if (typeof input === 'number') {
-    return Number.isFinite(input) ? Math.round(input * 100) : null;
+    return Number.isFinite(input) ? Math.round(Number((input * 100).toPrecision(FLOAT_SAFE_DIGITS))) : null;
   }
   const cleaned = input.replace(/[^\d.,-]/g, '');
   if (!/\d/.test(cleaned)) return null;

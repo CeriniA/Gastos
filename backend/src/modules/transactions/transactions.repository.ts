@@ -427,7 +427,7 @@ export const transactionsRepository = {
   /** Projected installments whose day has come become confirmed. Returns how many. */
   async confirmProjectedUpTo(date: string): Promise<number> {
     const result = await TransactionModel.updateMany(
-      { status: 'projected', date: { $lte: date } },
+      { status: 'projected', deletedAt: null, date: { $lte: date } },
       { $set: { status: 'confirmed' } },
     );
     return result.modifiedCount;

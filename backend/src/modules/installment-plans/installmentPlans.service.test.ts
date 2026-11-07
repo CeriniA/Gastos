@@ -74,6 +74,16 @@ test('projected installments are confirmed when their day comes', async () => {
   ]);
 });
 
+test('a projected installment in the trash stays projected when its day comes', async () => {
+  const { app, purchase } = await setup();
+  await app.installmentPlans.create({ transaction: purchase({ date: '2026-09-15' }), installments: 3 });
+  const second = app.store.transactions.find((transaction) => transaction.date === '2026-10-15');
+  await app.transactions.remove(second!.id);
+  app.calendar.today = '2026-10-15';
+  assert.equal(await app.transactions.confirmDue(), 0);
+  assert.equal(app.store.transactions.find((transaction) => transaction.id === second!.id)?.status, 'projected');
+});
+
 test('installments follow the card statements, including future ones', async () => {
   const { app, visa, purchase } = await setup();
   await app.installmentPlans.create({ transaction: purchase({ date: '2026-10-01' }), installments: 2 });

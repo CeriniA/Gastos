@@ -15,6 +15,8 @@ export interface OpenExchangeRatesOptions {
   fetch?: typeof fetch;
   now?: () => number;
   cacheMs?: number;
+  /** Told when the service could not be reached or answered badly; the rate is then simply missing. */
+  onError?: (error: unknown) => void;
 }
 
 const ENDPOINT = 'https://open.er-api.com/v6/latest';
@@ -44,14 +46,15 @@ export function createOpenExchangeRates(options: OpenExchangeRatesOptions = {}):
       const response = await doFetch(`${ENDPOINT}/${encodeURIComponent(base)}`, {
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
-      if (!response.ok) return null;
+      if (!response.ok) throw new Error(`Rates service answered ${response.status}`);
       const data = (await response.json()) as ApiResponse;
-      if (data.result !== 'success' || !data.rates) return null;
+      if (data.result !== 'success' || !data.rates) throw new Error('Rates service answered without rates');
       const updated = new Date((data.time_last_update_unix ?? now() / 1000) * 1000);
       const entry = { at: now(), asOf: updated.toISOString().slice(0, 10), rates: data.rates };
       cache.set(base, entry);
       return entry;
-    } catch {
+    } catch (error) {
+      options.onError?.(error);
       return null;
     }
   }

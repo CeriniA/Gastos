@@ -122,7 +122,9 @@ reprodujo**: acá no hay MongoDB, y las carreras dependen de cómo se intercalan
 | 1 | **Doble confirmación de un documento.** `confirm()` mira que esté listo (`ready`) fuera de la transacción, y la actualización final no pregunta el estado previo. MongoDB reintenta sola una transacción que choca (`withTransaction`), y el reintento no vuelve a mirar el estado: puede crear los movimientos dos veces | `documents.service.ts:538-567`, `documents.repository.ts:143-162`, `core/db/transaction.ts:36` | El código es como se describe. Que se duplique depende de la carrera | Alta |
 | 2 | **Confirmar y borrar a la vez.** La actualización final puede devolver `null` (el documento ya no existe) y nadie lo mira: quedan movimientos apuntando a un documento inexistente | `documents.service.ts:567`, `577-588` | Confirmado. Se arregla con la misma corrección que el punto 1 | Media |
 
-**B. Corregir en la base de calidad**
+**B. Corregir en la base de calidad** (corregidos el 7/11/2026, con prueba: 3, 7, 8, 10 y 11; el 7 y el 11 son
+de pantalla y no tienen prueba automática. Faltan el 5, que se prueba con un respaldo grande en Atlas, y el 9,
+que se hace junto con las fechas de `shared`.)
 
 | # | Hallazgo | Dónde | Qué se confirmó | Gravedad |
 | - | -------- | ----- | --------------- | -------- |
@@ -149,6 +151,18 @@ reprodujo**: acá no hay MongoDB, y las carreras dependen de cómo se intercalan
 **E. No verificados:** subir a la vez dos veces el mismo archivo gasta cuota de IA; un Excel chico que
 descomprime a mucho carga entero en memoria antes de filtrar filas; el error de la revisión no se limpia al
 corregir un campo.
+
+**F. Manejo de errores (revisión del 7/11/2026)**
+
+Lo central estaba bien: un solo `errorHandler`, errores con nombre, tareas en segundo plano que atrapan y
+registran, `useAction` en el frontend. Se encontraron cuatro huecos:
+
+| # | Hueco | Estado |
+| - | ----- | ------ |
+| F1 | El servidor no tenía `unhandledRejection` ni `uncaughtException` | Corregido en `server.ts` |
+| F2 | El frontend no tenía `ErrorBoundary`: una pantalla que falla al dibujarse quedaba en blanco | Corregido (`ErrorBoundary.tsx`, texto en `es.crash`) |
+| F3 | Cinco pantallas (`ReviewPage`, `TransactionFormPage`, `AddPage`, `StatementPage`, `BalanceCheck`) tienen su propio `try/catch` en lugar de `useAction` | Pendiente: va con las reglas de lint (paso 1) |
+| F4 | Las cotizaciones se tragaban el motivo del fallo | Corregido: `onError` y aviso en el log. El `catch` de `backup.controller.ts` queda: el motivo ya lo registra `driveBackup` |
 
 ## 10. Orden recomendado
 

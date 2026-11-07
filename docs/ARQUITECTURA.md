@@ -138,6 +138,17 @@ Los services lanzan errores tipados (`NotFoundError`, `ValidationError`, `Confli
 convierte en la respuesta. Los controllers no atrapan errores. El frontend traduce el código de error a
 un mensaje en español en un solo archivo.
 
+Lo que queda fuera de un pedido tiene su propia red:
+
+- **Servidor:** una promesa sin esperar que falla se registra y el servidor sigue (`unhandledRejection`); una
+  excepción que nadie atrapó se registra y el proceso se reinicia (`uncaughtException`). Las tareas en segundo
+  plano atrapan y registran sus errores.
+- **Servicios de afuera** (IA, PDF, Drive, cotizaciones): fallan con un error con nombre o devuelven "sin dato",
+  pero siempre avisan por `onError` o el log; nunca se tragan el motivo.
+- **Frontend:** lo que falla al pedir datos lo muestra `QueryState`; lo que falla al guardar, `useAction`; lo que
+  falla al dibujar una pantalla lo atrapa `ErrorBoundary` (`shared/ui/ErrorBoundary.tsx`), con un botón para
+  recargar.
+
 ### Respuestas
 
 - Éxito: `{ "data": ... }`.

@@ -358,7 +358,9 @@ Falta: nada pendiente de programar. Queda usarla y ajustar los números de la re
 
 **Hecho hasta ahora:** la confirmación de documentos ya no puede correr dos veces ni chocar con un borrado
 (`markConfirmed` toma el documento dentro de la transacción solo si sigue "listo"; borrar lo vuelve a leer
-adentro). Tiene tres pruebas nuevas. Falta el resto del paso 1.
+adentro). Tiene tres pruebas nuevas. Del grupo B de `AUDITORIA.md` están corregidos 3, 7, 8, 10 y 11. También se cerraron
+los huecos F1, F2 y F4 del manejo de errores (sección 9.F). Falta el resto del paso 1: errores 5 y 9, hueco F3
+(pantallas sin `useAction`), desvíos, barriles y lint.
 
 **Lo demás, sin implementar.** Lo acordado está en `LOGICA_NEGOCIO.md`, lo medido en `AUDITORIA.md` y el criterio de
 código en `ESTANDARES_CODIGO.md`. Orden previsto, cada paso con pruebas y su commit:

@@ -41,7 +41,9 @@ const LABELLED_ID =
   /(\b(?:d\.?\s?n\.?\s?i\.?|cuit|cuil|c\.u\.i\.[tl]\.?|documento|(?:n(?:ro|[°º])\.?\s*(?:de\s+)?)?(?:cuenta|socio|cliente)(?:\s*n(?:ro|[°º])\.?)?)\s*:?\s*)\d[\d./ -]{4,}\d(?![\d,])/giu;
 const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/gu;
 /** CUIT and CUIL: 20-12345678-9, with or without the dashes. */
-const TAX_ID = /(?<!\d)\d{2}-?\d{8}-?\d(?!\d)/gu;
+const TAX_ID = /(?<!\d)\d{2}[-.]?\d{8}[-.]?\d(?!\d)/gu;
+/** A phone as printed here: an optional area code, then four digits, a dash and four more ("11 5555-5555"). */
+const PHONE = /(?<![\d.,-])(?:\+?\d{2} ?)?\(?\d{2,4}\)?[ -]?\d{4}-\d{4}(?![\d-])/gu;
 
 const digitCount = (value: string) => value.replace(/\D/g, '').length;
 
@@ -56,6 +58,7 @@ export function redactPersonalData(text: string): Redacted {
     .replace(LABELLED_ID, (_match, label: string) => hide(label))
     .replace(EMAIL, () => hide(''))
     .replace(TAX_ID, () => hide(''))
+    .replace(PHONE, () => hide(''))
     .replace(LONG_NUMBER, (match) => (digitCount(match) >= MIN_DIGITS_IN_NUMBER ? hide('') : match));
   return { text: result, hidden };
 }

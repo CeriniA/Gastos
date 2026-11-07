@@ -85,7 +85,7 @@ export function PendingPage() {
                     </Button>
                     <Button
                       variant="quietDanger"
-
+                      disabled={retry.isPending}
                       onClick={() => discardDocument(document.id)}
                     >
                       {es.documents.discard}

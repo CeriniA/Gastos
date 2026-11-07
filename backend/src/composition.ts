@@ -83,7 +83,9 @@ export function createContainer(env: Env): Container {
       now: () => new Date(),
       extractor,
       pdfReader: createUnpdfReader(),
-      rates: createOpenExchangeRates(),
+      rates: createOpenExchangeRates({
+        onError: (error) => logger.warn({ err: error }, 'Reference rate unavailable'),
+      }),
       schedule: (work) => {
         work().catch((error: unknown) => logger.error({ err: error }, 'Background work failed'));
       },

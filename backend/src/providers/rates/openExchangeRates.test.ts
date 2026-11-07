@@ -10,6 +10,7 @@ const body = {
 
 function setup(responses: (() => Response)[]) {
   const urls: string[] = [];
+  const failures: unknown[] = [];
   let clock = 1_000_000;
   const provider = createOpenExchangeRates({
     fetch: (async (url: string | URL | Request) => {
@@ -20,8 +21,9 @@ function setup(responses: (() => Response)[]) {
     }) as typeof fetch,
     now: () => clock,
     cacheMs: 1000,
+    onError: (error) => failures.push(error),
   });
-  return { provider, urls, advance: (ms: number) => (clock += ms) };
+  return { provider, urls, failures, advance: (ms: number) => (clock += ms) };
 }
 
 test('returns the rate between two currencies with its date and source', async () => {
@@ -52,6 +54,7 @@ test('answers are cached per base currency for a while', async () => {
 test('a source that is down, or does not know the currency, yields nothing instead of failing', async () => {
   const down = setup([() => new Response('oops', { status: 503 })]);
   assert.equal(await down.provider.reference('BRL', 'ARS'), null);
+  assert.equal(down.failures.length, 1); // reported, so it shows in the log
 
   const offline = setup([
     () => {

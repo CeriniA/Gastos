@@ -108,8 +108,12 @@ async function send(path: string, options: RequestOptions): Promise<Response> {
     // Not a JSON error body (e.g. the host's own error page).
   }
   if (response.status === 401 && code === 'UNAUTHORIZED') {
-    tokenStore.clear();
-    unauthorizedListeners.forEach((listener) => listener());
+    // Only if the session is still the one that sent this request: a slow 401 must not
+    // log out someone who signed in again meanwhile.
+    if (tokenStore.get() === token) {
+      tokenStore.clear();
+      unauthorizedListeners.forEach((listener) => listener());
+    }
   }
   throw new ApiError(code, response.status, details);
 }

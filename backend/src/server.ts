@@ -73,6 +73,14 @@ async function main(): Promise<void> {
     });
     setTimeout(() => process.exit(1), SHUTDOWN_GRACE_MS).unref();
   };
+  // A promise nobody waited for failed: it is logged and the server keeps serving. Since Node 15 it
+  // would otherwise end the process without a word in our log.
+  process.on('unhandledRejection', (reason) => logger.error({ err: reason }, 'Unhandled rejection'));
+  // After an exception nobody caught the process state can no longer be trusted: log it and restart.
+  process.on('uncaughtException', (error) => {
+    logger.fatal({ err: error }, 'Uncaught exception');
+    process.exit(1);
+  });
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
 }

@@ -28,6 +28,16 @@ test('hides card and account numbers, masked or not, and keeps amounts and dates
   assert.equal(hidden, 3);
 });
 
+test('hides a ten-digit phone and a tax id written with dots, and keeps amounts', () => {
+  const { text, hidden } = redactPersonalData(
+    ['Llamar al 11 5555-5555', 'CUIT 20.12345678.9 ok', 'Total 1.234,56'].join('\n'),
+  );
+  assert.equal(hidden, 2);
+  assert.ok(!text.includes('5555-5555'));
+  assert.ok(!text.includes('12345678'));
+  assert.ok(text.includes('1.234,56'));
+});
+
 test('a row of asterisks or a long word is not a card number', () => {
   const line = '************************ TOTAL CONSUMOS DEL MES';
   assert.deepEqual(redactPersonalData(line), { text: line, hidden: 0 });

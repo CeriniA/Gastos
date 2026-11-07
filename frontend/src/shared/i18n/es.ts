@@ -37,6 +37,12 @@ export const es = {
     more: 'Más',
   },
 
+  crash: {
+    title: 'Algo salió mal',
+    body: 'Esta pantalla no pudo mostrarse. Tus datos están guardados. Probá recargar.',
+    reload: 'Recargar',
+  },
+
   common: {
     save: 'Guardar',
     saving: 'Guardando…',
