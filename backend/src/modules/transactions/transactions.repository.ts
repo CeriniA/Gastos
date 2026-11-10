@@ -7,7 +7,6 @@ import {
   spendingCents,
   type ConsumptionItem,
   type CurrencyTotals,
-  type FiledAmount,
   type LastRate,
   type Paginated,
   type ProductGroup,
@@ -22,7 +21,7 @@ import { COLLECTIONS } from '../../core/db/collections';
 import { idString, isoString, toObjectId, toObjectIdOrNull } from '../../core/db/ids';
 import type { WriteOptions } from '../../core/db/transaction';
 import { duplicateKey, installmentKey } from './duplicateKey';
-import { filedAmounts, type Filing } from './splits';
+import { type Filable, type Filing } from './splits';
 import { TransactionModel, type TransactionDoc } from './transactions.model';
 
 /** Everything the service decides about a transaction before it is stored. */
@@ -516,10 +515,10 @@ export const transactionsRepository = {
   },
 
   /**
-   * What each income or expense paid in a month adds to its category; a
-   * divided one, part by part. Refunds take away. Counts what `totalsByMonth` counts.
+   * The income and expenses paid in a month, with how they are divided, for the
+   * report by category. Counts what `totalsByMonth` counts.
    */
-  async findFiledByMonth(month: string): Promise<FiledAmount[]> {
+  async findFilableByMonth(month: string): Promise<Filable[]> {
     const docs = await TransactionModel.find(
       {
         deletedAt: null,
@@ -527,15 +526,14 @@ export const transactionsRepository = {
         type: { $in: ['income', 'expense'] },
         paymentDate: { $gte: firstDayOfMonth(month), $lte: lastDayOfMonth(month) },
       },
-      { date: 1, type: 1, refund: 1, currency: 1, amountCents: 1, categoryId: 1, splits: 1 },
+      { date: 1, type: 1, refund: 1, currency: 1, amountCents: 1, categoryId: 1, splits: 1, items: 1 },
     ).lean<
       Pick<
         TransactionDoc,
-        '_id' | 'date' | 'type' | 'refund' | 'currency' | 'amountCents' | 'categoryId' | 'splits'
+        '_id' | 'date' | 'type' | 'refund' | 'currency' | 'amountCents' | 'categoryId' | 'splits' | 'items'
       >[]
     >();
-    return docs.flatMap((doc) =>
-      filedAmounts({
+    return docs.map((doc) => ({
         id: doc._id.toString(),
         date: doc.date,
         type: doc.type,
@@ -547,8 +545,8 @@ export const transactionsRepository = {
           categoryId: part.categoryId.toString(),
           amountCents: part.amountCents,
         })),
-      }),
-    );
+        items: (doc.items ?? []).map(toItem),
+    }));
   },
 
   /**

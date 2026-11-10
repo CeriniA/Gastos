@@ -1,22 +1,47 @@
 import type { FiledAmount, Split, Transaction } from '@gastos/shared';
 
+export type Filable = Pick<
+  Transaction,
+  'id' | 'date' | 'type' | 'refund' | 'currency' | 'amountCents' | 'categoryId' | 'splits' | 'items'
+>;
+
 /**
- * What a transaction adds to each category it is filed under: all of it to its
- * category, or each part to its own. A refund takes away. A transfer adds nothing.
+ * The parts a transaction is filed in. A divided one files each part under its
+ * own category (until divisions become lines). Otherwise each line goes to the
+ * category of its product, or to its own; what the lines do not cover (a
+ * discount, a tax, a line nobody read) stays in the category of the whole
+ * transaction, so the total never changes. Without lines, all of it goes there.
+ */
+function partsOf(
+  transaction: Filable,
+  productCategories: ReadonlyMap<string, string>,
+): { categoryId: string | null; amountCents: number }[] {
+  if (transaction.splits.length > 0) return transaction.splits;
+  const lines =
+    transaction.type === 'expense'
+      ? transaction.items.flatMap((item) => {
+          const categoryId = item.productId ? productCategories.get(item.productId) : item.categoryId;
+          return categoryId ? [{ categoryId, amountCents: item.amountCents }] : [];
+        })
+      : [];
+  const rest = transaction.amountCents - lines.reduce((sum, line) => sum + line.amountCents, 0);
+  const remainder = { categoryId: transaction.categoryId, amountCents: rest };
+  return lines.length === 0 || rest !== 0 ? [...lines, remainder] : lines;
+}
+
+/**
+ * What a transaction adds to each category it is filed under. A refund takes
+ * away. A transfer adds nothing. `productCategories` says the category of each
+ * product of the list.
  */
 export function filedAmounts(
-  transaction: Pick<
-    Transaction,
-    'id' | 'date' | 'type' | 'refund' | 'currency' | 'amountCents' | 'categoryId' | 'splits'
-  >,
+  transaction: Filable,
+  productCategories: ReadonlyMap<string, string> = new Map(),
 ): FiledAmount[] {
   if (transaction.type === 'transfer') return [];
   const { type: kind, currency } = transaction;
   const sign = transaction.refund ? -1 : 1;
-  const parts =
-    transaction.splits.length > 0
-      ? transaction.splits
-      : [{ categoryId: transaction.categoryId, amountCents: transaction.amountCents }];
+  const parts = partsOf(transaction, productCategories);
   return parts.map((part) => ({
     transactionId: transaction.id,
     date: transaction.date,

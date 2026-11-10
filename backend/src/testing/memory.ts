@@ -39,7 +39,6 @@ import type { ProductsRepository } from '../modules/products/products.repository
 import type { RecurringsRepository } from '../modules/recurrings/recurrings.repository';
 import type { TagsRepository } from '../modules/tags/tags.repository';
 import { duplicateKey, installmentKey } from '../modules/transactions/duplicateKey';
-import { filedAmounts } from '../modules/transactions/splits';
 import type { TransactionsRepository } from '../modules/transactions/transactions.repository';
 import type { AiExtractor, ExtractionInput } from '../providers/ai/aiExtractor';
 import type { PdfReadError, PdfTextReader } from '../providers/pdf/pdfReader';
@@ -735,7 +734,7 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
         transaction.recurringId === recurringId ? { ...transaction, recurringId: null } : transaction,
       );
     },
-    async findFiledByMonth(month) {
+    async findFilableByMonth(month) {
       return store.transactions
         .filter(
           (transaction) =>
@@ -743,8 +742,7 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
             transaction.status === 'confirmed' &&
             transaction.paymentDate >= firstDayOfMonth(month) &&
             transaction.paymentDate <= lastDayOfMonth(month),
-        )
-        .flatMap(filedAmounts);
+        );
     },
     async totalsByMonth(month) {
       const totals = new Map<string, CurrencyTotals>();

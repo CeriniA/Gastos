@@ -372,7 +372,9 @@ en el primer arranque. Todavía no hay pantallas que usen las listas.
 
 **Paso 3, en curso (10/11/2026).** Hecho: el movimiento guarda `merchantId` y cada renglón `productId` y `categoryId`, con
 sus validaciones, el respaldo y la migración `2026-11-10-transactions-lists` que los completa (la descripción y
-los productos escritos siguen ahí). Falta: que los informes, el consumo y las repeticiones lean las listas, pasar las
+los productos escritos siguen ahí). También el informe por categoría: cada renglón suma a la categoría de su producto (o a la suya), y lo que
+los renglones no cubren queda en la categoría del movimiento, así que el total del mes no cambia
+(`transactions/splits.ts`, con pruebas). Falta: que el informe por comercio, el consumo y las repeticiones lean las listas, pasar las
 divisiones a renglones, quitar `description` y `splits`, y las pantallas.
 
 **Lo demás, sin implementar.** Lo acordado está en `LOGICA_NEGOCIO.md`, lo medido en `AUDITORIA.md` y el criterio de

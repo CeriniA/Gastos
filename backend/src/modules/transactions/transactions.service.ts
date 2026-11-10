@@ -8,6 +8,7 @@ import {
   descendantIds,
   type Account,
   type Category,
+  type FiledAmount,
   type Installment,
   type IsoDate,
   type LastRate,
@@ -29,6 +30,7 @@ import { NotFoundError, ValidationError } from '../../core/errors/errors';
 import { dueDateFor, type PeriodDates } from './paymentDate';
 import { duplicateKey, installmentKey } from './duplicateKey';
 import { joinSameCategory } from './splits';
+import { filedAmounts } from './splits';
 import { prepareTransaction, type References } from './prepareTransaction';
 import type { TransactionsRepository } from './transactions.repository';
 
@@ -287,7 +289,10 @@ export function createTransactionsService(repository: TransactionsRepository, de
       repository.clearRecurring(recurringId, options),
 
     /** What each income or expense paid in a month adds to its category, for the report by category. */
-    listFiled: (month: string) => repository.findFiledByMonth(month),
+    listFiled: async (month: string): Promise<FiledAmount[]> => {
+      const productCategories = new Map((await deps.listProducts()).map((product) => [product.id, product.categoryId]));
+      return (await repository.findFilableByMonth(month)).flatMap((row) => filedAmounts(row, productCategories));
+    },
 
     /** Receipt lines of the confirmed expenses in a date range, for the consumption report. */
     listItems: (range: { from?: string; to?: string }) => repository.findItems(range),
