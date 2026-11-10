@@ -72,6 +72,7 @@ function confirmation(
           accountId,
           categoryId,
           description: 'Factura de luz',
+          merchantId: null,
           note: '',
           tagIds: [],
           splits: [],
@@ -80,7 +81,7 @@ function confirmation(
           paymentDate: null,
           original: null,
           refund: false,
-          items: [{ name: 'Consumo', amountCents: 1540050, product: '', group: null, quantity: null }],
+          items: [{ name: 'Consumo', amountCents: 1540050, product: '', group: null, quantity: null, productId: null, categoryId: null }],
         },
         installment: null,
         continuePlan: false,
@@ -307,7 +308,7 @@ test('confirming creates the transactions, remembers rules and deletes the image
   assert.equal(transaction?.status, 'confirmed');
   assert.equal(transaction?.categoryId, power.id);
   assert.deepEqual(transaction?.items, [
-    { name: 'Consumo', amountCents: 1540050, product: '', group: null, quantity: null },
+    { name: 'Consumo', amountCents: 1540050, product: '', group: null, quantity: null, productId: null, categoryId: null },
   ]);
 
   const confirmed = await app.documents.get(uploaded.id);

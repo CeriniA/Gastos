@@ -135,6 +135,8 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     listAccounts: () => accounts.list(),
     listCategories: (options) => categories.list(options),
     listTags: (options) => tags.list(options),
+    listMerchants: (options) => merchants.list(options),
+    listProducts: (options) => products.list(options),
     listCardPeriods: (options) => cardPeriods.listDates(options),
     today,
     now: runtime.now,

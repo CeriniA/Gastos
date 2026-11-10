@@ -32,6 +32,7 @@ export interface TransactionDoc {
   toAccountId: ObjectId | null;
   toAmountCents: number | null;
   categoryId: ObjectId | null;
+  merchantId: ObjectId | null;
   description: string;
   note: string;
   tagIds: ObjectId[];
@@ -43,6 +44,8 @@ export interface TransactionDoc {
     product?: string;
     group?: string | null;
     quantity?: number | null;
+    productId?: ObjectId | null;
+    categoryId?: ObjectId | null;
   }[];
   installment: { planId: ObjectId | null; number: number; total: number } | null;
   documentId: ObjectId | null;
@@ -87,6 +90,7 @@ const schema = new Schema<TransactionDoc>(
     toAccountId: objectIdOrNull,
     toAmountCents: { type: Number, default: null },
     categoryId: objectIdOrNull,
+    merchantId: objectIdOrNull,
     description: { type: String, default: '' },
     note: { type: String, default: '' },
     tagIds: { type: [Schema.Types.ObjectId], default: [] },
@@ -108,6 +112,8 @@ const schema = new Schema<TransactionDoc>(
             product: { type: String, default: '' },
             group: { type: String, default: null },
             quantity: { type: Number, default: null },
+            productId: objectIdOrNull,
+            categoryId: objectIdOrNull,
           },
           { _id: false },
         ),

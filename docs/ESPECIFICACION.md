@@ -375,7 +375,7 @@ MongoDB. Los nombres están en inglés; ver `GLOSARIO.md`.
 | `tags`             | Etiquetas                                          |                                                                                                | 1     |
 | `merchants`        | Comercios, con su categoría habitual y sus textos conocidos | `categories`                                                                      | 5     |
 | `products`         | Productos, con su categoría y sus textos conocidos | `categories`                                                                                   | 5     |
-| `transactions`     | Movimientos, con ítems y divisiones adentro        | `accounts`, `categories`, `tags`, `documents`, `installmentPlans`, `cardPeriods`, `recurrings` | 1     |
+| `transactions`     | Movimientos, con ítems y divisiones adentro        | `accounts`, `categories`, `tags`, `merchants`, `products`, `documents`, `installmentPlans`, `cardPeriods`, `recurrings` | 1     |
 | `documents`        | Archivos subidos y su extracción                   | `accounts`                                                                                     | 2     |
 | `categoryRules`    | Comercio → categoría                               | `categories`                                                                                   | 2     |
 | `productRules`     | Renglón de ticket → producto y grupo               |                                                                                                | 4     |

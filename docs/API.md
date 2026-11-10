@@ -191,6 +191,7 @@ Cuerpo de alta:
   "currency": "ARS",
   "accountId": "…",
   "categoryId": "…",
+  "merchantId": null,
   "description": "Edesur",
   "note": "",
   "tagIds": [],
@@ -206,7 +207,12 @@ Cuerpo de alta:
 `refund: true` marca una devolución: solo en un egreso (si no, `VALIDATION`) y nunca en cuotas. Su monto es
 positivo y resta del egreso del mes, del resumen de la tarjeta y del consumo. Si se omite es `false`.
 
-`items` son los productos: `[{ "name", "amountCents", "product", "group", "quantity" }]`, hasta 200.
+`merchantId` es el comercio de la lista (`/merchants`), solo en un egreso y opcional; archivado, solo lo conserva
+un movimiento que ya lo tenía. La `description` sigue existiendo hasta que se quite en un paso siguiente.
+
+`items` son los productos: `[{ "name", "amountCents", "product", "group", "quantity", "productId", "categoryId" }]`, hasta 200.
+`productId` es un producto de la lista; `categoryId` es la categoría propia de un renglón sin producto (con
+producto, la categoría es la del producto y mandar las dos da `VALIDATION`). Los dos son solo de egresos.
 Son opcionales y no tienen que sumar el total (un descuento es un renglón con monto negativo). Una
 transferencia no lleva productos. En una edición, mandar `items` los reemplaza todos; no mandarlo los deja
 como están.

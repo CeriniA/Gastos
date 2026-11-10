@@ -19,6 +19,7 @@ async function setup() {
     accountId: visa.id,
     categoryId: clothes.id,
     description: 'Zapatillas',
+    merchantId: null,
     note: '',
     tagIds: [],
     splits: [],
@@ -28,7 +29,7 @@ async function setup() {
     original: null,
     refund: false,
     items: [
-      { name: 'Zapatillas', amountCents: 500000, product: 'Zapatillas', group: 'household', quantity: 1 },
+      { name: 'Zapatillas', amountCents: 500000, product: 'Zapatillas', group: 'household', quantity: 1, productId: null, categoryId: null },
     ],
     ...changes,
   });

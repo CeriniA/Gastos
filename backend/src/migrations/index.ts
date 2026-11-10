@@ -9,6 +9,7 @@ import { recurringNameIndex } from './2026-10-17-recurring-name-index';
 import { userAiLimit } from './2026-10-17-user-ai-limit';
 import { categoryRole } from './2026-11-10-category-role';
 import { merchantsProducts } from './2026-11-10-merchants-products';
+import { transactionsLists } from './2026-11-10-transactions-lists';
 
 /**
  * Add migrations here in order. Example:
@@ -31,4 +32,5 @@ export const migrations: readonly Migration[] = [
   userAiLimit,
   categoryRole,
   merchantsProducts,
+  transactionsLists,
 ];

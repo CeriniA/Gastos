@@ -119,7 +119,7 @@ export const es = {
       `${username} deja de poder entrar y se cierran sus sesiones. Sus datos no se borran; lo podés volver a activar.`,
   },
 
-  types: { expense: 'Egreso', income: 'Ingreso', transfer: 'Transferencia' } satisfies Record<
+  types: { expense: 'Egreso', income: 'Ingreso', transfer: 'Transferencia interna' } satisfies Record<
     TransactionType,
     string
   >,
@@ -151,7 +151,7 @@ export const es = {
     nextMonth: 'Mes siguiente',
     noDescription: 'Sin descripción',
     noCategory: 'Sin categoría',
-    transferTo: (account: string) => `Transferencia a ${account}`,
+    transferTo: (account: string) => `Transferencia interna a ${account}`,
     installment: (number: number, total: number) => `Cuota ${number} de ${total}`,
     refund: 'Es una devolución',
     refundHint:

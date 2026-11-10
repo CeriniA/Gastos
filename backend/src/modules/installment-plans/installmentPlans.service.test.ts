@@ -16,6 +16,7 @@ async function setup() {
     accountId: visa.id,
     categoryId: null,
     description: 'Heladera',
+    merchantId: null,
     note: '',
     tagIds: [],
     splits: [],
@@ -24,7 +25,7 @@ async function setup() {
     paymentDate: null,
     original: null,
     refund: false,
-    items: [{ name: 'Heladera', amountCents: 100001, product: 'Heladera', group: 'household', quantity: 1 }],
+    items: [{ name: 'Heladera', amountCents: 100001, product: 'Heladera', group: 'household', quantity: 1, productId: null, categoryId: null }],
     ...changes,
   });
   return { app, visa, bank, purchase };

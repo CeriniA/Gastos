@@ -12,6 +12,7 @@ const expense = (accountId: string, tagIds: string[] = []) => ({
   accountId,
   categoryId: null,
   description: '',
+  merchantId: null,
   note: '',
   tagIds,
   splits: [],

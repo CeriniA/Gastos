@@ -17,7 +17,8 @@ import { groupsInUse, planLists, type LegacyTransaction } from './legacyLists';
  * Fills the new lists from what the user already has, without touching their
  * transactions (those keep their description and products until they point at
  * the lists):
- *  - each distinct description of an expense becomes a merchant, joining the ones
+ *  - each distinct description of an expense (the trash included, so nothing is lost when
+ *    the description goes away) becomes a merchant, joining the ones
  *    that differ only in case or accents; a "this merchant goes to this category"
  *    rule becomes its usual category;
  *  - each distinct product of a receipt becomes a product, and the lines as the
@@ -38,7 +39,7 @@ export const merchantsProducts: Migration = {
 
     const transactions = (
       await TransactionModel.find(
-        { type: 'expense', deletedAt: null },
+        { type: 'expense' },
         { description: 1, categoryId: 1, items: 1 },
       ).lean()
     ).map(

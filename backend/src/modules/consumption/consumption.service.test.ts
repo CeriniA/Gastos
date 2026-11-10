@@ -10,7 +10,7 @@ function line(
   group: ProductGroup | null = null,
   quantity: number | null = null,
 ): TransactionItem {
-  return { name, amountCents, product, group, quantity };
+  return { name, amountCents, product, group, quantity, productId: null, categoryId: null };
 }
 
 async function setup() {
@@ -32,6 +32,7 @@ async function setup() {
             accountId: account.id,
             categoryId: food.id,
             description,
+            merchantId: null,
             note: '',
             tagIds: [],
             splits: [],

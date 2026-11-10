@@ -553,7 +553,10 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
       ).length;
     },
     async countByCategory(categoryId) {
-      return store.transactions.filter((transaction) => usesCategory(transaction, [categoryId])).length;
+      return store.transactions.filter(
+        (transaction) =>
+          usesCategory(transaction, [categoryId]) || transaction.items.some((item) => item.categoryId === categoryId),
+      ).length;
     },
     async moveCategory(fromId, toId) {
       store.transactions = store.transactions.map((transaction) => ({
@@ -561,6 +564,9 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
         categoryId: transaction.categoryId === fromId ? toId : transaction.categoryId,
         splits: transaction.splits.map((split) =>
           split.categoryId === fromId ? { ...split, categoryId: toId } : split,
+        ),
+        items: transaction.items.map((item) =>
+          item.categoryId === fromId ? { ...item, categoryId: toId } : item,
         ),
       }));
     },

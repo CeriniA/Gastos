@@ -19,6 +19,7 @@ async function setup(today = '2026-10-10') {
     accountId: bank.id,
     categoryId: services.id,
     description: 'Netflix',
+    merchantId: null,
     note: '',
     tagIds: [],
     splits: [],

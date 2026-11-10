@@ -18,10 +18,12 @@ ver el saldo (un sueldo, un pago recibido). No se diseñan ventas, clientes ni f
 | ----------------- | ----------------------------------------------------------- | --------------------------- |
 | **Ingreso**       | Entra plata a una cuenta desde afuera                       | Ingreso                     |
 | **Egreso**        | Sale plata de una cuenta hacia afuera                       | Gasto                       |
-| **Transferencia** | La plata pasa de una cuenta del usuario a otra cuenta suya  | Ninguno                     |
+| **Transferencia interna** | La plata pasa de una cuenta del usuario a otra cuenta suya  | Ninguno                     |
 
 - Lo que decide el tipo es **adónde fue la plata**, no cómo se mandó. Pagar a una persona o a un
-  servicio por transferencia bancaria es un egreso.
+  servicio por transferencia bancaria es un egreso. En pantalla el tercer tipo se llama **transferencia
+  interna** para que no se confunda con eso; en el código sigue siendo `transfer`. Cómo salió la plata (efectivo,
+  transferencia, débito) no se registra aparte: lo dice la cuenta de la que salió, banco, billetera o efectivo.
 - Una transferencia es **un solo movimiento** con origen y destino (con dos montos si las monedas
   difieren). No son dos movimientos que se compensan: así no infla ingresos ni egresos y no se puede
   borrar una sola punta.

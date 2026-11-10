@@ -117,6 +117,8 @@ function setup() {
     listAccounts: async () => accounts,
     listCategories: async () => categories,
     listTags: async () => tags,
+    listMerchants: async () => [],
+    listProducts: async () => [],
     listCardPeriods: async () => [],
     today: () => '2026-10-10',
     now: () => new Date('2026-10-10T12:00:00.000Z'),
@@ -132,6 +134,7 @@ const expense: TransactionCreate = {
   accountId: id('a'),
   categoryId: id('1'),
   description: 'Super',
+  merchantId: null,
   note: '',
   tagIds: [id('e')],
   splits: [],
@@ -303,8 +306,8 @@ test('trash: delete, restore, and neither twice', async () => {
 
 test('products can be added, changed and removed by hand; transfers have none', async () => {
   const { service } = setup();
-  const milk = { name: 'Leche', amountCents: 120000, product: 'Leche', group: 'dairy' as const, quantity: 2 };
-  const bread = { name: 'Pan', amountCents: 30000, product: 'Pan', group: 'bakery' as const, quantity: null };
+  const milk = { name: 'Leche', amountCents: 120000, product: 'Leche', group: 'dairy' as const, quantity: 2, productId: null, categoryId: null };
+  const bread = { name: 'Pan', amountCents: 30000, product: 'Pan', group: 'bakery' as const, quantity: null, productId: null, categoryId: null };
 
   // They need not add up to the total: a receipt has discounts and lines that are not products.
   const created = await service.create({ ...expense, items: [milk, bread] });

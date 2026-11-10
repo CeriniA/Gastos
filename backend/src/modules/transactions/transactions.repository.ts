@@ -70,6 +70,7 @@ function toTransaction(doc: TransactionDoc): Transaction {
     toAccountId: idString(doc.toAccountId),
     toAmountCents: doc.toAmountCents ?? null,
     categoryId: idString(doc.categoryId),
+    merchantId: idString(doc.merchantId),
     description: doc.description ?? '',
     note: doc.note ?? '',
     tagIds: (doc.tagIds ?? []).map((id) => id.toString()),
@@ -105,6 +106,8 @@ function toItem(item: TransactionDoc['items'][number]): TransactionItem {
       ? (item.group as ProductGroup)
       : null,
     quantity: item.quantity ?? null,
+    productId: idString(item.productId),
+    categoryId: idString(item.categoryId),
   };
 }
 
@@ -114,6 +117,12 @@ function toStored(record: TransactionRecord) {
     accountId: toObjectId(record.accountId),
     toAccountId: toObjectIdOrNull(record.toAccountId),
     categoryId: toObjectIdOrNull(record.categoryId),
+    merchantId: toObjectIdOrNull(record.merchantId),
+    items: record.items.map((item) => ({
+      ...item,
+      productId: toObjectIdOrNull(item.productId),
+      categoryId: toObjectIdOrNull(item.categoryId),
+    })),
     tagIds: record.tagIds.map(toObjectId),
     splits: record.splits.map((split) => ({
       categoryId: toObjectId(split.categoryId),
@@ -162,6 +171,9 @@ export const transactionsPort = createCollectionPort(TransactionModel, [
   { field: 'toAccountId', to: COLLECTIONS.accounts },
   { field: 'categoryId', to: COLLECTIONS.categories },
   { field: 'splits.categoryId', to: COLLECTIONS.categories, unwind: 'splits' },
+  { field: 'merchantId', to: COLLECTIONS.merchants },
+  { field: 'items.productId', to: COLLECTIONS.products, unwind: 'items' },
+  { field: 'items.categoryId', to: COLLECTIONS.categories, unwind: 'items' },
   { field: 'tagIds', to: COLLECTIONS.tags, unwind: 'tagIds' },
   { field: 'documentId', to: COLLECTIONS.documents },
   { field: 'installment.planId', to: COLLECTIONS.installmentPlans },
@@ -242,7 +254,9 @@ export const transactionsRepository = {
 
   countByCategory(categoryId: string): Promise<number> {
     const id = toObjectId(categoryId);
-    return TransactionModel.countDocuments({ $or: [{ categoryId: id }, { 'splits.categoryId': id }] });
+    return TransactionModel.countDocuments({
+      $or: [{ categoryId: id }, { 'splits.categoryId': id }, { 'items.categoryId': id }],
+    });
   },
 
   async moveCategory(fromId: string, toId: string, options: WriteOptions = {}): Promise<void> {
@@ -257,6 +271,11 @@ export const transactionsRepository = {
       { 'splits.categoryId': from },
       { $set: { 'splits.$[split].categoryId': to } },
       { arrayFilters: [{ 'split.categoryId': from }], session: options.session },
+    );
+    await TransactionModel.updateMany(
+      { 'items.categoryId': from },
+      { $set: { 'items.$[item].categoryId': to } },
+      { arrayFilters: [{ 'item.categoryId': from }], session: options.session },
     );
   },
 

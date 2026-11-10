@@ -368,7 +368,12 @@ los huecos F1, F2 y F4 del manejo de errores (sección 9.F). Falta el resto del 
 puertos de respaldo, pruebas). También la migración `2026-11-10-merchants-products`, que los llena desde lo ya cargado y convierte en
 categorías los grupos de producto en uso (`migrations/legacyLists.ts` decide qué crear y tiene sus pruebas; no toca
 los movimientos). **Antes de desplegar, hacer un respaldo a Drive desde la app** (Datos): la migración corre sola
-en el primer arranque. Todavía no hay pantallas ni movimientos que usen las listas.
+en el primer arranque. Todavía no hay pantallas que usen las listas.
+
+**Paso 3, en curso (10/11/2026).** Hecho: el movimiento guarda `merchantId` y cada renglón `productId` y `categoryId`, con
+sus validaciones, el respaldo y la migración `2026-11-10-transactions-lists` que los completa (la descripción y
+los productos escritos siguen ahí). Falta: que los informes, el consumo y las repeticiones lean las listas, pasar las
+divisiones a renglones, quitar `description` y `splits`, y las pantallas.
 
 **Lo demás, sin implementar.** Lo acordado está en `LOGICA_NEGOCIO.md`, lo medido en `AUDITORIA.md` y el criterio de
 código en `ESTANDARES_CODIGO.md`. Orden previsto, cada paso con pruebas y su commit:

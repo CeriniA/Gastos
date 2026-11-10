@@ -276,6 +276,7 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
             currency: row.currency,
             accountId: lookups.accountsByName.get(nameKey(row.account))!.id,
             categoryId: category?.id ?? null,
+            merchantId: null,
             description: row.description,
             note: row.note,
             tagIds: row.tags.map((tag) => lookups.tagsByName.get(nameKey(tag))!.id),

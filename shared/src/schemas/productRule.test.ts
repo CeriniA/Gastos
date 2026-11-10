@@ -9,6 +9,8 @@ const line = (overrides: Partial<TransactionItem>): TransactionItem => ({
   product: 'Yerba',
   group: 'pantry',
   quantity: null,
+  productId: null,
+  categoryId: null,
   ...overrides,
 });
 

@@ -180,6 +180,7 @@ export function createCardPeriodsService(repository: CardPeriodsRepository, deps
           toAccountId: period.accountId,
           toAmountCents: payment.toAmountCents,
           categoryId: null,
+          merchantId: null,
           description: '',
           note: '',
           tagIds: [],

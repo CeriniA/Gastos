@@ -53,6 +53,10 @@ export const transactionItemSchema = z.object({
   group: z.enum(PRODUCT_GROUPS).nullable().default(null),
   /** Units, kilos or litres. Null when unknown. */
   quantity: z.number().positive().max(MAX_ITEM_QUANTITY).nullable().default(null),
+  /** The product of the list this line is, once it was matched. Null while only `product` says it. */
+  productId: objectIdSchema.nullable().default(null),
+  /** The line's own category, for a line without a product. Null: it follows its product or the payment. */
+  categoryId: objectIdSchema.nullable().default(null),
 });
 export type TransactionItem = z.infer<typeof transactionItemSchema>;
 
@@ -76,6 +80,8 @@ const fields = {
   currency: currencySchema,
   accountId: objectIdSchema,
   categoryId: objectIdSchema.nullable(),
+  /** Where it was spent, from the merchants list. Expenses only. */
+  merchantId: objectIdSchema.nullable(),
   description: z.string().trim().max(TEXT_LIMITS.description),
   note: z.string().trim().max(TEXT_LIMITS.note),
   tagIds: z.array(objectIdSchema).max(MAX_TAGS),
@@ -102,6 +108,7 @@ export interface TransactionShape {
   amountCents: number;
   accountId: string;
   categoryId: string | null;
+  merchantId: string | null;
   splits: readonly Split[];
   toAccountId: string | null;
   toAmountCents: number | null;
@@ -125,6 +132,9 @@ export function transactionShapeIssues(tx: TransactionShape): { path: string; me
     }
     if (tx.categoryId) {
       issues.push({ path: 'categoryId', message: 'A transfer cannot have a category' });
+    }
+    if (tx.merchantId) {
+      issues.push({ path: 'merchantId', message: 'A transfer cannot have a merchant' });
     }
     if (tx.splits.length > 0) {
       issues.push({ path: 'splits', message: 'A transfer cannot be split' });
@@ -156,6 +166,7 @@ export const transactionCreateSchema = z
     ...fields,
     refund: fields.refund.default(false),
     categoryId: fields.categoryId.default(null),
+    merchantId: fields.merchantId.default(null),
     description: fields.description.default(''),
     note: fields.note.default(''),
     tagIds: fields.tagIds.default([]),
@@ -230,6 +241,7 @@ export interface Transaction {
   toAccountId: string | null;
   toAmountCents: number | null;
   categoryId: string | null;
+  merchantId: string | null;
   description: string;
   note: string;
   tagIds: string[];

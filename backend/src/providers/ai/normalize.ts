@@ -246,6 +246,8 @@ export function normalizeExtraction(
             {
               name,
               amountCents: itemCents,
+              productId: null,
+              categoryId: null,
               product: (item.product ?? '').trim().slice(0, TEXT_LIMITS.product),
               group: oneOf(PRODUCT_GROUPS, item.group),
               quantity: toQuantity(item.quantity),

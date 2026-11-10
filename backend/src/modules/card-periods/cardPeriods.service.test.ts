@@ -18,6 +18,7 @@ async function setup() {
       accountId,
       categoryId: null,
       description: '',
+      merchantId: null,
       note: '',
       tagIds: [],
       splits: [],

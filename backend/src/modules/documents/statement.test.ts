@@ -79,6 +79,7 @@ function confirmation(accountId: string, overrides: Partial<DocumentConfirm> = {
           accountId,
           categoryId: null,
           description: 'Compra',
+          merchantId: null,
           note: '',
           tagIds: [],
           splits: [],

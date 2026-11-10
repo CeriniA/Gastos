@@ -1,6 +1,4 @@
 import {
-  impliedRate,
-  isFutureDay,
   MS_PER_DAY,
   MS_PER_SECOND,
   scaleCents,
@@ -8,14 +6,15 @@ import {
   spendingCents,
   TRASH_RETENTION_DAYS,
   descendantIds,
-  transactionShapeIssues,
   type Account,
   type Category,
   type Installment,
   type IsoDate,
   type LastRate,
+  type Merchant,
   type MonthSummary,
   type Paginated,
+  type Product,
   type Tag,
   type Transaction,
   type TransactionCreate,
@@ -27,43 +26,25 @@ import {
 } from '@gastos/shared';
 import type { WriteOptions } from '../../core/db/transaction';
 import { NotFoundError, ValidationError } from '../../core/errors/errors';
-import { dueDateFor, resolvePaymentDate, type PeriodDates } from './paymentDate';
+import { dueDateFor, type PeriodDates } from './paymentDate';
 import { duplicateKey, installmentKey } from './duplicateKey';
 import { joinSameCategory } from './splits';
-import type { TransactionRecord, TransactionsRepository } from './transactions.repository';
+import { prepareTransaction, type References } from './prepareTransaction';
+import type { TransactionsRepository } from './transactions.repository';
 
 /** What the transactions module needs from the rest of the app. */
 export interface TransactionDependencies {
   listAccounts(): Promise<Account[]>;
   listCategories(options?: WriteOptions): Promise<Category[]>;
   listTags(options?: WriteOptions): Promise<Tag[]>;
+  listMerchants(options?: WriteOptions): Promise<Merchant[]>;
+  listProducts(options?: WriteOptions): Promise<Product[]>;
   /** Closing and due dates of every card statement, which decide when card purchases are paid. */
   listCardPeriods(options?: WriteOptions): Promise<PeriodDates[]>;
   /** Today's calendar day in the app's time zone. */
   today(): IsoDate;
   /** The current moment: when something is sent to the trash and when the trash is old enough to empty. */
   now(): Date;
-}
-
-/** The lookups every validation needs, loaded once per operation. */
-interface References {
-  accounts: Map<string, Account>;
-  categories: Map<string, Category>;
-  tagIds: Set<string>;
-  /** Card statements per account. */
-  periods: Map<string, PeriodDates[]>;
-  today: IsoDate;
-}
-
-interface Origin {
-  source: TransactionSource;
-  installment?: Installment | null;
-  /** The uploaded document the transaction was read from. */
-  documentId?: string;
-  /** Future installments are stored as projected; everything else is confirmed. */
-  status?: TransactionStatus;
-  /** The card statement a transfer pays. */
-  cardPeriodId?: string;
 }
 
 /** One transaction to store in bulk, with what its origin knows about it. */
@@ -74,14 +55,14 @@ export interface BulkEntry {
   status?: TransactionStatus;
 }
 
-type Issue = { path: string; message: string };
-
 export function createTransactionsService(repository: TransactionsRepository, deps: TransactionDependencies) {
   async function loadReferences(options: WriteOptions = {}): Promise<References> {
-    const [accounts, categories, tags, periods] = await Promise.all([
+    const [accounts, categories, tags, merchants, products, periods] = await Promise.all([
       deps.listAccounts(),
       deps.listCategories(options),
       deps.listTags(options),
+      deps.listMerchants(options),
+      deps.listProducts(options),
       deps.listCardPeriods(options),
     ]);
     const periodsByAccount = new Map<string, PeriodDates[]>();
@@ -92,131 +73,10 @@ export function createTransactionsService(repository: TransactionsRepository, de
       accounts: new Map(accounts.map((account) => [account.id, account])),
       categories: new Map(categories.map((category) => [category.id, category])),
       tagIds: new Set(tags.map((tag) => tag.id)),
+      merchants: new Map(merchants.map((merchant) => [merchant.id, merchant])),
+      products: new Map(products.map((product) => [product.id, product])),
       periods: periodsByAccount,
       today: deps.today(),
-    };
-  }
-
-  /**
-   * Checks an input against every business rule and returns what to store.
-   * `previous` is the stored transaction on an update: references it already
-   * had may stay even if they were archived since.
-   */
-  function prepare(
-    input: TransactionCreate,
-    refs: References,
-    origin: Origin,
-    previous?: Transaction,
-  ): TransactionRecord {
-    const issues: Issue[] = [...transactionShapeIssues(input)];
-
-    const account = refs.accounts.get(input.accountId);
-    if (!account) {
-      issues.push({ path: 'accountId', message: 'Account does not exist' });
-    } else {
-      if (account.archived && previous?.accountId !== account.id) {
-        issues.push({ path: 'accountId', message: 'Account is archived' });
-      }
-      if (account.currency !== input.currency) {
-        issues.push({ path: 'currency', message: 'Currency must match the account currency' });
-      }
-    }
-
-    // Only projected items (future installments) may be dated ahead.
-    const status = origin.status ?? previous?.status ?? 'confirmed';
-    if (isFutureDay(input.date, refs.today) && status !== 'projected') {
-      issues.push({ path: 'date', message: 'Date cannot be in the future' });
-    }
-
-    if (input.type === 'transfer' && input.toAccountId) {
-      const destination = refs.accounts.get(input.toAccountId);
-      if (!destination) {
-        issues.push({ path: 'toAccountId', message: 'Destination account does not exist' });
-      } else if (account) {
-        const crossCurrency = destination.currency !== account.currency;
-        if (crossCurrency && input.toAmountCents === null) {
-          issues.push({ path: 'toAmountCents', message: 'A transfer between currencies needs both amounts' });
-        }
-        if (!crossCurrency && input.toAmountCents !== null) {
-          issues.push({
-            path: 'toAmountCents',
-            message: 'Only transfers between currencies have a destination amount',
-          });
-        }
-      }
-    }
-
-    const previousCategoryIds = new Set(
-      previous ? [previous.categoryId, ...previous.splits.map((split) => split.categoryId)] : [],
-    );
-    const checkCategory = (categoryId: string, path: string) => {
-      const category = refs.categories.get(categoryId);
-      if (!category) issues.push({ path, message: 'Category does not exist' });
-      else if (category.kind !== input.type)
-        issues.push({ path, message: 'Category is of a different kind' });
-      else if (category.archived && !previousCategoryIds.has(categoryId)) {
-        issues.push({ path, message: 'Category is archived' });
-      }
-    };
-    // A transfer with a category is already reported by the shape rules above.
-    if (input.type !== 'transfer') {
-      if (input.categoryId) checkCategory(input.categoryId, 'categoryId');
-      input.splits.forEach((split, index) => checkCategory(split.categoryId, `splits.${index}.categoryId`));
-    }
-
-    if (input.original && input.original.currency === input.currency) {
-      issues.push({
-        path: 'original',
-        message: 'The original currency must differ from the account currency',
-      });
-    }
-
-    const tagIds = [...new Set(input.tagIds)];
-    if (tagIds.some((tagId) => !refs.tagIds.has(tagId))) {
-      issues.push({ path: 'tagIds', message: 'Tag does not exist' });
-    }
-
-    if (issues.length > 0 || !account) throw new ValidationError('Invalid transaction', { issues });
-
-    // The rate is never taken as typed: it is whatever links the two amounts.
-    const original = input.original
-      ? {
-          ...input.original,
-          rate: impliedRate(input.amountCents, input.original.amountCents) || input.original.rate,
-        }
-      : null;
-    return {
-      type: input.type,
-      refund: input.refund,
-      status,
-      source: origin.source,
-      date: input.date,
-      paymentDate: resolvePaymentDate({
-        date: input.date,
-        accountType: account.type,
-        requested: input.paymentDate,
-        periodDueDate:
-          account.type === 'credit_card' ? dueDateFor(refs.periods.get(account.id) ?? [], input.date) : null,
-      }),
-      amountCents: input.amountCents,
-      currency: input.currency,
-      original,
-      accountId: input.accountId,
-      toAccountId: input.toAccountId,
-      toAmountCents: input.toAmountCents,
-      categoryId: input.categoryId,
-      description: input.description,
-      note: input.note,
-      tagIds,
-      splits: input.splits,
-      items: input.items,
-      installment: origin.installment === undefined ? (previous?.installment ?? null) : origin.installment,
-      documentId: origin.documentId ?? previous?.documentId ?? null,
-      // Only a transfer pays a statement: changed into something else, it lets go of it.
-      cardPeriodId:
-        input.type === 'transfer' ? (origin.cardPeriodId ?? previous?.cardPeriodId ?? null) : null,
-      recurringId: previous?.recurringId ?? null,
-      edited: previous ? previous.edited || previous.source !== 'manual' : false,
     };
   }
 
@@ -256,14 +116,14 @@ export function createTransactionsService(repository: TransactionsRepository, de
     },
 
     async create(input: TransactionCreate): Promise<Transaction> {
-      const record = prepare(input, await loadReferences(), { source: 'manual' });
+      const record = prepareTransaction(input, await loadReferences(), { source: 'manual' });
       const [created] = await repository.insertMany([record]);
       return created!;
     },
 
     /** The transfer that pays a card statement, linked to it. */
     async createCardPayment(input: TransactionCreate, cardPeriodId: string): Promise<Transaction> {
-      const record = prepare(input, await loadReferences(), { source: 'manual', cardPeriodId });
+      const record = prepareTransaction(input, await loadReferences(), { source: 'manual', cardPeriodId });
       const [created] = await repository.insertMany([record]);
       return created!;
     },
@@ -284,7 +144,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
       const refs = await loadReferences(options);
       const records = entries.map((entry, index) => {
         try {
-          return prepare(entry.input, refs, {
+          return prepareTransaction(entry.input, refs, {
             source,
             installment: entry.installment,
             documentId: entry.documentId,
@@ -316,6 +176,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
         currency: patch.currency ?? previous.currency,
         accountId: patch.accountId ?? previous.accountId,
         categoryId: patch.categoryId === undefined ? previous.categoryId : patch.categoryId,
+        merchantId: patch.merchantId === undefined ? previous.merchantId : patch.merchantId,
         description: patch.description ?? previous.description,
         note: patch.note ?? previous.note,
         tagIds: patch.tagIds ?? previous.tagIds,
@@ -328,7 +189,7 @@ export function createTransactionsService(repository: TransactionsRepository, de
         paymentDate:
           patch.paymentDate !== undefined ? patch.paymentDate : movedInTime ? null : previous.paymentDate,
       };
-      const record = prepare(merged, await loadReferences(), { source: previous.source }, previous);
+      const record = prepareTransaction(merged, await loadReferences(), { source: previous.source }, previous);
       const updated = await repository.replace(id, record);
       if (!updated) throw new NotFoundError('Transaction', id);
       return updated;

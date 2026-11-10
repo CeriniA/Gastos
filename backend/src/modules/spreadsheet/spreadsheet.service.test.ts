@@ -310,6 +310,7 @@ test('the export splits a divided transaction into one row per category and hono
     currency: 'ARS' as const,
     accountId: bank.id,
     description: 'Coto',
+    merchantId: null,
     note: '',
     tagIds: [],
     toAccountId: null,
@@ -372,6 +373,7 @@ test('an Excel export carries the products of each purchase on a second sheet, a
     accountId: bank.id,
     categoryId: null,
     description: 'Coto',
+    merchantId: null,
     note: '',
     tagIds: [],
     splits: [],
@@ -385,8 +387,8 @@ test('an Excel export carries the products of each purchase on a second sheet, a
     refund: false,
     amountCents: 7600,
     items: [
-      { name: 'LECHE ENT 1L', amountCents: 2400, product: 'Leche', group: 'dairy', quantity: 2 },
-      { name: 'YERBA 1KG', amountCents: 5200, product: 'Yerba', group: 'pantry', quantity: null },
+      { name: 'LECHE ENT 1L', amountCents: 2400, product: 'Leche', group: 'dairy', quantity: 2, productId: null, categoryId: null },
+      { name: 'YERBA 1KG', amountCents: 5200, product: 'Yerba', group: 'pantry', quantity: null, productId: null, categoryId: null },
     ],
   });
   // A product given back counts against, as in consumption.
@@ -395,7 +397,7 @@ test('an Excel export carries the products of each purchase on a second sheet, a
     date: '2026-10-06',
     refund: true,
     amountCents: 1200,
-    items: [{ name: 'LECHE ENT 1L', amountCents: 1200, product: 'Leche', group: 'dairy', quantity: 1 }],
+    items: [{ name: 'LECHE ENT 1L', amountCents: 1200, product: 'Leche', group: 'dairy', quantity: 1, productId: null, categoryId: null }],
   });
 
   const file = await app.spreadsheet.exportTransactions({ format: 'xlsx' });

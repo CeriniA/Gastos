@@ -17,6 +17,8 @@ const yerba: TransactionItem = {
   product: 'Yerba mate',
   group: null,
   quantity: 1,
+  productId: null,
+  categoryId: null,
 };
 
 const receipt = (items: TransactionItem[]): ExtractionResult => ({
@@ -60,6 +62,7 @@ test('a product corrected and remembered in a review is how the next receipt off
           accountId: bank.id,
           categoryId: null,
           description: 'Coto',
+          merchantId: null,
           note: '',
           tagIds: [],
           splits: [],

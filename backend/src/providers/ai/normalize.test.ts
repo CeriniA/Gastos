@@ -56,9 +56,9 @@ test('a clean answer becomes a valid extraction in cents', () => {
       suggestedCategoryId: food,
       installment: null,
       items: [
-        { name: 'LECHE LS 1L', amountCents: 120000, product: 'Leche', group: 'dairy', quantity: 2 },
-        { name: 'Pan', amountCents: 85000, product: 'Pan', group: null, quantity: 0.35 },
-        { name: 'Bolsa', amountCents: 5000, product: '', group: null, quantity: null },
+        { name: 'LECHE LS 1L', amountCents: 120000, product: 'Leche', group: 'dairy', quantity: 2, productId: null, categoryId: null },
+        { name: 'Pan', amountCents: 85000, product: 'Pan', group: null, quantity: 0.35, productId: null, categoryId: null },
+        { name: 'Bolsa', amountCents: 5000, product: '', group: null, quantity: null, productId: null, categoryId: null },
       ],
       uncertainFields: [],
     },

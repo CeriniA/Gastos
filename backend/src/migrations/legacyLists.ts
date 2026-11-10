@@ -21,7 +21,7 @@ export interface LegacyTransaction {
 }
 
 export interface LegacyInput {
-  /** Expenses that are not in the trash. */
+  /** Expenses, the trash included. */
   transactions: readonly LegacyTransaction[];
   categoryRules: readonly { merchant: string; categoryId: string }[];
   productRules: readonly { name: string; product: string; group: ProductGroup | null }[];
