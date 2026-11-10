@@ -1,4 +1,4 @@
-import mongoose, { Schema, type Model, type Types } from 'mongoose';
+import mongoose, { Schema, type IndexOptions, type Model, type Types } from 'mongoose';
 import { ownerFilter } from '../context/owner';
 import { toObjectId } from './ids';
 
@@ -60,8 +60,12 @@ export function ownedModels(): Model<unknown>[] {
  * A value no two documents of the same user may share ("one account per
  * name"). Two users can each have their own.
  */
-export function uniquePerUser(schema: Schema, fields: Record<string, 1>): void {
-  schema.index({ [OWNER_FIELD]: 1, ...fields }, { unique: true });
+export function uniquePerUser(
+  schema: Schema,
+  fields: Record<string, 1>,
+  options: IndexOptions = {},
+): void {
+  schema.index({ [OWNER_FIELD]: 1, ...fields }, { ...options, unique: true });
 }
 
 /**

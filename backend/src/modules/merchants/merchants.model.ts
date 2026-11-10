@@ -1,5 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { COLLECTIONS } from '../../core/db/collections';
+import { uniqueAliasesPerUser } from '../../core/db/aliasIndex';
 import { ownedByUser, uniquePerUser } from '../../core/db/ownerPlugin';
 import type { ObjectId } from '../../core/db/ids';
 
@@ -30,8 +31,7 @@ const schema = new Schema<MerchantDoc>(
 );
 
 uniquePerUser(schema, { nameKey: 1 });
-// A known text points at one merchant only. Empty lists add nothing to the index.
-uniquePerUser(schema, { aliasKeys: 1 });
+uniqueAliasesPerUser(schema);
 schema.plugin(ownedByUser);
 
 export const MerchantModel = model<MerchantDoc>('Merchant', schema, COLLECTIONS.merchants);

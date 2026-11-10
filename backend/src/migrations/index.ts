@@ -7,6 +7,7 @@ import { accountOpeningBalance } from './2026-10-17-account-opening-balance';
 import { recurringMerchant } from './2026-10-17-recurring-merchant';
 import { recurringNameIndex } from './2026-10-17-recurring-name-index';
 import { userAiLimit } from './2026-10-17-user-ai-limit';
+import { aliasIndexes } from './2026-11-10-alias-indexes';
 import { categoryRole } from './2026-11-10-category-role';
 import { merchantsProducts } from './2026-11-10-merchants-products';
 import { transactionsLists } from './2026-11-10-transactions-lists';
@@ -31,6 +32,7 @@ export const migrations: readonly Migration[] = [
   recurringNameIndex,
   userAiLimit,
   categoryRole,
+  aliasIndexes,
   merchantsProducts,
   transactionsLists,
 ];
