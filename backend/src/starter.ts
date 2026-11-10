@@ -54,7 +54,10 @@ export async function giveStarterData(
     }
   }
   for (const kind of Object.keys(STARTER_CATEGORIES) as CategoryKind[]) {
-    for (const name of STARTER_CATEGORIES[kind]) await categories.create({ name, kind, parentId: null });
+    for (const name of STARTER_CATEGORIES[kind]) {
+      const role = name === FINANCIAL_CHARGES_CATEGORY ? 'financial_charges' : null;
+      await categories.create({ name, kind, parentId: null, role });
+    }
   }
   for (const account of STARTER_ACCOUNTS) await accounts.create(account);
 }

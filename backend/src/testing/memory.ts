@@ -342,7 +342,7 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
     },
     async create(data) {
       const { nameKey: _nameKey, ...rest } = data;
-      const row: CategoryRow = { ...rest, id: nextId(), archived: false, ...stamps };
+      const row: CategoryRow = { ...rest, role: rest.role ?? null, id: nextId(), archived: false, ...stamps };
       store.categories.push(row);
       return row;
     },

@@ -361,7 +361,7 @@ Falta: nada pendiente de programar. Queda usarla y ajustar los números de la re
 adentro). Tiene tres pruebas nuevas. Del grupo B de `AUDITORIA.md` están corregidos 3, 7, 8, 10 y 11. También se cerraron
 los huecos F1, F2 y F4 del manejo de errores (sección 9.F). Falta el resto del paso 1: errores 5 y 9, hueco F3
 (pantallas sin `useAction`), desvíos, barriles y lint. La auditoría de cumplimiento del 7/11/2026
-(`AUDITORIA.md`, sección 11) agrega los desvíos D1 a D13 a ese paso. Ya están corregidos D1, D3, D4, D5, D6, D7, D9, D13 y D14; D10 resultó un falso positivo. **El frente de calidad (paso 1) está cerrado.** Quedan el error #5 (probar el restore en Atlas), D8 (se va con el rol de categoría) y D12 (mover el client_secret). El lint ya exige tamaño, complejidad y useAction, con `lint-exceptions.js` como lista temporal.
+(`AUDITORIA.md`, sección 11) agrega los desvíos D1 a D13 a ese paso. Ya están corregidos D1, D3, D4, D5, D6, D7, D9, D13 y D14; D10 resultó un falso positivo. **El frente de calidad (paso 1) está cerrado.** D8 también está corregido: la categoría tiene `role` (`financial_charges`), con su migración. Quedan el error #5 (probar el restore en Atlas) y D12 (mover el client_secret). El lint ya exige tamaño, complejidad y useAction, con `lint-exceptions.js` como lista temporal.
 
 **Lo demás, sin implementar.** Lo acordado está en `LOGICA_NEGOCIO.md`, lo medido en `AUDITORIA.md` y el criterio de
 código en `ESTANDARES_CODIGO.md`. Orden previsto, cada paso con pruebas y su commit:

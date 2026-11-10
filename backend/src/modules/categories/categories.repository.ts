@@ -1,4 +1,4 @@
-import type { Category, CategoryKind } from '@gastos/shared';
+import type { Category, CategoryKind, CategoryRole } from '@gastos/shared';
 import { createCollectionPort } from '../../core/db/collectionPort';
 import { COLLECTIONS } from '../../core/db/collections';
 import { idString, toObjectId, toObjectIdOrNull } from '../../core/db/ids';
@@ -14,6 +14,7 @@ function toRow(doc: CategoryDoc): CategoryRow {
     name: doc.name,
     kind: doc.kind,
     parentId: idString(doc.parentId),
+    role: doc.role ?? null,
     archived: doc.archived,
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
@@ -34,7 +35,13 @@ export const categoriesRepository = {
   },
 
   async create(
-    data: { name: string; nameKey: string; kind: CategoryKind; parentId: string | null },
+    data: {
+      name: string;
+      nameKey: string;
+      kind: CategoryKind;
+      parentId: string | null;
+      role?: CategoryRole | null;
+    },
     options: WriteOptions = {},
   ): Promise<CategoryRow> {
     const [doc] = await CategoryModel.create([{ ...data, parentId: toObjectIdOrNull(data.parentId) }], {

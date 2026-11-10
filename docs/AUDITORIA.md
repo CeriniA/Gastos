@@ -209,7 +209,7 @@ conteo aproximado de líneas, no con una herramienta.
 | D5 | **Moneda escrita a mano:** `starter.ts` tiene `'ARS'` dos veces en lugar de `DEFAULT_CURRENCY` | `starter.ts:34,36` | Baja |
 | D6 | **Único sin usuario:** el índice `{ accountId, closingDate }` de los períodos de tarjeta usa `unique: true` y no `uniquePerUser`. Hoy no choca porque una cuenta es de un solo usuario | `cardPeriods.model.ts:32` | Baja |
 | D7 | **`try/catch` propio en pantallas** en vez de `useAction`: `ReviewPage` (3), `TransactionFormPage` (1, necesita los avisos por campo) y `DataPage` (su propio `run` con tonos de mensaje). Corrige la lista del hueco F3 de la sección 9 | Tres pantallas | Media |
-| D8 | **Búsqueda por nombre:** "Cargos financieros" se busca por su texto (`FINANCIAL_CHARGES_CATEGORY`, usado en `suggestions.ts`). Ya está previsto cambiarlo por un rol | `constants.ts:103` | Media (planificado) |
+| D8 | **Búsqueda por nombre:** "Cargos financieros" se busca por su texto (`FINANCIAL_CHARGES_CATEGORY`, usado en `suggestions.ts`). Ya está previsto cambiarlo por un rol | `constants.ts:103` | Media (planificado). **Corregido:** la categoría lleva `role` y `suggestions.ts` la busca por rol |
 | D9 | **Códigos HTTP sueltos** (201, 202, 400, 409, 502…) escritos en controllers y en `errors.ts`, sin constantes con nombre | Controllers y errores | Baja |
 | D10 | **`API.md` incompleto:** 14 rutas no figuran: `GET /accounts/balances`, `GET /accounts/:id/balance`, `GET /consumption/summary`, `GET /consumption/items`, `GET /documents`, `DELETE /documents/:id`, `GET /recurrings`, `GET /reports/categories`, `/accounts`, `/merchants`, `/evolution`, `GET /spreadsheet/export`, `GET /transactions/summary`, `GET /transactions/last-rate`. Pueden estar descritas en prosa; la tabla no las tiene | `docs/API.md` | Media (regla 4) |
 | D11 | **Pruebas:** `exchange-rates`, `institutions` y `tags` no tienen archivo de pruebas propio; el frontend no tiene ninguna. No se verificó ruta por ruta que la prueba de aislamiento entre usuarios las cubra | Varios | Baja |
@@ -217,7 +217,7 @@ conteo aproximado de líneas, no con una herramienta.
 | D13 | **El lint no exige** tamaño, complejidad, barriles, `useAction` ni búsqueda por nombre; solo capas y textos. Por eso D1, D2, D7 y D8 pudieron aparecer | `eslint.config.js` | Media (es el paso 1 del plan) |
 
 **Lo que cambia en el plan.** D3, D4, D5, D6, D9 y D10 son arreglos chicos que entran en el paso 1, junto con los
-barriles y el lint. D2 y D7 se atacan al tocar esos archivos. D8 desaparece con el rol de categoría. D12 lo hace la
+barriles y el lint. D2 y D7 se atacan al tocar esos archivos. D8 ya desapareció con el rol de categoría. D12 lo hace la
 persona dueña del proyecto: moverlo a una carpeta fuera del proyecto.
 
 **Estado de los desvíos chicos (7/11/2026, segunda pasada)**
@@ -257,4 +257,4 @@ Falta atrapar el error de lectura en `spreadsheet.service.ts` y devolver un `VAL
 - **Números del audit:** `24`, `60` y `1000` y los códigos HTTP dejaron de estar permitidos sueltos. Eso hizo aparecer 5 casos más, ya corregidos (`MS_PER_SECOND`, y `OBJECT_ID_LENGTH` para los 24 caracteres de un id).
 - **Error #9:** la regla de fecha futura usa `isFutureDay` de `shared/src/dates.ts`.
 - **D14 corregido:** un `.xlsx` roto al importar responde `VALIDATION` en el campo `file`, con su prueba.
-- **Quedan:** el error #5 (probar restaurar un respaldo grande en Atlas), D8 (se va con el rol de categoría) y D12 (mover el `client_secret` fuera de `docs/`).
+- **Quedan:** el error #5 (probar restaurar un respaldo grande en Atlas), y D12 (mover el `client_secret` fuera de `docs/`).

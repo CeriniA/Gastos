@@ -263,6 +263,7 @@ test("the user's rule for a merchant wins over the AI, and bad suggestions are d
 test('interest, taxes and fees are offered in "Cargos financieros", if the user has it', async () => {
   const { app, power, food } = await setup();
   const charges = await app.categories.create({
+    role: 'financial_charges',
     name: 'cargos financieros',
     kind: 'expense',
     parentId: null,

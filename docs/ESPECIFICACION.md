@@ -127,7 +127,7 @@ el renglón como interés, impuesto o comisión, la categoría de egresos "Cargo
 de la IA, que solo puede elegir entre las categorías existentes; sin categoría. Al corregir una, la app
 pregunta si ese comercio va siempre ahí y, si se acepta, crea la regla.
 
-"Cargos financieros" se busca por su nombre. Si el usuario la renombró o la archivó, no se crea ni se
+La categoría se reconoce por su rol `financial_charges`, no por el nombre. Si el usuario la archivó, no se crea ni se
 fuerza nada: queda la sugerencia de la IA.
 
 ## 6. Documentos y lectura con IA (etapa 2)

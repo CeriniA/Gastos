@@ -1,6 +1,6 @@
 import {
-  FINANCIAL_CHARGES_CATEGORY,
   applyProductRule,
+  categoryWithRole,
   nameKey,
   type Category,
   type ExtractionResult,
@@ -11,7 +11,7 @@ import {
 /**
  * Decides the category each extracted transaction is offered with:
  *   1. the user's rule for that merchant, if there is one;
- *   2. for interest, taxes and fees, the "Cargos financieros" category, if the user has it;
+ *   2. for interest, taxes and fees, the category with the role "financial_charges", if there is one;
  *   3. otherwise what the AI suggested;
  *   4. otherwise none.
  * A category is only offered if it exists, is not archived and matches the
@@ -23,10 +23,7 @@ export function applyCategorySuggestions(
   rules: ReadonlyMap<string, string>,
 ): ReviewExtraction {
   const byId = new Map(categories.map((category) => [category.id, category]));
-  const chargesKey = nameKey(FINANCIAL_CHARGES_CATEGORY);
-  const charges = categories.find(
-    (category) => category.kind === 'expense' && !category.archived && nameKey(category.name) === chargesKey,
-  );
+  const charges = categoryWithRole('financial_charges', categories);
   return {
     ...extraction,
     transactions: extraction.transactions.map(({ financialCharge, ...transaction }) => {

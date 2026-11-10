@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CATEGORY_KINDS, type CategoryKind } from '../constants';
+import { CATEGORY_KINDS, type CategoryKind, type CategoryRole } from '../constants';
 import { nameSchema, objectIdSchema } from './common';
 
 export const categoryCreateSchema = z.object({
@@ -26,6 +26,8 @@ export interface Category {
   name: string;
   kind: CategoryKind;
   parentId: string | null;
+  /** What the app recognises this category by, or null. Given by the app, never by the user. */
+  role: CategoryRole | null;
   /** 1 for a root category, up to MAX_CATEGORY_DEPTH. Computed, never stored. */
   depth: number;
   archived: boolean;

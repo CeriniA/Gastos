@@ -68,6 +68,7 @@ const category = (letter: string, kind: Category['kind'], archived = false): Cat
   name: letter,
   kind,
   parentId: null,
+  role: null,
   depth: 1,
   archived,
   createdAt: stamp,

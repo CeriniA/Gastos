@@ -96,9 +96,17 @@ export const INSTITUTION_KINDS = ['bank', 'network'] as const;
 export type InstitutionKind = (typeof INSTITUTION_KINDS)[number];
 
 /**
- * The expense category offered for interest, taxes and fees read from a
- * document. It is found by this name (the user's data, hence Spanish): if the
- * user renamed or archived it, nothing is forced and the AI's suggestion stands.
+ * What the app needs to recognise in a category without looking at its name, so the
+ * user can rename it freely. The role belongs to the category and to everything under it.
+ * Only the app gives a role (starter data, migrations); the user cannot choose one.
+ */
+export const CATEGORY_ROLES = ['financial_charges'] as const;
+export type CategoryRole = (typeof CATEGORY_ROLES)[number];
+
+/**
+ * The name the starter data gives the category with the role "financial_charges" (interest, taxes
+ * and fees read from a document are offered there). The name is the user's data, hence Spanish,
+ * and from then on theirs to change: the app finds the category by its role.
  */
 export const FINANCIAL_CHARGES_CATEGORY = 'Cargos financieros';
 

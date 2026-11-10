@@ -205,3 +205,19 @@ test('filtering transactions by a category includes its subcategories', async ()
     [1000],
   );
 });
+
+test('a category with a role keeps it when renamed and cannot be deleted or merged away', async () => {
+  const { app, food } = await tree();
+  const charges = await app.categories.create({
+    name: 'Cargos',
+    kind: 'expense',
+    parentId: null,
+    role: 'financial_charges',
+  });
+  assert.equal(charges.role, 'financial_charges');
+  assert.equal(food.role, null);
+  const renamed = await app.categories.update(charges.id, { name: 'Intereses y comisiones' });
+  assert.equal(renamed.role, 'financial_charges');
+  assert.equal(await codeOf(app.categories.remove(charges.id)), 'CONFLICT');
+  assert.equal(await codeOf(app.categories.merge(charges.id, food.id)), 'CONFLICT');
+});

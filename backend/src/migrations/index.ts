@@ -7,6 +7,7 @@ import { accountOpeningBalance } from './2026-10-17-account-opening-balance';
 import { recurringMerchant } from './2026-10-17-recurring-merchant';
 import { recurringNameIndex } from './2026-10-17-recurring-name-index';
 import { userAiLimit } from './2026-10-17-user-ai-limit';
+import { categoryRole } from './2026-11-10-category-role';
 
 /**
  * Add migrations here in order. Example:
@@ -27,4 +28,5 @@ export const migrations: readonly Migration[] = [
   accountOpeningBalance,
   recurringNameIndex,
   userAiLimit,
+  categoryRole,
 ];

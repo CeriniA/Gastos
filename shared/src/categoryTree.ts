@@ -32,6 +32,14 @@ export function subtreeHeight(id: string, nodes: readonly TreeNode[]): number {
   return 1 + Math.max(...children.map((child) => subtreeHeight(child.id, nodes)));
 }
 
+/** The category that carries the role, if it exists and is not archived. Its whole subtree has the role too. */
+export function categoryWithRole<T extends TreeNode & { role: string | null; archived: boolean }>(
+  role: string,
+  nodes: readonly T[],
+): T | undefined {
+  return nodes.find((node) => node.role === role && !node.archived);
+}
+
 export function descendantIds(id: string, nodes: readonly TreeNode[]): string[] {
   const direct = nodes.filter((node) => node.parentId === id).map((node) => node.id);
   return direct.flatMap((childId) => [childId, ...descendantIds(childId, nodes)]);
