@@ -229,6 +229,11 @@ test('each user has their own data, and none of it reaches another', async () =>
   const productRule = await runAsUser(adminId, () =>
     container.productRules.save({ name: 'YERB.PLAY 1000', product: 'Yerba', group: 'pantry' }),
   );
+  // A merchant and a product of his, each with a known text.
+  const [firstCategory] = await data<{ id: string; kind: string }[]>(await call('GET', '/categories'));
+  assert.ok(firstCategory);
+  await data(await call('POST', '/merchants', { name: 'Coto', aliases: ['COTO CICSA 0123'] }), 201);
+  await data(await call('POST', '/products', { name: 'Yerba', categoryId: firstCategory.id }), 201);
   await data(await call('POST', '/users', { username: 'Ana', password: USER_PASSWORD }), 201);
 
   token = await signIn('ana', USER_PASSWORD);
@@ -244,6 +249,8 @@ test('each user has their own data, and none of it reaches another', async () =>
   assert.equal((await data<{ total: number }>(await call('GET', '/transactions?deleted=true'))).total, 0);
   assert.deepEqual(await data<unknown[]>(await call('GET', '/tags')), []);
   assert.deepEqual(await data<unknown[]>(await call('GET', '/category-rules')), []);
+  assert.deepEqual(await data<unknown[]>(await call('GET', '/merchants')), []);
+  assert.deepEqual(await data<unknown[]>(await call('GET', '/products')), []);
   assert.deepEqual(await data<unknown[]>(await call('GET', '/documents?status=all')), []);
   const report = await data<{ currencies: unknown[] }>(
     await call('GET', '/reports/categories?month=2026-10'),

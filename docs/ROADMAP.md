@@ -363,6 +363,11 @@ los huecos F1, F2 y F4 del manejo de errores (sección 9.F). Falta el resto del 
 (pantallas sin `useAction`), desvíos, barriles y lint. La auditoría de cumplimiento del 7/11/2026
 (`AUDITORIA.md`, sección 11) agrega los desvíos D1 a D13 a ese paso. Ya están corregidos D1, D3, D4, D5, D6, D7, D9, D13 y D14; D10 resultó un falso positivo. **El frente de calidad (paso 1) está cerrado.** D8 también está corregido: la categoría tiene `role` (`financial_charges`), con su migración. Quedan el error #5 (probar el restore en Atlas) y D12 (mover el client_secret). El lint ya exige tamaño, complejidad y useAction, con `lint-exceptions.js` como lista temporal.
 
+**Paso 2, en curso (10/11/2026).** Hecho: el rol de categoría (`financial_charges`) con su migración, y los módulos
+`merchants` y `products` (listas con categoría y textos conocidos dentro de cada elemento, API en `API.md`,
+puertos de respaldo, pruebas). Falta la migración que los llena desde lo ya cargado y convierte los 16 grupos en
+categorías, con el respaldo a Drive antes del primer arranque. Todavía no hay pantallas ni movimientos que los usen.
+
 **Lo demás, sin implementar.** Lo acordado está en `LOGICA_NEGOCIO.md`, lo medido en `AUDITORIA.md` y el criterio de
 código en `ESTANDARES_CODIGO.md`. Orden previsto, cada paso con pruebas y su commit:
 

@@ -27,6 +27,8 @@ import { createProductRulesRouter } from './modules/product-rules/productRules.r
 import { createRecurringsRouter } from './modules/recurrings/recurrings.routes';
 import { createReportsRouter } from './modules/reports/reports.routes';
 import { createSpreadsheetRouter } from './modules/spreadsheet/spreadsheet.routes';
+import { createMerchantsRouter } from './modules/merchants/merchants.routes';
+import { createProductsRouter } from './modules/products/products.routes';
 import { createTagsRouter } from './modules/tags/tags.routes';
 import { createTransactionsRouter } from './modules/transactions/transactions.routes';
 import { createUsersRouter } from './modules/users/users.routes';
@@ -73,6 +75,8 @@ export function createApp(container: Container, env: Env): Express {
   api.use('/institutions', json, createInstitutionsRouter(container.institutions));
   api.use('/categories', json, createCategoriesRouter(container.categories));
   api.use('/tags', json, createTagsRouter(container.tags));
+  api.use('/merchants', json, createMerchantsRouter(container.merchants));
+  api.use('/products', json, createProductsRouter(container.products));
   api.use('/transactions', json, createTransactionsRouter(container.transactions));
   api.use('/category-rules', json, createCategoryRulesRouter(container.categoryRules));
   api.use('/product-rules', createProductRulesRouter(container.productRules));

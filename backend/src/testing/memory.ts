@@ -10,6 +10,8 @@ import {
   type DocumentDetail,
   type InstallmentPlan,
   type Institution,
+  type Merchant,
+  type Product,
   type ExchangeRate,
   type ExtractionResult,
   type Recurring,
@@ -32,6 +34,8 @@ import type {
   ProductRulesRepository,
   StoredProductRule,
 } from '../modules/product-rules/productRules.repository';
+import type { MerchantsRepository } from '../modules/merchants/merchants.repository';
+import type { ProductsRepository } from '../modules/products/products.repository';
 import type { RecurringsRepository } from '../modules/recurrings/recurrings.repository';
 import type { TagsRepository } from '../modules/tags/tags.repository';
 import { duplicateKey, installmentKey } from '../modules/transactions/duplicateKey';
@@ -57,6 +61,8 @@ interface Store {
   installmentPlans: InstallmentPlan[];
   categories: CategoryRow[];
   tags: Tag[];
+  merchants: Merchant[];
+  products: Product[];
   transactions: Transaction[];
   rules: StoredRule[];
   documents: (DocumentDetail & { sha256: string; files: StoredFile[] })[];
@@ -116,6 +122,8 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
     installmentPlans: [],
     categories: [],
     tags: [],
+    merchants: [],
+    products: [],
     transactions: [],
     rules: [],
     documents: [],
@@ -387,6 +395,66 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
     },
     async delete(id) {
       store.tags = store.tags.filter((tag) => tag.id !== id);
+    },
+  };
+
+  const merchants: MerchantsRepository = {
+    async findAll() {
+      return [...store.merchants];
+    },
+    async create(data) {
+      const { nameKey: _nameKey, aliasKeys: _aliasKeys, ...rest } = data;
+      const merchant: Merchant = { ...rest, id: nextId(), archived: false, ...stamps };
+      store.merchants.push(merchant);
+      return merchant;
+    },
+    async update(id, data) {
+      const index = store.merchants.findIndex((merchant) => merchant.id === id);
+      const current = store.merchants[index];
+      if (!current) return null;
+      const { nameKey: _nameKey, aliasKeys: _aliasKeys, ...rest } = data;
+      const next = { ...current, ...rest };
+      store.merchants[index] = next;
+      return next;
+    },
+    async moveCategory(fromId, toId) {
+      store.merchants = store.merchants.map((merchant) =>
+        merchant.defaultCategoryId === fromId ? { ...merchant, defaultCategoryId: toId } : merchant,
+      );
+    },
+    async clearCategory(categoryId) {
+      store.merchants = store.merchants.map((merchant) =>
+        merchant.defaultCategoryId === categoryId ? { ...merchant, defaultCategoryId: null } : merchant,
+      );
+    },
+  };
+
+  const products: ProductsRepository = {
+    async findAll() {
+      return [...store.products];
+    },
+    async create(data) {
+      const { nameKey: _nameKey, aliasKeys: _aliasKeys, ...rest } = data;
+      const product: Product = { ...rest, id: nextId(), archived: false, ...stamps };
+      store.products.push(product);
+      return product;
+    },
+    async update(id, data) {
+      const index = store.products.findIndex((product) => product.id === id);
+      const current = store.products[index];
+      if (!current) return null;
+      const { nameKey: _nameKey, aliasKeys: _aliasKeys, ...rest } = data;
+      const next = { ...current, ...rest };
+      store.products[index] = next;
+      return next;
+    },
+    async countByCategory(categoryId) {
+      return store.products.filter((product) => product.categoryId === categoryId).length;
+    },
+    async moveCategory(fromId, toId) {
+      store.products = store.products.map((product) =>
+        product.categoryId === fromId ? { ...product, categoryId: toId } : product,
+      );
     },
   };
 
@@ -943,6 +1011,8 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
       productRules,
       recurrings,
       tags,
+      merchants,
+      products,
       transactions,
     },
     {

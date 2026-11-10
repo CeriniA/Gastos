@@ -373,6 +373,8 @@ MongoDB. Los nombres están en inglés; ver `GLOSARIO.md`.
 | `accounts`         | Cuentas, con su saldo inicial                      |                                                                                                | 1     |
 | `categories`       | Árbol de categorías                                | `categories` (padre)                                                                           | 1     |
 | `tags`             | Etiquetas                                          |                                                                                                | 1     |
+| `merchants`        | Comercios, con su categoría habitual y sus textos conocidos | `categories`                                                                      | 5     |
+| `products`         | Productos, con su categoría y sus textos conocidos | `categories`                                                                                   | 5     |
 | `transactions`     | Movimientos, con ítems y divisiones adentro        | `accounts`, `categories`, `tags`, `documents`, `installmentPlans`, `cardPeriods`, `recurrings` | 1     |
 | `documents`        | Archivos subidos y su extracción                   | `accounts`                                                                                     | 2     |
 | `categoryRules`    | Comercio → categoría                               | `categories`                                                                                   | 2     |

@@ -10,6 +10,10 @@ import {
 import type { CategoriesRepository } from './modules/categories/categories.repository';
 import { createCategoriesService, type CategoriesService } from './modules/categories/categories.service';
 import type { CategoryRulesRepository } from './modules/category-rules/categoryRules.repository';
+import type { MerchantsRepository } from './modules/merchants/merchants.repository';
+import { createMerchantsService, type MerchantsService } from './modules/merchants/merchants.service';
+import type { ProductsRepository } from './modules/products/products.repository';
+import { createProductsService, type ProductsService } from './modules/products/products.service';
 import type { ProductRulesRepository } from './modules/product-rules/productRules.repository';
 import {
   createProductRulesService,
@@ -63,6 +67,8 @@ export interface Repositories {
   exchangeRates: ExchangeRatesRepository;
   installmentPlans: InstallmentPlansRepository;
   institutions: InstitutionsRepository;
+  merchants: MerchantsRepository;
+  products: ProductsRepository;
   productRules: ProductRulesRepository;
   recurrings: RecurringsRepository;
   tags: TagsRepository;
@@ -101,6 +107,8 @@ export interface Services {
   exchangeRates: ExchangeRatesService;
   installmentPlans: InstallmentPlansService;
   institutions: InstitutionsService;
+  merchants: MerchantsService;
+  products: ProductsService;
   productRules: ProductRulesService;
   recurrings: RecurringsService;
   reports: ReportsService;
@@ -174,6 +182,14 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
 
   const productRules: ProductRulesService = createProductRulesService(repositories.productRules);
 
+  const merchants: MerchantsService = createMerchantsService(repositories.merchants, {
+    listCategories: (options) => categories.list(options),
+  });
+
+  const products: ProductsService = createProductsService(repositories.products, {
+    listCategories: (options) => categories.list(options),
+  });
+
   const categoryRules: CategoryRulesService = createCategoryRulesService(repositories.categoryRules, {
     listCategories: (options) => categories.list(options),
   });
@@ -182,13 +198,17 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     repositories.categories,
     {
       countTransactions: transactions.countByCategory,
+      countProducts: products.countByCategory,
       moveTransactions: transactions.moveCategory,
       moveRules: async (fromId, toId, options) => {
         await categoryRules.moveCategory(fromId, toId, options);
+        await merchants.moveCategory(fromId, toId, options);
+        await products.moveCategory(fromId, toId, options);
         await recurrings.moveCategory(fromId, toId, options);
       },
       removeRules: async (categoryId, options) => {
         await categoryRules.removeByCategory(categoryId, options);
+        await merchants.clearCategory(categoryId, options);
         await recurrings.clearCategory(categoryId, options);
       },
     },
@@ -282,6 +302,8 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
     exchangeRates,
     installmentPlans,
     institutions,
+    merchants,
+    products,
     productRules,
     recurrings,
     spreadsheet,

@@ -22,9 +22,11 @@ import type { CategoriesRepository, CategoryRow } from './categories.repository'
 export interface CategoryUsage {
   /** Transactions (including the trash) that use the category directly or in a split. */
   countTransactions(categoryId: string): Promise<number>;
+  /** Products in the category: each needs one, so it cannot be deleted while any is. */
+  countProducts(categoryId: string): Promise<number>;
   moveTransactions(fromCategoryId: string, toCategoryId: string, options: WriteOptions): Promise<void>;
   /**
-   * Merchant rules and fixed items are preferences, not history: they follow
+   * Merchant rules, usual categories of merchants, products and fixed items are preferences, not history: they follow
    * a merged category; a deleted one takes its rules and leaves its fixed items without it.
    */
   moveRules(fromCategoryId: string, toCategoryId: string, options: WriteOptions): Promise<void>;
@@ -140,6 +142,8 @@ export function createCategoriesService(
       if (children > 0) throw new InUseError('Category', 'subcategories', children);
       const transactions = await usage.countTransactions(id);
       if (transactions > 0) throw new InUseError('Category', 'transactions', transactions);
+      const products = await usage.countProducts(id);
+      if (products > 0) throw new InUseError('Category', 'products', products);
       await runInTransaction(async (session) => {
         await usage.removeRules(id, { session });
         await repository.delete(id, { session });

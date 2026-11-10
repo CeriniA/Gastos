@@ -141,6 +141,25 @@ una vez por día). Los centavos que no dividen exacto van a la primera cuota, y 
 | PATCH  | `/tags/:id` | `{ name }`                          |
 | DELETE | `/tags/:id` | La quita también de sus movimientos |
 
+## Comercios y productos
+
+Listas del usuario. Cada elemento tiene sus **textos conocidos** (`aliases`): lo que un ticket o un resumen
+imprime para él. Un nombre o un texto conocido apunta a un solo elemento (`DUPLICATE` si ya es de otro, sin
+distinguir mayúsculas ni tildes). Por ahora solo se archivan: borrar y unir llegan cuando los movimientos
+apunten a ellos.
+
+| Método | Ruta            | Descripción                                                                                                  |
+| ------ | --------------- | ------------------------------------------------------------------------------------------------------------ |
+| GET    | `/merchants`     | Incluye los archivados                                                                                       |
+| POST   | `/merchants`     | `{ name, defaultCategoryId?, aliases? }`. La categoría habitual es de egresos                                |
+| PATCH  | `/merchants/:id` | Cualquiera de `name`, `defaultCategoryId` (o `null`), `aliases` (la lista completa), `archived`            |
+| GET    | `/products`      | Incluye los archivados                                                                                       |
+| POST   | `/products`      | `{ name, categoryId, aliases? }`. La categoría es de egresos                                                |
+| PATCH  | `/products/:id`  | Cualquiera de `name`, `categoryId`, `aliases` (la lista completa), `archived`                              |
+
+Una categoría con productos no se puede borrar (`IN_USE`); al unirla con otra, sus productos y la categoría
+habitual de sus comercios la siguen.
+
 ## Movimientos
 
 | Método | Ruta                                        | Descripción                                                                              |

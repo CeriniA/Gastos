@@ -278,6 +278,8 @@ El detalle está en `LOGICA_NEGOCIO.md`. Nada de esto está en el código todav�
 | Un movimiento parecido avisa y no bloquea: mismo monto y moneda con fecha a ±3 días, o la misma cuota            | El resumen trae la fecha de acreditación, que puede diferir unos días de la compra                                               |
 | Todo PDF pasa a texto y el usuario lo revisa antes de mandarlo a la IA; las imágenes de tickets van tal cual   | Lo que pasa a texto puede traer datos sensibles; una foto de un ticket no                                                        |
 | Los ingresos se diseñan después de implementar lo pactado                                                        | El usuario los usa solo para sumar plata a una cuenta y ver el saldo                                                             |
+| Los textos conocidos viven dentro de cada comercio y producto (`aliases`), con un índice único por usuario, y no en colecciones `merchantAlias` / `productAlias` | Se editan junto con el elemento, entran solos en el respaldo y no hacen falta más puertos ni vínculos. Un nombre o un texto conocido apunta a un solo elemento |
+| Comercios y productos solo se archivan por ahora; borrar y unir llegan con los movimientos por id | Todavía ningún movimiento los usa, así que no hay nada que repuntar. Una categoría con productos no se borra |
 | Estándar de código: sin archivos barril, reglas de tamaño en el lint con excepciones temporales, partir al tocar | El código tiene que seguir siendo sostenible. Detalle en `ESTANDARES_CODIGO.md`; lo medido en `AUDITORIA.md`                     |
 
 ## Abiertas

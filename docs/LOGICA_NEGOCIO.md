@@ -210,9 +210,9 @@ Cada colección con datos del usuario lleva `ownedByUser` y registra su puerto d
 | Tabla                         | Cambio                                                                              |
 | ----------------------------- | ----------------------------------------------------------------------------------- |
 | `merchant` (nueva)            | nombre, categoría habitual (opcional), archivado                                    |
-| `merchantAlias` (nueva)       | comercio, texto conocido                                                            |
+| `merchantAlias` (nueva)       | **Implementado dentro de `merchant`** (`aliases`), ver `DECISIONES.md`              |
 | `product` (nueva)             | nombre, categoría, archivado                                                        |
-| `productAlias` (nueva)        | producto, texto conocido                                                            |
+| `productAlias` (nueva)        | **Implementado dentro de `product`** (`aliases`)                                    |
 | `category`                    | se agrega `role`                                                                    |
 | `transaction`                 | sale `description` y `splits`; entra `merchantId`; cada renglón guarda `productId`  |
 | `recurring`                   | `merchantKey` pasa a `merchantId`                                                   |

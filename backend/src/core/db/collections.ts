@@ -4,6 +4,8 @@ export const COLLECTIONS = {
   institutions: 'institutions',
   categories: 'categories',
   tags: 'tags',
+  merchants: 'merchants',
+  products: 'products',
   transactions: 'transactions',
   documents: 'documents',
   installmentPlans: 'installmentPlans',

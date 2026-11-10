@@ -16,6 +16,8 @@ import { documentsPort, documentsRepository } from './modules/documents/document
 import { exchangeRatesPort, exchangeRatesRepository } from './modules/exchange-rates/exchangeRates.repository';
 import { installmentPlansPort, installmentPlansRepository } from './modules/installment-plans/installmentPlans.repository';
 import { institutionsPort, institutionsRepository } from './modules/institutions/institutions.repository';
+import { merchantsPort, merchantsRepository } from './modules/merchants/merchants.repository';
+import { productsPort, productsRepository } from './modules/products/products.repository';
 import { productRulesPort, productRulesRepository } from './modules/product-rules/productRules.repository';
 import { recurringsPort, recurringsRepository } from './modules/recurrings/recurrings.repository';
 import { tagsPort, tagsRepository } from './modules/tags/tags.repository';
@@ -38,6 +40,8 @@ const collectionPorts: readonly CollectionPort[] = [
   accountsPort,
   categoriesPort,
   tagsPort,
+  merchantsPort,
+  productsPort,
   documentsPort,
   installmentPlansPort,
   cardPeriodsPort,
@@ -73,6 +77,8 @@ export function createContainer(env: Env): Container {
       exchangeRates: exchangeRatesRepository,
       installmentPlans: installmentPlansRepository,
       institutions: institutionsRepository,
+      merchants: merchantsRepository,
+      products: productsRepository,
       productRules: productRulesRepository,
       recurrings: recurringsRepository,
       tags: tagsRepository,

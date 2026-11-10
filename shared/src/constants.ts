@@ -25,6 +25,9 @@ export const TEXT_LIMITS = {
   product: 80,
 } as const;
 
+/** Known texts one merchant or product can have; far more than anyone writes, it only stops a runaway request. */
+export const MAX_ALIASES_PER_ITEM = 50;
+
 /** Largest quantity a receipt line can carry (units, kilos or litres). */
 export const MAX_ITEM_QUANTITY = 100_000;
 

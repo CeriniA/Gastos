@@ -24,3 +24,6 @@ export * from './schemas/consumption';
 export * from './schemas/report';
 export * from './schemas/recurring';
 export * from './schemas/productRule';
+export * from './aliases';
+export * from './schemas/merchant';
+export * from './schemas/product';
