@@ -365,8 +365,10 @@ los huecos F1, F2 y F4 del manejo de errores (sección 9.F). Falta el resto del 
 
 **Paso 2, en curso (10/11/2026).** Hecho: el rol de categoría (`financial_charges`) con su migración, y los módulos
 `merchants` y `products` (listas con categoría y textos conocidos dentro de cada elemento, API en `API.md`,
-puertos de respaldo, pruebas). Falta la migración que los llena desde lo ya cargado y convierte los 16 grupos en
-categorías, con el respaldo a Drive antes del primer arranque. Todavía no hay pantallas ni movimientos que los usen.
+puertos de respaldo, pruebas). También la migración `2026-11-10-merchants-products`, que los llena desde lo ya cargado y convierte en
+categorías los grupos de producto en uso (`migrations/legacyLists.ts` decide qué crear y tiene sus pruebas; no toca
+los movimientos). **Antes de desplegar, hacer un respaldo a Drive desde la app** (Datos): la migración corre sola
+en el primer arranque. Todavía no hay pantallas ni movimientos que usen las listas.
 
 **Lo demás, sin implementar.** Lo acordado está en `LOGICA_NEGOCIO.md`, lo medido en `AUDITORIA.md` y el criterio de
 código en `ESTANDARES_CODIGO.md`. Orden previsto, cada paso con pruebas y su commit:

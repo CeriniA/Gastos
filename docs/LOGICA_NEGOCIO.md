@@ -222,8 +222,8 @@ Cada colección con datos del usuario lleva `ownedByUser` y registra su puerto d
 Los renglones siguen **dentro** del movimiento: nunca se consultan sin su ticket.
 Los vínculos los verifica el backend antes de escribir. Unir, archivar y todo lo que toca más de una
 colección corre dentro de una transacción de base de datos.
-Hace falta una **migración** que crea comercios y productos desde lo ya cargado (juntando los que solo
-difieren en tildes o mayúsculas), convierte los 16 grupos en categorías y reapunta los movimientos.
+La **migración** (`2026-11-10-merchants-products`, hecha) llena las listas sin tocar los movimientos; reapuntarlos es el paso 3. Crea comercios y productos desde lo ya cargado (juntando los que solo
+difieren en tildes o mayúsculas) y convierte en categorías los grupos de producto que se usan (no los 16).
 
 ## 12. Lo que queda abierto
 
