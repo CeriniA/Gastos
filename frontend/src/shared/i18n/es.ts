@@ -150,6 +150,7 @@ export const es = {
     previousMonth: 'Mes anterior',
     nextMonth: 'Mes siguiente',
     noDescription: 'Sin descripción',
+    noMerchant: 'Sin comercio',
     noCategory: 'Sin categoría',
     transferTo: (account: string) => `Transferencia interna a ${account}`,
     installment: (number: number, total: number) => `Cuota ${number} de ${total}`,
@@ -176,6 +177,7 @@ export const es = {
       account: 'Cuenta',
       toAccount: 'Cuenta destino',
       toAmount: 'Monto que llega a destino',
+      merchant: 'Comercio',
       category: 'Categoría',
       paymentDate: 'Fecha de pago',
       paymentDateHint:
@@ -305,6 +307,31 @@ export const es = {
     newTitle: 'Nueva etiqueta',
     deleteConfirm: (name: string) =>
       `La etiqueta "${name}" se borra y se quita de todos sus movimientos. Los movimientos no se borran.`,
+  },
+
+  lists: {
+    merchants: {
+      title: 'Comercios',
+      text: 'Los lugares donde pagás. Con la categoría habitual, al elegir el comercio en un gasto la app te la propone. Los textos conocidos son lo que los tickets y resúmenes imprimen para ese comercio.',
+      empty: 'Todavía no hay comercios.',
+      newTitle: 'Nuevo comercio',
+      name: 'Nombre',
+      category: 'Categoría habitual',
+      noCategory: 'Sin categoría habitual',
+      aliases: 'Textos conocidos',
+      aliasesHint: 'Uno por línea, tal como los imprime el ticket o el resumen.',
+    },
+    products: {
+      title: 'Productos',
+      text: 'Lo que comprás. Cada producto va a una categoría: en un ticket, cada renglón suma a la categoría de su producto. Los textos conocidos son lo que el ticket imprime para ese producto.',
+      empty: 'Todavía no hay productos.',
+      newTitle: 'Nuevo producto',
+      name: 'Nombre',
+      category: 'Categoría',
+      noCategory: 'Sin categoría',
+      aliases: 'Textos conocidos',
+      aliasesHint: 'Uno por línea, tal como los imprime el ticket.',
+    },
   },
 
   trash: {
@@ -687,7 +714,10 @@ export const es = {
     addLine: 'Agregar producto',
     remove: 'Quitar este producto',
     product: 'Producto',
-    group: 'Grupo',
+    listedProduct: 'Producto de la lista',
+    noListedProduct: 'Sin producto de la lista',
+    category: 'Categoría de este producto',
+    sameCategory: 'En la categoría del movimiento',
     quantity: 'Cantidad',
     quantityShort: 'Cant.',
     amount: 'Monto',
@@ -713,6 +743,8 @@ export const es = {
     cards: 'Tarjetas: cierres y vencimientos',
     institutions: 'Bancos y tarjetas',
     tags: 'Etiquetas',
+    merchants: 'Comercios',
+    products: 'Productos',
     trash: 'Papelera',
     pending: 'Pendientes de revisión',
     data: 'Respaldo, importación y exportación',

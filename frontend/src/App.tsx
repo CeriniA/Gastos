@@ -13,6 +13,8 @@ import { StatementPage } from './features/documents/StatementPage';
 import { HomePage } from './features/home/HomePage';
 import { InstitutionsPage } from './features/institutions/InstitutionsPage';
 import { LegalPage } from './features/legal/LegalPage';
+import { MerchantsPage } from './features/lists/MerchantsPage';
+import { ProductsPage } from './features/lists/ProductsPage';
 import { MorePage } from './features/more/MorePage';
 import { RatesPage } from './features/rates/RatesPage';
 import { RecurringsPage } from './features/recurrings/RecurringsPage';
@@ -60,6 +62,8 @@ function SignedIn() {
         <Route path="mas/categorias" element={<CategoriesPage />} />
         <Route path="mas/tarjetas" element={<CardsPage />} />
         <Route path="mas/bancos" element={<InstitutionsPage />} />
+        <Route path="mas/comercios" element={<MerchantsPage />} />
+        <Route path="mas/productos" element={<ProductsPage />} />
         <Route path="mas/etiquetas" element={<TagsPage />} />
         <Route path="mas/papelera" element={<TrashPage />} />
         <Route path="mas/datos" element={<DataPage />} />

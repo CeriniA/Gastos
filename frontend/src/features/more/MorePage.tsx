@@ -9,6 +9,8 @@ import {
   KeyRound,
   Landmark,
   Repeat,
+  ShoppingBasket,
+  Store,
   Tags,
   Trash,
   Users,
@@ -50,6 +52,8 @@ const GROUPS: readonly { title: string; links: readonly MoreLink[] }[] = [
     title: es.more.groups.organize,
     links: [
       { to: '/mas/categorias', label: es.more.categories, icon: FolderTree, tone: 'peach' },
+      { to: '/mas/comercios', label: es.more.merchants, icon: Store, tone: 'amber' },
+      { to: '/mas/productos', label: es.more.products, icon: ShoppingBasket, tone: 'green' },
       { to: '/mas/etiquetas', label: es.more.tags, icon: Tags, tone: 'pink' },
       { to: '/mas/bancos', label: es.more.institutions, icon: Landmark, tone: 'blue' },
       { to: '/mas/recuerda', label: es.more.remembered, icon: Brain, tone: 'violet' },

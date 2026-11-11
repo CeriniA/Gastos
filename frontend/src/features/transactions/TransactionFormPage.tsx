@@ -31,6 +31,7 @@ import { useAccounts } from '../accounts/api';
 import { MarkFixed } from '../recurrings/MarkFixed';
 import { useCategories } from '../categories/api';
 import { optionLabel, orderedTree } from '../categories/tree';
+import { useMerchants, useProducts } from '../lists/api';
 import { useCreateTag, useTags } from '../tags/api';
 import { ItemsEditor, fromItemDrafts, toItemDrafts, type ItemDraft } from './ItemsEditor';
 import { useTransaction, useTransactionMutations } from './api';
@@ -45,6 +46,7 @@ interface FormValues {
   toAccountId: string;
   toAmount: string;
   categoryId: string;
+  merchantId: string;
   paymentDate: string;
   description: string;
   note: string;
@@ -68,6 +70,7 @@ function toFormValues(transaction: Transaction | undefined): FormValues {
     toAccountId: transaction?.toAccountId ?? '',
     toAmount: transaction?.toAmountCents ? centsToDecimalString(transaction.toAmountCents) : '',
     categoryId: transaction?.categoryId ?? '',
+    merchantId: transaction?.merchantId ?? '',
     paymentDate: transaction && transaction.paymentDate !== transaction.date ? transaction.paymentDate : '',
     description: transaction?.description ?? '',
     note: transaction?.note ?? '',
@@ -82,6 +85,8 @@ export function TransactionFormPage() {
   const accounts = useAccounts();
   const categories = useCategories();
   const tags = useTags();
+  const merchants = useMerchants();
+  const products = useProducts();
   const createTag = useCreateTag();
   const { create, update, remove, createInstallments, removePlan } = useTransactionMutations();
   /** How many installments a new card purchase is paid in. 1 is a single payment. */
@@ -131,6 +136,12 @@ export function TransactionFormPage() {
   const original = existing.data?.original ?? null;
   const totalCents = parseAmountToCents(amountText) ?? 0;
 
+  /** Choosing a merchant proposes its usual category, only when none was chosen yet. */
+  const suggestCategory = (event: { target: { value: string } }) => {
+    const usual = (merchants.data ?? []).find((merchant) => merchant.id === event.target.value)?.defaultCategoryId;
+    if (usual && !form.getValues('categoryId')) form.setValue('categoryId', usual);
+  };
+
   const showIssues = (issues: readonly { path: string; message: string }[]) => {
     for (const issue of issues) {
       const key = issue.path.split('.')[0] ?? '';
@@ -173,6 +184,8 @@ export function TransactionFormPage() {
       currency: account.currency,
       accountId: input.accountId,
       categoryId: input.type === 'transfer' ? null : input.categoryId || null,
+      // Only an expense has a merchant.
+      merchantId: input.type === 'expense' ? input.merchantId || null : null,
       description: input.description,
       note: input.note,
       tagIds: input.tagIds,
@@ -315,6 +328,21 @@ export function TransactionFormPage() {
                   ))}
                 </Select>
               </Field>
+
+              {type === 'expense' ? (
+                <Field label={es.transactions.fields.merchant} error={errors.merchantId?.message}>
+                  <Select {...form.register('merchantId', { onChange: suggestCategory })}>
+                    <option value="">{es.transactions.noMerchant}</option>
+                    {(merchants.data ?? [])
+                      .filter((merchant) => !merchant.archived || merchant.id === existing.data?.merchantId)
+                      .map((merchant) => (
+                        <option key={merchant.id} value={merchant.id}>
+                          {merchant.name}
+                        </option>
+                      ))}
+                  </Select>
+                </Field>
+              ) : null}
 
               {type === 'transfer' ? (
                 <Field label={es.transactions.fields.toAccount} error={errors.toAccountId?.message}>
@@ -479,6 +507,8 @@ export function TransactionFormPage() {
                   currency={account?.currency ?? existing.data?.currency ?? DEFAULT_CURRENCY}
                   totalCents={totalCents > 0 ? totalCents : null}
                   error={itemsError}
+                  products={products.data ?? []}
+                  categories={categoryOptions}
                 />
               )}
 

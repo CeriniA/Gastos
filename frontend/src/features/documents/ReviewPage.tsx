@@ -31,6 +31,7 @@ import { es } from '../../shared/i18n/es';
 import { Button, Card, Field, Loading, Notice, PageTitle, Select, TextInput } from '../../shared/ui/ui';
 import { useAccounts } from '../accounts/api';
 import { useCategories } from '../categories/api';
+import { useProducts } from '../lists/api';
 import { optionLabel, orderedTree } from '../categories/tree';
 import { useLastRate, useReferenceRate } from '../transactions/api';
 import { ItemsEditor, fromItemDrafts, toItemDrafts, type ItemDraft } from '../transactions/ItemsEditor';
@@ -198,6 +199,7 @@ function TransactionCard({
   duplicate: DuplicateHint;
   onChange: (changes: Partial<Draft>) => void;
 }) {
+  const products = useProducts();
   const account = accounts.find((candidate) => candidate.id === draft.accountId);
   const destination = accounts.find((candidate) => candidate.id === draft.toAccountId);
   const isTransfer = draft.type === 'transfer';
@@ -511,6 +513,8 @@ function TransactionCard({
               currency={itemCurrency}
               totalCents={foreign ? foreign.amountCents : parseAmountToCents(draft.amount)}
               error={errors.items}
+              products={products.data ?? []}
+              categories={categoryOptions}
             />
           )}
         </div>
