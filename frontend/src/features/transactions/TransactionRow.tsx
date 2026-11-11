@@ -10,10 +10,24 @@ import {
 } from '@gastos/shared';
 import { es } from '../../shared/i18n/es';
 import { LookBadge, transactionLook } from '../../shared/ui/categoryLook';
+import { useMerchants } from '../lists/api';
 
 const SIGN = { income: '+', expense: '−', transfer: '' } as const;
 /** Money in stands out in green; spending stays calm, in the text colour. */
 const TONE = { income: 'text-income', expense: 'text-ink', transfer: 'text-muted' } as const;
+
+/** What a row is called: what the user wrote, the merchant, where a transfer went, or the category. */
+function transactionTitle(
+  transaction: Pick<Transaction, 'description' | 'type'>,
+  merchantName: string | undefined,
+  destinationName: string,
+  categoryName: string | undefined,
+): string {
+  if (transaction.description) return transaction.description;
+  if (merchantName) return merchantName;
+  if (transaction.type === 'transfer') return es.transactions.transferTo(destinationName);
+  return categoryName ?? es.transactions.noDescription;
+}
 
 export function TransactionRow({
   transaction,
@@ -26,12 +40,11 @@ export function TransactionRow({
 }) {
   const accountName = (id: string | null) => accounts.find((account) => account.id === id)?.name ?? '';
   const category = categories.find((candidate) => candidate.id === transaction.categoryId);
+  // The query is shared by every row, so the list is fetched once.
+  const merchants = useMerchants();
+  const merchantName = merchants.data?.find((merchant) => merchant.id === transaction.merchantId)?.name;
 
-  const title =
-    transaction.description ||
-    (transaction.type === 'transfer'
-      ? es.transactions.transferTo(accountName(transaction.toAccountId))
-      : (category?.name ?? es.transactions.noDescription));
+  const title = transactionTitle(transaction, merchantName, accountName(transaction.toAccountId), category?.name);
 
   // The category first: it is what tells movements apart, and it should not be the part cut off.
   const details = [

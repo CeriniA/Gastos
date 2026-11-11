@@ -126,11 +126,16 @@ export function TransactionFormPage() {
   const planId = existing.data?.installment?.planId ?? null;
   const canSplitInInstallments =
     !id && type === 'expense' && !refund && isCard;
+  /** An archived category stays on what already uses it, in the transaction or in one of its lines. */
+  const usedCategoryIds = [
+    existing.data?.categoryId,
+    ...(existing.data?.items.map((item) => item.categoryId) ?? []),
+  ];
   const categoryOptions =
     type === 'transfer'
       ? []
       : orderedTree(categories.data ?? [], type).filter(
-          (category) => !category.archived || category.id === existing.data?.categoryId,
+          (category) => !category.archived || usedCategoryIds.includes(category.id),
         );
 
   const original = existing.data?.original ?? null;
