@@ -66,7 +66,7 @@ Cuánto toca cada cambio del documento de lógica:
 | Sacar `description` y pasar a comercio por id | 163 apariciones en 53 archivos (pantallas, informes, planilla, IA, pruebas, demos) | **Grande** |
 | `recurring` e `installmentPlan` por `merchantId` | `merchantKey` o `merchant:` en 91 lugares de 26 archivos | Grande |
 | Reemplazar `categoryRule` y `productRule` por textos conocidos | Son dos módulos completos (modelo, repositorio, service, controller, rutas, pruebas) | Grande |
-| Sacar las divisiones manuales | 52 apariciones en 9 archivos del backend y 20 en 4 de la pantalla (15 en el formulario) | Medio, más una migración |
+| Sacar las divisiones manuales (hecho el 10/11/2026) | 52 apariciones en 9 archivos del backend y 20 en 4 de la pantalla (15 en el formulario) | Medio, más una migración |
 | Productos solo en egresos | El esquema solo prohíbe productos en transferencias (`transaction.ts:132`) | Chico |
 | Renglón sin producto con categoría propia | No existe | Chico |
 | Rol de categoría | No existe; hoy se busca por nombre | Chico |

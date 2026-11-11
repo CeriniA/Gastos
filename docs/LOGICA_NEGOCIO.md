@@ -1,6 +1,6 @@
 # Lógica del negocio
 
-Estado: **borrador acordado entre el 4 y el 5 de noviembre de 2026. Nada de esto está implementado.**
+Estado: **acordado entre el 4 y el 5 de noviembre de 2026; se implementa por pasos (10/11/2026).** Ya está hecho: el rol de categoría, las listas de comercios y productos con sus pantallas, los ids en el movimiento, los renglones en lugar de las divisiones y el informe por categoría y por comercio. Falta: consumo y repeticiones desde las listas, quitar `description`, borrar y unir, tarjetas con recordatorio, aviso de parecido, PDF y los ingresos. El detalle de cada paso está en `ROADMAP.md`.
 Describe cómo debería funcionar la app. Lo que la app hace hoy está en `ESPECIFICACION.md`; cuando un
 punto de acá se implemente, se pasa a esa especificación y a `DECISIONES.md`, y se marca como hecho.
 

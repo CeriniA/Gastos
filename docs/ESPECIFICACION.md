@@ -121,6 +121,11 @@ arranca con una lista inicial (`starter.ts`) y desde ahí las edita.
 - Al unir dos categorías, los movimientos y los renglones que estaban en la origen pasan a la destino.
 - Una categoría archivada deja de ofrecerse, pero los movimientos viejos la conservan.
 
+**Comercios y productos**: dos listas del usuario (Más → Comercios, Más → Productos). Un comercio tiene una
+categoría habitual opcional; un producto, una categoría obligatoria. Los dos guardan **textos conocidos** (lo que
+el ticket o el resumen imprime) y se archivan, no se borran. Un gasto elige su comercio y cada renglón su
+producto o su categoría (`LOGICA_NEGOCIO.md`).
+
 **Etiquetas**: marcas libres que cruzan categorías ("Vacaciones enero"). Un movimiento puede tener
 varias o ninguna.
 
