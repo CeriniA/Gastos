@@ -109,3 +109,33 @@ test('merging a category moves the categories of the lines too, and a category u
   await app.categories.merge(pharmacy.id, target.id);
   assert.equal((await app.transactions.get(created.id)).items[0]?.categoryId, target.id);
 });
+
+test('a merchant nobody paid at can be deleted; one in use cannot', async () => {
+  const { app, coto, expense } = await setup();
+  const unused = await app.merchants.create({ name: 'Kiosco', defaultCategoryId: null, aliases: [] });
+  await app.merchants.remove(unused.id);
+  assert.equal((await app.merchants.list()).length, 1);
+  await app.transactions.create({ ...expense, merchantId: coto.id });
+  assert.equal(await codeOf(app.merchants.remove(coto.id)), 'IN_USE');
+});
+
+test('merging merchants moves what was paid there and keeps the names as known texts', async () => {
+  const { app, coto, expense } = await setup();
+  const other = await app.merchants.create({ name: 'Coto Ciudadela', defaultCategoryId: null, aliases: ['COTO CIUD'] });
+  const paid = await app.transactions.create({ ...expense, merchantId: other.id });
+  const merged = await app.merchants.merge(other.id, coto.id);
+  assert.deepEqual(merged.aliases, ['Coto Ciudadela', 'COTO CIUD']);
+  assert.equal((await app.transactions.get(paid.id)).merchantId, coto.id);
+  assert.deepEqual((await app.merchants.list()).map((merchant) => merchant.id), [coto.id]);
+  assert.equal(await codeOf(app.merchants.merge(coto.id, coto.id)), 'VALIDATION');
+});
+
+test('merging products moves the lines, which then count in the category of the other', async () => {
+  const { app, pharmacy, yerba, expense, line } = await setup();
+  const aspirin = await app.products.create({ name: 'Aspirina', categoryId: pharmacy.id, aliases: [] });
+  const created = await app.transactions.create({ ...expense, items: [line({ productId: aspirin.id })] });
+  assert.equal(await codeOf(app.products.remove(aspirin.id)), 'IN_USE');
+  await app.products.merge(aspirin.id, yerba.id);
+  assert.equal((await app.transactions.get(created.id)).items[0]?.productId, yerba.id);
+  assert.deepEqual((await app.products.list()).map((product) => product.id), [yerba.id]);
+});

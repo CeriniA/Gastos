@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 import {
   categoryCreateSchema,
-  categoryMergeSchema,
+  mergeSchema,
   categoryUpdateSchema,
   idParamsSchema,
 } from '@gastos/shared';
@@ -26,7 +26,7 @@ export function createCategoriesController(service: CategoriesService) {
   };
   const merge: RequestHandler = async (req, res) => {
     const { id } = parse(idParamsSchema, req.params);
-    ok(res, await service.merge(id, parse(categoryMergeSchema, req.body).targetId));
+    ok(res, await service.merge(id, parse(mergeSchema, req.body).targetId));
   };
   return asUser({ list, create, update, remove, merge });
 }

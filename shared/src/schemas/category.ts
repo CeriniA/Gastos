@@ -19,7 +19,6 @@ export const categoryUpdateSchema = z
   .refine((value) => Object.keys(value).length > 0, 'Nothing to update');
 export type CategoryUpdate = z.infer<typeof categoryUpdateSchema>;
 
-export const categoryMergeSchema = z.object({ targetId: objectIdSchema });
 
 export interface Category {
   id: string;

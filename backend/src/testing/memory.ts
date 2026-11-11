@@ -419,6 +419,9 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
       store.merchants[index] = next;
       return next;
     },
+    async delete(id) {
+      store.merchants = store.merchants.filter((merchant) => merchant.id !== id);
+    },
     async moveCategory(fromId, toId) {
       store.merchants = store.merchants.map((merchant) =>
         merchant.defaultCategoryId === fromId ? { ...merchant, defaultCategoryId: toId } : merchant,
@@ -449,6 +452,9 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
       const next = { ...current, ...rest };
       store.products[index] = next;
       return next;
+    },
+    async delete(id) {
+      store.products = store.products.filter((product) => product.id !== id);
     },
     async countByCategory(categoryId) {
       return store.products.filter((product) => product.categoryId === categoryId).length;
@@ -559,6 +565,25 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
         (transaction) =>
           usesCategory(transaction, [categoryId]) || transaction.items.some((item) => item.categoryId === categoryId),
       ).length;
+    },
+    async countByMerchant(merchantId) {
+      return store.transactions.filter((transaction) => transaction.merchantId === merchantId).length;
+    },
+    async moveMerchant(fromId, toId) {
+      store.transactions = store.transactions.map((transaction) =>
+        transaction.merchantId === fromId ? { ...transaction, merchantId: toId } : transaction,
+      );
+    },
+    async countByProduct(productId) {
+      return store.transactions.filter((transaction) =>
+        transaction.items.some((item) => item.productId === productId),
+      ).length;
+    },
+    async moveProduct(fromId, toId) {
+      store.transactions = store.transactions.map((transaction) => ({
+        ...transaction,
+        items: transaction.items.map((item) => (item.productId === fromId ? { ...item, productId: toId } : item)),
+      }));
     },
     async moveCategory(fromId, toId) {
       store.transactions = store.transactions.map((transaction) => ({

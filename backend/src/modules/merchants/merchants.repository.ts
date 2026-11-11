@@ -58,6 +58,10 @@ export const merchantsRepository = {
     return doc ? toMerchant(doc) : null;
   },
 
+  async delete(id: string, options: WriteOptions = {}): Promise<void> {
+    await MerchantModel.deleteOne({ _id: toObjectId(id) }, { session: options.session });
+  },
+
   /** A category merged into another: the merchants that suggested it now suggest the other. */
   async moveCategory(fromId: string, toId: string, options: WriteOptions = {}): Promise<void> {
     await MerchantModel.updateMany(

@@ -250,6 +250,31 @@ export const transactionsRepository = {
     });
   },
 
+  countByMerchant(merchantId: string): Promise<number> {
+    return TransactionModel.countDocuments({ merchantId: toObjectId(merchantId) });
+  },
+
+  async moveMerchant(fromId: string, toId: string, options: WriteOptions = {}): Promise<void> {
+    await TransactionModel.updateMany(
+      { merchantId: toObjectId(fromId) },
+      { $set: { merchantId: toObjectId(toId) } },
+      { session: options.session },
+    );
+  },
+
+  countByProduct(productId: string): Promise<number> {
+    return TransactionModel.countDocuments({ 'items.productId': toObjectId(productId) });
+  },
+
+  async moveProduct(fromId: string, toId: string, options: WriteOptions = {}): Promise<void> {
+    const from = toObjectId(fromId);
+    await TransactionModel.updateMany(
+      { 'items.productId': from },
+      { $set: { 'items.$[item].productId': toObjectId(toId) } },
+      { arrayFilters: [{ 'item.productId': from }], session: options.session },
+    );
+  },
+
   async moveCategory(fromId: string, toId: string, options: WriteOptions = {}): Promise<void> {
     const from = toObjectId(fromId);
     const to = toObjectId(toId);

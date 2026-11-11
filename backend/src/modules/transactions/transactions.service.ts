@@ -322,6 +322,14 @@ export function createTransactionsService(repository: TransactionsRepository, de
     /** Everything filed under one category goes to another (they are being merged). */
     moveCategory: (fromId: string, toId: string, options: WriteOptions) =>
       repository.moveCategory(fromId, toId, options),
+    countByMerchant: (merchantId: string) => repository.countByMerchant(merchantId),
+    /** Everything paid at one merchant goes to another (they are being merged). */
+    moveMerchant: (fromId: string, toId: string, options: WriteOptions) =>
+      repository.moveMerchant(fromId, toId, options),
+    countByProduct: (productId: string) => repository.countByProduct(productId),
+    /** Every line of one product goes to another (they are being merged). */
+    moveProduct: (fromId: string, toId: string, options: WriteOptions) =>
+      repository.moveProduct(fromId, toId, options),
     removeTag: (tagId: string, options: WriteOptions) => repository.pullTag(tagId, options),
     /**
      * For each candidate, whether a stored transaction has the same day and

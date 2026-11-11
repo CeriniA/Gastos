@@ -310,6 +310,7 @@ export const es = {
   },
 
   lists: {
+    merge: 'Unir',
     merchants: {
       title: 'Comercios',
       text: 'Los lugares donde pagás. Con la categoría habitual, al elegir el comercio en un gasto la app te la propone. Los textos conocidos son lo que los tickets y resúmenes imprimen para ese comercio.',
@@ -320,6 +321,10 @@ export const es = {
       noCategory: 'Sin categoría habitual',
       aliases: 'Textos conocidos',
       aliasesHint: 'Uno por línea, tal como los imprime el ticket o el resumen.',
+      mergeText: 'Todo lo que se pagó en este comercio pasa al que elijas, que además aprende su nombre y sus textos conocidos. Este se borra.',
+      mergeConfirm: (source: string, target: string) =>
+        `Todo lo pagado en "${source}" va a pasar a "${target}" y "${source}" se borra. No se puede deshacer.`,
+      deleteConfirm: (name: string) => `¿Borrar el comercio "${name}"? Si ya tiene gastos, no se puede: archivalo o unilo.`,
     },
     products: {
       title: 'Productos',
@@ -331,6 +336,10 @@ export const es = {
       noCategory: 'Sin categoría',
       aliases: 'Textos conocidos',
       aliasesHint: 'Uno por línea, tal como los imprime el ticket.',
+      mergeText: 'Todos los renglones de este producto pasan al que elijas, que además aprende su nombre y sus textos conocidos. Este se borra.',
+      mergeConfirm: (source: string, target: string) =>
+        `Todos los renglones de "${source}" van a pasar a "${target}" y "${source}" se borra. No se puede deshacer.`,
+      deleteConfirm: (name: string) => `¿Borrar el producto "${name}"? Si ya está en algún gasto, no se puede: archivalo o unilo.`,
     },
   },
 

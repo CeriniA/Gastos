@@ -123,7 +123,7 @@ arranca con una lista inicial (`starter.ts`) y desde ahí las edita.
 
 **Comercios y productos**: dos listas del usuario (Más → Comercios, Más → Productos). Un comercio tiene una
 categoría habitual opcional; un producto, una categoría obligatoria. Los dos guardan **textos conocidos** (lo que
-el ticket o el resumen imprime) y se archivan, no se borran. Un gasto elige su comercio y cada renglón su
+el ticket o el resumen imprime) y se archivan; si nadie los usa se pueden borrar, y si no, unir con otro (lo de uno pasa al otro, que aprende su nombre y sus textos). Un gasto elige su comercio y cada renglón su
 producto o su categoría (`LOGICA_NEGOCIO.md`).
 
 **Etiquetas**: marcas libres que cruzan categorías ("Vacaciones enero"). Un movimiento puede tener

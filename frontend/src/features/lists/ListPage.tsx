@@ -34,6 +34,9 @@ export interface ListTexts {
   noCategory: string;
   aliases: string;
   aliasesHint: string;
+  mergeText: string;
+  mergeConfirm: (source: string, target: string) => string;
+  deleteConfirm: (name: string) => string;
 }
 
 interface ListPageProps {
@@ -47,6 +50,8 @@ interface ListPageProps {
   validate: (draft: ListDraft) => string | null;
   create: (draft: ListDraft) => Promise<unknown>;
   update: (id: string, changes: Partial<ListDraft> & { archived?: boolean }) => Promise<unknown>;
+  remove: (id: string) => Promise<unknown>;
+  merge: (id: string, targetId: string) => Promise<unknown>;
 }
 
 const aliasesToText = (aliases: readonly string[]) => aliases.join('\n');
@@ -100,7 +105,11 @@ function EntryForm({
   return (
     <form onSubmit={(event) => void submit(event)} className="space-y-3" noValidate>
       <Field label={texts.name}>
-        <TextInput value={name} maxLength={TEXT_LIMITS.name} onChange={(event) => setName(event.target.value)} />
+        <TextInput
+          value={name}
+          maxLength={TEXT_LIMITS.name}
+          onChange={(event) => setName(event.target.value)}
+        />
       </Field>
       <Field label={texts.category}>
         <Select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
@@ -135,15 +144,19 @@ function EntryRow({
   busy,
   onEdit,
   onToggleArchived,
+  onMerge,
+  onDelete,
 }: {
   entry: ListEntry;
   detail: string;
   busy: boolean;
   onEdit: () => void;
   onToggleArchived: () => void;
+  onMerge: () => void;
+  onDelete: () => void;
 }) {
   return (
-    <li className="flex items-center justify-between gap-3 py-2 pl-3 pr-2">
+    <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2 pl-3 pr-2">
       <span className="min-w-0">
         <span className={`block break-words font-medium ${entry.archived ? 'text-muted' : ''}`}>
           {entry.name}
@@ -151,23 +164,156 @@ function EntryRow({
         </span>
         <span className="block truncate text-sm text-muted">{detail}</span>
       </span>
-      <span className="flex shrink-0 gap-1">
+      <span className="flex shrink-0 flex-wrap gap-1">
         <Button variant="quiet" onClick={onEdit}>
           {es.common.edit}
         </Button>
         <Button variant="quiet" disabled={busy} onClick={onToggleArchived}>
           {entry.archived ? es.common.unarchive : es.common.archive}
         </Button>
+        <Button variant="quiet" disabled={busy} onClick={onMerge}>
+          {es.lists.merge}
+        </Button>
+        <Button variant="quietDanger" disabled={busy} onClick={onDelete}>
+          {es.common.delete}
+        </Button>
       </span>
     </li>
   );
 }
 
-/** A merchants or products list: rows to edit or archive, and a form to add one. */
-export function ListPage({ texts, categoryRequired, query, busy, validate, create, update }: ListPageProps) {
+/** Chooses the item an entry is merged into, after asking. */
+function MergePanel({
+  texts,
+  entry,
+  others,
+  busy,
+  onMerge,
+}: {
+  texts: ListTexts;
+  entry: ListEntry;
+  others: readonly ListEntry[];
+  busy: boolean;
+  onMerge: (targetId: string) => void;
+}) {
+  const [targetId, setTargetId] = useState('');
+  const target = others.find((candidate) => candidate.id === targetId);
+  return (
+    <li className="space-y-2 bg-canvas p-3">
+      <p className="text-sm text-muted">{texts.mergeText}</p>
+      <Select
+        aria-label={es.lists.merge}
+        value={targetId}
+        onChange={(event) => setTargetId(event.target.value)}
+      >
+        <option value="" />
+        {others.map((candidate) => (
+          <option key={candidate.id} value={candidate.id}>
+            {candidate.name}
+          </option>
+        ))}
+      </Select>
+      <Button
+        variant="secondary"
+        disabled={busy || !target}
+        onClick={() => {
+          if (target && window.confirm(texts.mergeConfirm(entry.name, target.name))) onMerge(target.id);
+        }}
+      >
+        {es.lists.merge}
+      </Button>
+    </li>
+  );
+}
+
+/** What a row can be doing besides showing itself. */
+type RowMode = 'view' | 'edit' | 'merge';
+
+/** One entry: its row, and the form or the merge panel when the user opens one. */
+function EntryItem({
+  texts,
+  categoryRequired,
+  entry,
+  others,
+  categories,
+  detail,
+  busy,
+  save,
+  actions,
+}: {
+  texts: ListTexts;
+  categoryRequired: boolean;
+  entry: ListEntry;
+  others: readonly ListEntry[];
+  categories: readonly Category[];
+  detail: string;
+  busy: boolean;
+  /** Validates a draft and runs the action; resolves true when it was saved. */
+  save: (action: (draft: ListDraft) => Promise<unknown>) => (draft: ListDraft) => Promise<boolean>;
+  actions: Pick<ListPageProps, 'update' | 'remove' | 'merge'> & {
+    run: (work: () => Promise<unknown>) => void;
+  };
+}) {
+  const [mode, setMode] = useState<RowMode>('view');
+  const toggle = (next: RowMode) => setMode(mode === next ? 'view' : next);
+
+  if (mode === 'edit') {
+    return (
+      <li className="p-3">
+        <EntryForm
+          texts={texts}
+          categoryRequired={categoryRequired}
+          categories={categories}
+          initial={entry}
+          busy={busy}
+          submitLabel={es.common.save}
+          onSubmit={save((draft) => actions.update(entry.id, draft))}
+          onCancel={() => setMode('view')}
+        />
+      </li>
+    );
+  }
+  return (
+    <>
+      <EntryRow
+        entry={entry}
+        detail={detail}
+        busy={busy}
+        onEdit={() => toggle('edit')}
+        onToggleArchived={() => actions.run(() => actions.update(entry.id, { archived: !entry.archived }))}
+        onMerge={() => toggle('merge')}
+        onDelete={() => {
+          if (window.confirm(texts.deleteConfirm(entry.name))) actions.run(() => actions.remove(entry.id));
+        }}
+      />
+      {mode === 'merge' ? (
+        <MergePanel
+          texts={texts}
+          entry={entry}
+          others={others}
+          busy={busy}
+          onMerge={(targetId) => {
+            setMode('view');
+            actions.run(() => actions.merge(entry.id, targetId));
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/** A merchants or products list: rows to edit, archive, merge or delete, and a form to add one. */
+export function ListPage({
+  texts,
+  categoryRequired,
+  query,
+  busy,
+  validate,
+  create,
+  ...actions
+}: ListPageProps) {
   const categories = useCategories();
   const { failure, setFailure, run } = useAction();
-  const [editingId, setEditingId] = useState<string | null>(null);
 
   const expenseCategories = orderedTree(categories.data ?? [], 'expense').filter(
     (category) => !category.archived,
@@ -202,31 +348,20 @@ export function ListPage({ texts, categoryRequired, query, busy, validate, creat
             </div>
           ) : (
             <ul className="mb-6 divide-y divide-line rounded-2xl bg-surface shadow-card">
-              {entries.map((entry) =>
-                editingId === entry.id ? (
-                  <li key={entry.id} className="p-3">
-                    <EntryForm
-                      texts={texts}
-                      categoryRequired={categoryRequired}
-                      categories={expenseCategories}
-                      initial={entry}
-                      busy={busy}
-                      submitLabel={es.common.save}
-                      onSubmit={save((draft) => update(entry.id, draft))}
-                      onCancel={() => setEditingId(null)}
-                    />
-                  </li>
-                ) : (
-                  <EntryRow
-                    key={entry.id}
-                    entry={entry}
-                    detail={[categoryName(entry.categoryId), ...entry.aliases].join(' · ')}
-                    busy={busy}
-                    onEdit={() => setEditingId(entry.id)}
-                    onToggleArchived={() => void run(() => update(entry.id, { archived: !entry.archived }))}
-                  />
-                ),
-              )}
+              {entries.map((entry) => (
+                <EntryItem
+                  key={entry.id}
+                  texts={texts}
+                  categoryRequired={categoryRequired}
+                  entry={entry}
+                  others={entries.filter((other) => other.id !== entry.id)}
+                  categories={expenseCategories}
+                  detail={[categoryName(entry.categoryId), ...entry.aliases].join(' · ')}
+                  busy={busy}
+                  save={save}
+                  actions={{ ...actions, run: (work) => void run(work) }}
+                />
+              ))}
             </ul>
           )
         }

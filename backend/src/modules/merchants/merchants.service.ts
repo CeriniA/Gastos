@@ -7,15 +7,24 @@ import {
   type MerchantCreate,
   type MerchantUpdate,
 } from '@gastos/shared';
-import type { WriteOptions } from '../../core/db/transaction';
+import type { TransactionRunner, WriteOptions } from '../../core/db/transaction';
+import { createMergeableList } from '../../core/lists/mergeableList';
 import { DuplicateError, NotFoundError, fieldError } from '../../core/errors/errors';
 import type { MerchantsRepository } from './merchants.repository';
 
 export interface MerchantsDependencies {
   listCategories(options?: WriteOptions): Promise<Category[]>;
+  /** How many transactions point at one merchant: it cannot be deleted while any does. */
+  countTransactions(merchantId: string): Promise<number>;
+  /** Everything that pointed at one merchant points at another. */
+  moveTransactions(fromId: string, toId: string, options: WriteOptions): Promise<void>;
 }
 
-export function createMerchantsService(repository: MerchantsRepository, dependencies: MerchantsDependencies) {
+export function createMerchantsService(
+  repository: MerchantsRepository,
+  dependencies: MerchantsDependencies,
+  runInTransaction: TransactionRunner,
+) {
   async function assertCategory(categoryId: string | null): Promise<void> {
     if (categoryId === null) return;
     const category = (await dependencies.listCategories()).find((candidate) => candidate.id === categoryId);
@@ -30,6 +39,15 @@ export function createMerchantsService(repository: MerchantsRepository, dependen
       if (findByPrintedText(merchants, alias, exceptId)) throw new DuplicateError('Merchant', 'aliases');
     }
   }
+
+  const mergeable = createMergeableList({
+    entity: 'Merchant',
+    repository,
+    countTransactions: dependencies.countTransactions,
+    moveTransactions: dependencies.moveTransactions,
+    runInTransaction,
+    ownFields: (merchant) => ({ defaultCategoryId: merchant.defaultCategoryId }),
+  });
 
   return {
     list: (options: WriteOptions = {}) => repository.findAll(options),
@@ -78,6 +96,8 @@ export function createMerchantsService(repository: MerchantsRepository, dependen
       if (!updated) throw new NotFoundError('Merchant', id);
       return updated;
     },
+
+    ...mergeable,
 
     /** A category merged into another: the merchants that suggested it now suggest the other. */
     moveCategory: repository.moveCategory,

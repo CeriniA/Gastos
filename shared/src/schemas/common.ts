@@ -30,3 +30,6 @@ export interface Paginated<T> {
 
 /** Query-string boolean: "true" / "false". */
 export const queryBooleanSchema = z.enum(['true', 'false']).transform((value) => value === 'true');
+
+/** Merging one item of a list into another: where everything that pointed at it goes. */
+export const mergeSchema = z.object({ targetId: objectIdSchema });

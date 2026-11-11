@@ -376,7 +376,7 @@ los productos escritos siguen ahí). También el informe por categoría: cada re
 los renglones no cubren queda en la categoría del movimiento, así que el total del mes no cambia
 (`shared/src/filing.ts`, con pruebas). Las divisiones manuales salieron: la migración `2026-11-10-splits-to-lines` pasó cada parte a un renglón
 con su categoría, y el formulario ya no las ofrece. El informe por comercio ya agrupa por el comercio de la lista (y, mientras un gasto no tenga comercio, por su descripción). Falta: que el consumo y las repeticiones lean las listas, quitar
-`description`, (las pantallas de comercios y productos ya están, y el formulario deja elegir comercio, y producto o categoría de cada renglón). Falta además: borrar y unir comercios y productos, y proponer el producto al leer un ticket.
+`description`, (las pantallas de comercios y productos ya están, y el formulario deja elegir comercio, y producto o categoría de cada renglón). Borrar (si nadie lo usa) y unir comercios y productos también están. Falta además: proponer el producto al leer un ticket.
 
 **Lo demás, sin implementar.** Lo acordado está en `LOGICA_NEGOCIO.md`, lo medido en `AUDITORIA.md` y el criterio de
 código en `ESTANDARES_CODIGO.md`. Orden previsto, cada paso con pruebas y su commit:

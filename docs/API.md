@@ -145,8 +145,7 @@ una vez por día). Los centavos que no dividen exacto van a la primera cuota, y 
 
 Listas del usuario. Cada elemento tiene sus **textos conocidos** (`aliases`): lo que un ticket o un resumen
 imprime para él. Un nombre o un texto conocido apunta a un solo elemento (`DUPLICATE` si ya es de otro, sin
-distinguir mayúsculas ni tildes). Por ahora solo se archivan: borrar y unir llegan cuando los movimientos
-apunten a ellos.
+distinguir mayúsculas ni tildes). Se archivan, se borran si nadie los usa y se unen con otro.
 
 | Método | Ruta            | Descripción                                                                                                  |
 | ------ | --------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -156,6 +155,8 @@ apunten a ellos.
 | GET    | `/products`      | Incluye los archivados                                                                                       |
 | POST   | `/products`      | `{ name, categoryId, aliases? }`. La categoría es de egresos                                                |
 | PATCH  | `/products/:id`  | Cualquiera de `name`, `categoryId`, `aliases` (la lista completa), `archived`                              |
+| DELETE | `/merchants/:id`, `/products/:id` | Solo si ningún movimiento (o renglón) apunta a él; si no, `IN_USE`. Archivalo o unilo |
+| POST   | `/merchants/:id/merge`, `/products/:id/merge` | `{ targetId }`. Lo que apuntaba a este pasa al otro, que aprende su nombre y sus textos conocidos; este se borra. `VALIDATION` si es el mismo; `CONFLICT` si el resultado pasa el máximo de textos conocidos |
 
 Una categoría con productos no se puede borrar (`IN_USE`); al unirla con otra, sus productos y la categoría
 habitual de sus comercios la siguen.

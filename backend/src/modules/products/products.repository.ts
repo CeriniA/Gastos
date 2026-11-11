@@ -61,6 +61,10 @@ export const productsRepository = {
     return ProductModel.countDocuments({ categoryId: toObjectId(categoryId) });
   },
 
+  async delete(id: string, options: WriteOptions = {}): Promise<void> {
+    await ProductModel.deleteOne({ _id: toObjectId(id) }, { session: options.session });
+  },
+
   /** A category merged into another: its products follow it. */
   async moveCategory(fromId: string, toId: string, options: WriteOptions = {}): Promise<void> {
     await ProductModel.updateMany(

@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import { idParamsSchema, productCreateSchema, productUpdateSchema } from '@gastos/shared';
+import { idParamsSchema, mergeSchema, productCreateSchema, productUpdateSchema } from '@gastos/shared';
 import { asUser, ok, parse } from '../../core/http/http';
 import { HTTP_STATUS } from '../../core/http/status';
 import type { ProductsService } from './products.service';
@@ -15,5 +15,13 @@ export function createProductsController(service: ProductsService) {
     const { id } = parse(idParamsSchema, req.params);
     ok(res, await service.update(id, parse(productUpdateSchema, req.body)));
   };
-  return asUser({ list, create, update });
+  const remove: RequestHandler = async (req, res) => {
+    await service.remove(parse(idParamsSchema, req.params).id);
+    res.status(HTTP_STATUS.noContent).end();
+  };
+  const merge: RequestHandler = async (req, res) => {
+    const { id } = parse(idParamsSchema, req.params);
+    ok(res, await service.merge(id, parse(mergeSchema, req.body).targetId));
+  };
+  return asUser({ list, create, update, remove, merge });
 }

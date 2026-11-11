@@ -8,19 +8,21 @@ const toEntry = (merchant: Merchant): ListEntry => ({ ...merchant, categoryId: m
 
 export function MerchantsPage() {
   const merchants = useMerchants();
-  const { create, update } = useMerchantMutations();
+  const { create, update, remove, merge } = useMerchantMutations();
   return (
     <ListPage
       texts={es.lists.merchants}
       categoryRequired={false}
       query={{ ...merchants, data: merchants.data?.map(toEntry) }}
-      busy={create.isPending || update.isPending}
+      busy={create.isPending || update.isPending || remove.isPending || merge.isPending}
       validate={(draft) =>
         merchantCreateSchema.safeParse({ ...draft, defaultCategoryId: draft.categoryId }).success
           ? null
           : fieldMessage('required')
       }
       create={({ categoryId, ...draft }) => create.mutateAsync({ ...draft, defaultCategoryId: categoryId })}
+      remove={(id) => remove.mutateAsync(id)}
+      merge={(id, targetId) => merge.mutateAsync({ id, targetId })}
       update={(id, { categoryId, ...changes }) =>
         update.mutateAsync({
           id,

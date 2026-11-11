@@ -8,5 +8,7 @@ export function createMerchantsRouter(service: MerchantsService): Router {
   router.get('/', controller.list);
   router.post('/', controller.create);
   router.patch('/:id', controller.update);
+  router.delete('/:id', controller.remove);
+  router.post('/:id/merge', controller.merge);
   return router;
 }

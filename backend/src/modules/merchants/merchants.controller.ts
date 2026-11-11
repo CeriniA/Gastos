@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import { idParamsSchema, merchantCreateSchema, merchantUpdateSchema } from '@gastos/shared';
+import { idParamsSchema, mergeSchema, merchantCreateSchema, merchantUpdateSchema } from '@gastos/shared';
 import { asUser, ok, parse } from '../../core/http/http';
 import { HTTP_STATUS } from '../../core/http/status';
 import type { MerchantsService } from './merchants.service';
@@ -15,5 +15,13 @@ export function createMerchantsController(service: MerchantsService) {
     const { id } = parse(idParamsSchema, req.params);
     ok(res, await service.update(id, parse(merchantUpdateSchema, req.body)));
   };
-  return asUser({ list, create, update });
+  const remove: RequestHandler = async (req, res) => {
+    await service.remove(parse(idParamsSchema, req.params).id);
+    res.status(HTTP_STATUS.noContent).end();
+  };
+  const merge: RequestHandler = async (req, res) => {
+    const { id } = parse(idParamsSchema, req.params);
+    ok(res, await service.merge(id, parse(mergeSchema, req.body).targetId));
+  };
+  return asUser({ list, create, update, remove, merge });
 }

@@ -7,15 +7,24 @@ import {
   type ProductCreate,
   type ProductUpdate,
 } from '@gastos/shared';
-import type { WriteOptions } from '../../core/db/transaction';
+import type { TransactionRunner, WriteOptions } from '../../core/db/transaction';
+import { createMergeableList } from '../../core/lists/mergeableList';
 import { DuplicateError, NotFoundError, fieldError } from '../../core/errors/errors';
 import type { ProductsRepository } from './products.repository';
 
 export interface ProductsDependencies {
   listCategories(options?: WriteOptions): Promise<Category[]>;
+  /** How many transactions point at one product: it cannot be deleted while any does. */
+  countTransactions(productId: string): Promise<number>;
+  /** Everything that pointed at one product points at another. */
+  moveTransactions(fromId: string, toId: string, options: WriteOptions): Promise<void>;
 }
 
-export function createProductsService(repository: ProductsRepository, dependencies: ProductsDependencies) {
+export function createProductsService(
+  repository: ProductsRepository,
+  dependencies: ProductsDependencies,
+  runInTransaction: TransactionRunner,
+) {
   async function assertCategory(categoryId: string): Promise<void> {
     const category = (await dependencies.listCategories()).find((candidate) => candidate.id === categoryId);
     if (!category) throw fieldError('categoryId', 'The category does not exist');
@@ -29,6 +38,15 @@ export function createProductsService(repository: ProductsRepository, dependenci
       if (findByPrintedText(products, alias, exceptId)) throw new DuplicateError('Product', 'aliases');
     }
   }
+
+  const mergeable = createMergeableList({
+    entity: 'Product',
+    repository,
+    countTransactions: dependencies.countTransactions,
+    moveTransactions: dependencies.moveTransactions,
+    runInTransaction,
+    ownFields: (product) => ({ categoryId: product.categoryId }),
+  });
 
   return {
     list: (options: WriteOptions = {}) => repository.findAll(options),
@@ -79,6 +97,8 @@ export function createProductsService(repository: ProductsRepository, dependenci
 
     /** How many products are in the category: it cannot be deleted while any is. */
     countByCategory: repository.countByCategory,
+    ...mergeable,
+
     /** A category merged into another: its products follow it. */
     moveCategory: repository.moveCategory,
   };

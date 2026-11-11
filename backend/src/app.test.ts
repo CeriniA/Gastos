@@ -232,8 +232,14 @@ test('each user has their own data, and none of it reaches another', async () =>
   // A merchant and a product of his, each with a known text.
   const [firstCategory] = await data<{ id: string; kind: string }[]>(await call('GET', '/categories'));
   assert.ok(firstCategory);
-  await data(await call('POST', '/merchants', { name: 'Coto', aliases: ['COTO CICSA 0123'] }), 201);
-  await data(await call('POST', '/products', { name: 'Yerba', categoryId: firstCategory.id }), 201);
+  const merchant = await data<{ id: string }>(
+    await call('POST', '/merchants', { name: 'Coto', aliases: ['COTO CICSA 0123'] }),
+    201,
+  );
+  const product = await data<{ id: string }>(
+    await call('POST', '/products', { name: 'Yerba', categoryId: firstCategory.id }),
+    201,
+  );
   await data(await call('POST', '/users', { username: 'Ana', password: USER_PASSWORD }), 201);
 
   token = await signIn('ana', USER_PASSWORD);
@@ -297,12 +303,18 @@ test('each user has their own data, and none of it reaches another', async () =>
     ['DELETE', `/product-rules/${productRule.id}`],
     ['PATCH', `/recurrings/${fixed.id}`],
     ['POST', '/recurrings/from-transaction'],
+    ['DELETE', `/merchants/${merchant.id}`],
+    ['POST', `/merchants/${merchant.id}/merge`],
+    ['DELETE', `/products/${product.id}`],
+    ['POST', `/products/${product.id}/merge`],
   ] as const) {
     const bodies: Partial<Record<string, object>> = {
       [`/transactions/${mine.id}`]: { description: 'mío' },
       [`/exchange-rates/${rate.id}`]: { validFrom: '2026-10-02', arsPerUsd: 1 },
       [`/recurrings/${fixed.id}`]: { name: 'mío' },
       '/recurrings/from-transaction': { transactionId: mine.id },
+      [`/merchants/${merchant.id}/merge`]: { targetId: merchant.id },
+      [`/products/${product.id}/merge`]: { targetId: product.id },
     };
     const response = await call(
       method,

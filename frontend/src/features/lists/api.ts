@@ -23,6 +23,15 @@ function listApi<Item, Create, Update>(path: string) {
           mutationFn: (input: Create) => api<Item>(path, { method: 'POST', body: input }),
           onSuccess: refresh,
         }),
+        remove: useMutation({
+          mutationFn: (id: string) => api<void>(`${path}/${id}`, { method: 'DELETE' }),
+          onSuccess: refresh,
+        }),
+        merge: useMutation({
+          mutationFn: ({ id, targetId }: { id: string; targetId: string }) =>
+            api<Item>(`${path}/${id}/merge`, { method: 'POST', body: { targetId } }),
+          onSuccess: refresh,
+        }),
         update: useMutation({
           mutationFn: ({ id, changes }: { id: string; changes: Update }) =>
             api<Item>(`${path}/${id}`, { method: 'PATCH', body: changes }),

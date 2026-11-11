@@ -184,13 +184,25 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
 
   const productRules: ProductRulesService = createProductRulesService(repositories.productRules);
 
-  const merchants: MerchantsService = createMerchantsService(repositories.merchants, {
-    listCategories: (options) => categories.list(options),
-  });
+  const merchants: MerchantsService = createMerchantsService(
+    repositories.merchants,
+    {
+      listCategories: (options) => categories.list(options),
+      countTransactions: transactions.countByMerchant,
+      moveTransactions: transactions.moveMerchant,
+    },
+    runInTransaction,
+  );
 
-  const products: ProductsService = createProductsService(repositories.products, {
-    listCategories: (options) => categories.list(options),
-  });
+  const products: ProductsService = createProductsService(
+    repositories.products,
+    {
+      listCategories: (options) => categories.list(options),
+      countTransactions: transactions.countByProduct,
+      moveTransactions: transactions.moveProduct,
+    },
+    runInTransaction,
+  );
 
   const categoryRules: CategoryRulesService = createCategoryRulesService(repositories.categoryRules, {
     listCategories: (options) => categories.list(options),
