@@ -86,6 +86,7 @@ function toReportRow(transaction: Transaction): ReportRow {
     accountId: transaction.accountId,
     toAccountId: transaction.toAccountId,
     toAmountCents: transaction.toAmountCents,
+    merchantId: transaction.merchantId,
     description: transaction.description,
     recurringId: transaction.recurringId,
     installment: transaction.installment,

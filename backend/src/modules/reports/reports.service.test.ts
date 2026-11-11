@@ -313,3 +313,20 @@ test('the projection adds installments to come and fixed items not seen yet to w
   );
   assert.equal(again?.currencies[0]?.confirmedIncomeCents, 91000);
 });
+
+test('by merchant: expenses that point at a merchant of the list go under its name, whatever they say', async () => {
+  const { app, food, add } = await setup();
+  const coto = await app.merchants.create({ name: 'Coto', defaultCategoryId: food.id, aliases: [] });
+  await add({ amountCents: 4000, categoryId: food.id, merchantId: coto.id, description: 'COTO CIUDADELA' });
+  await add({ amountCents: 1000, categoryId: food.id, merchantId: coto.id, description: '' });
+  await add({ amountCents: 500, categoryId: food.id, description: 'Kiosco' });
+
+  const [pesos] = (await app.reports.byMerchant('2026-10')).currencies;
+  assert.deepEqual(
+    pesos?.merchants.map((merchant) => [merchant.name, merchant.totalCents, merchant.count]),
+    [
+      ['Coto', 5000, 2],
+      ['Kiosco', 500, 1],
+    ],
+  );
+});

@@ -105,6 +105,7 @@ export type ReportRow = Pick<
   | 'accountId'
   | 'toAccountId'
   | 'toAmountCents'
+  | 'merchantId'
   | 'description'
   | 'recurringId'
   | 'installment'

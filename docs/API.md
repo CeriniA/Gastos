@@ -351,7 +351,7 @@ Cuenta lo mismo que `/transactions/summary`: movimientos confirmados, por fecha 
 ni papelera. Cada renglón suma a la categoría de su producto (o a la suya) y lo que los renglones no cubren, a la del movimiento; una devolución resta de la suya.
 
 Todos los informes cuentan igual: por fecha de pago, las devoluciones restan, las transferencias no son
-ingreso ni egreso. Comercio es la descripción del egreso, sin distinguir mayúsculas ni acentos; los 20 más
+ingreso ni egreso. Comercio es el de la lista al que apunta el egreso; el que todavía no tiene, se agrupa por su descripción, sin distinguir mayúsculas ni acentos; los 20 más
 grandes van uno por uno y el resto (y lo que no tiene descripción) en `othersCents`.
 
 **Todo en una moneda.** Con `in=ARS` o `in=USD` cada informe muestra todo en esa moneda: cada movimiento se

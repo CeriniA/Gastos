@@ -285,6 +285,7 @@ export function wireServices(repositories: Repositories, runtime: Runtime): Serv
   const reports: ReportsService = createReportsService({
     listFiled: transactions.listFiled,
     listRows: transactions.listReportRows,
+    listMerchants: () => merchants.list(),
     listCategories: () => categories.list(),
     listAccounts: () => accounts.list(),
     listRates: () => exchangeRates.list(),

@@ -8,7 +8,7 @@ Cada sección indica en qué etapa se construye (`ROADMAP.md`). Lo marcado **eta
 **Nota (10/11/2026):** la lógica nueva acordada está en `LOGICA_NEGOCIO.md`. Ya hecho en el backend (sin
 pantallas todavía): el rol de categoría, las listas de comercios y productos con sus textos conocidos, el
 comercio de un egreso (`merchantId`) y el producto o la categoría de un renglón, y el informe por categoría
-repartido por renglones. **Falta:** pantallas de las listas, informes por comercio y consumo desde las listas, pasar
+repartido por renglones. **Falta:** pantallas de las listas, consumo y repeticiones desde las listas, pasar
 quitar `description`, tarjetas con recordatorio. Este documento
 describe lo que la app hace hoy; cuando se implemente cada parte, se pasa acá.
 

@@ -520,6 +520,7 @@ export const transactionsRepository = {
         accountId: 1,
         toAccountId: 1,
         toAmountCents: 1,
+        merchantId: 1,
         description: 1,
         recurringId: 1,
         installment: 1,
@@ -539,6 +540,7 @@ export const transactionsRepository = {
       accountId: doc.accountId.toString(),
       toAccountId: idString(doc.toAccountId),
       toAmountCents: doc.toAmountCents ?? null,
+      merchantId: idString(doc.merchantId),
       description: doc.description ?? '',
       recurringId: idString(doc.recurringId),
       installment: doc.installment

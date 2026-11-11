@@ -26,6 +26,7 @@ import {
   type FiledAmount,
   type IsoDate,
   type KindReport,
+  type Merchant,
   type MerchantReport,
   type MonthKey,
   type ProjectedCurrency,
@@ -40,6 +41,8 @@ export interface ReportsDeps {
   /** Live transactions paid in a range of days, the installments to come included. */
   listRows: (range: { from: IsoDate; to: IsoDate }) => Promise<ReportRow[]>;
   listCategories: () => Promise<Category[]>;
+  /** The merchants of the list, to put a name to the id a transaction points at. */
+  listMerchants: () => Promise<Merchant[]>;
   listAccounts: () => Promise<Account[]>;
   /** The user's pesos-per-dollar rates, oldest first. */
   listRates: () => Promise<ExchangeRate[]>;
@@ -285,12 +288,18 @@ export function createReportsService(deps: ReportsDeps) {
     },
 
     /**
-     * Where the money of a month went: expenses grouped by their description,
-     * whatever its case or accents, largest first. The rest, and what has no
-     * description, go together.
+     * Where the money of a month went: expenses grouped by the merchant of the
+     * list they point at, largest first. An expense that still has no merchant is
+     * grouped by its description, whatever its case or accents, until the user
+     * links it. The rest, and what has neither, go together.
      */
     async byMerchant(month: MonthKey, target?: Currency): Promise<MerchantReport> {
-      const [rows, convert] = await Promise.all([monthRows(month), setup(target)]);
+      const [rows, convert, merchantList] = await Promise.all([
+        monthRows(month),
+        setup(target),
+        deps.listMerchants(),
+      ]);
+      const merchantNames = new Map(merchantList.map((merchant) => [merchant.id, merchant.name]));
       const shown = rows
         .filter((row) => row.type === 'expense')
         .flatMap((row) => {
@@ -302,10 +311,12 @@ export function createReportsService(deps: ReportsDeps) {
         let totalCents = 0;
         for (const entry of shown.filter((candidate) => candidate.currency === currency)) {
           totalCents += entry.cents;
-          const key = nameKey(entry.row.description);
+          const listed = entry.row.merchantId ? merchantNames.get(entry.row.merchantId) : undefined;
+          const name = listed ?? entry.row.description.trim();
+          const key = entry.row.merchantId && listed ? entry.row.merchantId : nameKey(name);
           if (key === '') continue;
           const merchant = merchants.get(key) ?? {
-            name: entry.row.description.trim(),
+            name,
             totalCents: 0,
             count: 0,
           };
