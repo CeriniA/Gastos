@@ -223,8 +223,9 @@ Esta página describe lo que existe hoy. Esto es lo que va a cambiar, para no so
 - **Los `index.ts` de los módulos ya se eliminaron.** `composition.ts`, `container.ts` y `app.ts` importan los archivos
   que definen lo que necesitan. El lint prohíbe que un módulo importe a otro. Si `shared/src/index.ts` sigue siendo
   un barril es una decisión abierta.
-- **Módulos nuevos:** `merchants` y `products`, cada uno con sus textos conocidos. **Desaparecen**
-  `category-rules` y `product-rules`.
+- **Módulos nuevos:** `merchants` y `products`, cada uno con sus textos conocidos dentro (`aliases`), ya
+  existen. Todavía no los usa ninguna pantalla. `category-rules` y `product-rules` desaparecen cuando los
+  reemplacen. La validación de un movimiento vive en `transactions/prepareTransaction.ts`.
 - Los renglones de un ticket siguen **dentro** del movimiento, ahora con el id del producto.
 - Reglas de tamaño, complejidad y archivos barril en el lint, y el criterio para inyectar dependencias:
   `ESTANDARES_CODIGO.md`. Lo medido hoy: `AUDITORIA.md`.

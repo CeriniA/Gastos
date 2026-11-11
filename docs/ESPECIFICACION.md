@@ -5,9 +5,12 @@ coinciden, uno de los dos está mal y hay que resolverlo.
 
 Cada sección indica en qué etapa se construye (`ROADMAP.md`). Lo marcado **etapa 1** ya está en esta base.
 
-**Nota (7/11/2026):** la lógica nueva acordada (comercios y productos como listas, categorías por producto,
-sin descripción ni divisiones, tarjetas con recordatorio) está en `LOGICA_NEGOCIO.md` y **todavía no está
-implementada**. Este documento describe lo que la app hace hoy; cuando se implemente cada parte, se pasa acá.
+**Nota (10/11/2026):** la lógica nueva acordada está en `LOGICA_NEGOCIO.md`. Ya hecho en el backend (sin
+pantallas todavía): el rol de categoría, las listas de comercios y productos con sus textos conocidos, el
+comercio de un egreso (`merchantId`) y el producto o la categoría de un renglón, y el informe por categoría
+repartido por renglones. **Falta:** pantallas de las listas, informes por comercio y consumo desde las listas, pasar
+las divisiones a renglones y quitar `description` y `splits`, tarjetas con recordatorio. Este documento
+describe lo que la app hace hoy; cuando se implemente cada parte, se pasa acá.
 
 ## 1. Propósito y alcance
 
@@ -304,6 +307,9 @@ tenía: el informe lo dice en vez de mostrar un número (pedido del usuario, 17/
 
 **Meses.** Los 12 meses que terminan en el elegido, del más nuevo al más viejo: ingresos, egresos y balance
 de cada uno, con barras para comparar y el egreso promedio de los meses con movimientos.
+
+**Por categoría.** Un egreso con renglones suma cada renglón a la categoría de su producto (o a la propia del
+renglón); lo que los renglones no cubren queda en la categoría del egreso, así que el total del mes no cambia.
 
 **Comercios.** Los egresos del mes agrupados por su descripción (sin distinguir mayúsculas ni acentos), de
 mayor a menor, con cuántas compras fueron. Los 20 más grandes van uno por uno; el resto y lo que no tiene
