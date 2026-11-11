@@ -20,7 +20,7 @@ import {
 import type { CategoriesRepository, CategoryRow } from './categories.repository';
 
 export interface CategoryUsage {
-  /** Transactions (including the trash) that use the category directly or in a split. */
+  /** Transactions (including the trash) that use the category directly or in a line. */
   countTransactions(categoryId: string): Promise<number>;
   /** Products in the category: each needs one, so it cannot be deleted while any is. */
   countProducts(categoryId: string): Promise<number>;

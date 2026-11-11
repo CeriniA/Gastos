@@ -75,7 +75,6 @@ function confirmation(
           merchantId: null,
           note: '',
           tagIds: [],
-          splits: [],
           toAccountId: null,
           toAmountCents: null,
           paymentDate: null,

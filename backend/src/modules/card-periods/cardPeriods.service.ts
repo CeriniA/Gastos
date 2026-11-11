@@ -184,7 +184,6 @@ export function createCardPeriodsService(repository: CardPeriodsRepository, deps
           description: '',
           note: '',
           tagIds: [],
-          splits: [],
           paymentDate: null,
           original: null,
           items: [],

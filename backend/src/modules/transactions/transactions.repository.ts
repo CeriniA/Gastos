@@ -11,17 +11,18 @@ import {
   type Paginated,
   type ProductGroup,
   type ReportRow,
-  type Split,
   type Transaction,
   type TransactionItem,
   type TransactionListQuery,
+  filingParts,
+  NO_PRODUCT_CATEGORIES,
+  type Filable,
 } from '@gastos/shared';
 import { createCollectionPort } from '../../core/db/collectionPort';
 import { COLLECTIONS } from '../../core/db/collections';
 import { idString, isoString, toObjectId, toObjectIdOrNull } from '../../core/db/ids';
 import type { WriteOptions } from '../../core/db/transaction';
 import { duplicateKey, installmentKey } from './duplicateKey';
-import { type Filable, type Filing } from './splits';
 import { TransactionModel, type TransactionDoc } from './transactions.model';
 
 /** Everything the service decides about a transaction before it is stored. */
@@ -73,10 +74,6 @@ function toTransaction(doc: TransactionDoc): Transaction {
     description: doc.description ?? '',
     note: doc.note ?? '',
     tagIds: (doc.tagIds ?? []).map((id) => id.toString()),
-    splits: (doc.splits ?? []).map((split) => ({
-      categoryId: split.categoryId.toString(),
-      amountCents: split.amountCents,
-    })),
     items: (doc.items ?? []).map(toItem),
     installment: doc.installment
       ? {
@@ -123,10 +120,6 @@ function toStored(record: TransactionRecord) {
       categoryId: toObjectIdOrNull(item.categoryId),
     })),
     tagIds: record.tagIds.map(toObjectId),
-    splits: record.splits.map((split) => ({
-      categoryId: toObjectId(split.categoryId),
-      amountCents: split.amountCents,
-    })),
     installment: record.installment
       ? { ...record.installment, planId: toObjectIdOrNull(record.installment.planId) }
       : null,
@@ -156,7 +149,7 @@ function buildFilter(query: Partial<TransactionFilter>): FilterQuery<Transaction
   }
   if (query.categoryIds && query.categoryIds.length > 0) {
     const ids = query.categoryIds.map(toObjectId);
-    and.push({ $or: [{ categoryId: { $in: ids } }, { 'splits.categoryId': { $in: ids } }] });
+    and.push({ $or: [{ categoryId: { $in: ids } }, { 'items.categoryId': { $in: ids } }] });
   }
   if (query.q) {
     const pattern = new RegExp(escapeRegex(query.q), 'i');
@@ -169,7 +162,6 @@ export const transactionsPort = createCollectionPort(TransactionModel, [
   { field: 'accountId', to: COLLECTIONS.accounts },
   { field: 'toAccountId', to: COLLECTIONS.accounts },
   { field: 'categoryId', to: COLLECTIONS.categories },
-  { field: 'splits.categoryId', to: COLLECTIONS.categories, unwind: 'splits' },
   { field: 'merchantId', to: COLLECTIONS.merchants },
   { field: 'items.productId', to: COLLECTIONS.products, unwind: 'items' },
   { field: 'items.categoryId', to: COLLECTIONS.categories, unwind: 'items' },
@@ -254,7 +246,7 @@ export const transactionsRepository = {
   countByCategory(categoryId: string): Promise<number> {
     const id = toObjectId(categoryId);
     return TransactionModel.countDocuments({
-      $or: [{ categoryId: id }, { 'splits.categoryId': id }, { 'items.categoryId': id }],
+      $or: [{ categoryId: id }, { 'items.categoryId': id }],
     });
   },
 
@@ -265,11 +257,6 @@ export const transactionsRepository = {
       { categoryId: from },
       { $set: { categoryId: to } },
       { session: options.session },
-    );
-    await TransactionModel.updateMany(
-      { 'splits.categoryId': from },
-      { $set: { 'splits.$[split].categoryId': to } },
-      { arrayFilters: [{ 'split.categoryId': from }], session: options.session },
     );
     await TransactionModel.updateMany(
       { 'items.categoryId': from },
@@ -300,40 +287,6 @@ export const transactionsRepository = {
     await TransactionModel.updateMany(
       { cardPeriodId: toObjectId(cardPeriodId) },
       { $set: { cardPeriodId: null } },
-      { session: options.session },
-    );
-  },
-
-  /** Every transaction, the trash included, with a part in that category. */
-  async findDividedBy(
-    categoryId: string,
-    options: WriteOptions = {},
-  ): Promise<{ id: string; splits: Split[] }[]> {
-    const docs = await TransactionModel.find({ 'splits.categoryId': toObjectId(categoryId) }, { splits: 1 })
-      .session(options.session ?? null)
-      .lean<Pick<TransactionDoc, '_id' | 'splits'>[]>();
-    return docs.map((doc) => ({
-      id: doc._id.toString(),
-      splits: doc.splits.map((part) => ({
-        categoryId: part.categoryId.toString(),
-        amountCents: part.amountCents,
-      })),
-    }));
-  },
-
-  /** Changes only how a transaction is filed: its category, or the parts it is divided in. */
-  async setFiling(id: string, filing: Filing, options: WriteOptions = {}): Promise<void> {
-    await TransactionModel.updateOne(
-      { _id: toObjectId(id) },
-      {
-        $set: {
-          categoryId: toObjectIdOrNull(filing.categoryId),
-          splits: filing.splits.map((part) => ({
-            categoryId: toObjectId(part.categoryId),
-            amountCents: part.amountCents,
-          })),
-        },
-      },
       { session: options.session },
     );
   },
@@ -526,11 +479,11 @@ export const transactionsRepository = {
         type: { $in: ['income', 'expense'] },
         paymentDate: { $gte: firstDayOfMonth(month), $lte: lastDayOfMonth(month) },
       },
-      { date: 1, type: 1, refund: 1, currency: 1, amountCents: 1, categoryId: 1, splits: 1, items: 1 },
+      { date: 1, type: 1, refund: 1, currency: 1, amountCents: 1, categoryId: 1, items: 1 },
     ).lean<
       Pick<
         TransactionDoc,
-        '_id' | 'date' | 'type' | 'refund' | 'currency' | 'amountCents' | 'categoryId' | 'splits' | 'items'
+        '_id' | 'date' | 'type' | 'refund' | 'currency' | 'amountCents' | 'categoryId' | 'items'
       >[]
     >();
     return docs.map((doc) => ({
@@ -541,10 +494,6 @@ export const transactionsRepository = {
         currency: doc.currency,
         amountCents: doc.amountCents,
         categoryId: idString(doc.categoryId),
-        splits: (doc.splits ?? []).map((part) => ({
-          categoryId: part.categoryId.toString(),
-          amountCents: part.amountCents,
-        })),
         items: (doc.items ?? []).map(toItem),
     }));
   },
@@ -707,15 +656,19 @@ export const transactionsRepository = {
         date: { $gte: range.from, $lte: range.to },
         accountId: { $in: range.accountIds.map(toObjectId) },
       },
-      { date: 1, amountCents: 1, accountId: 1, splits: 1 },
-    ).lean<Pick<TransactionDoc, 'date' | 'amountCents' | 'accountId' | 'splits'>[]>();
-    // A split transaction is exported as one row per part, so each part counts too.
+      { date: 1, amountCents: 1, accountId: 1, type: 1, categoryId: 1, items: 1 },
+    ).lean<Pick<TransactionDoc, '_id' | 'date' | 'amountCents' | 'accountId' | 'type' | 'categoryId' | 'items'>[]>();
+    // A transaction whose lines have categories is exported as one row per category, so each part counts too.
     return new Set(
-      docs.flatMap((doc) =>
-        [doc.amountCents, ...(doc.splits ?? []).map((split) => split.amountCents)].map((amountCents) =>
+      docs.flatMap((doc) => {
+        const parts = filingParts(
+          { type: doc.type, amountCents: doc.amountCents, categoryId: idString(doc.categoryId), items: (doc.items ?? []).map(toItem) },
+          NO_PRODUCT_CATEGORIES,
+        );
+        return [doc.amountCents, ...parts.map((part) => part.amountCents)].map((amountCents) =>
           duplicateKey(doc.date, amountCents, doc.accountId.toString()),
-        ),
-      ),
+        );
+      }),
     );
   },
 };

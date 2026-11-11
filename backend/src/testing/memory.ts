@@ -18,6 +18,8 @@ import {
   type ReportRow,
   type Tag,
   type Transaction,
+  filingParts,
+  NO_PRODUCT_CATEGORIES,
 } from '@gastos/shared';
 import { currentUserId, hasOwner } from '../core/context/owner';
 import { OBJECT_ID_LENGTH } from '../core/db/ids';
@@ -459,7 +461,7 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
 
   const usesCategory = (transaction: Transaction, ids: readonly string[]) =>
     (transaction.categoryId !== null && ids.includes(transaction.categoryId)) ||
-    transaction.splits.some((split) => ids.includes(split.categoryId));
+    transaction.items.some((item) => item.categoryId !== null && ids.includes(item.categoryId));
 
   const transactions: TransactionsRepository = {
     async find(query) {
@@ -561,9 +563,6 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
       store.transactions = store.transactions.map((transaction) => ({
         ...transaction,
         categoryId: transaction.categoryId === fromId ? toId : transaction.categoryId,
-        splits: transaction.splits.map((split) =>
-          split.categoryId === fromId ? { ...split, categoryId: toId } : split,
-        ),
         items: transaction.items.map((item) =>
           item.categoryId === fromId ? { ...item, categoryId: toId } : item,
         ),
@@ -582,16 +581,6 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
     async clearCardPeriod(cardPeriodId) {
       store.transactions = store.transactions.map((transaction) =>
         transaction.cardPeriodId === cardPeriodId ? { ...transaction, cardPeriodId: null } : transaction,
-      );
-    },
-    async findDividedBy(categoryId) {
-      return store.transactions
-        .filter((transaction) => transaction.splits.some((part) => part.categoryId === categoryId))
-        .map((transaction) => ({ id: transaction.id, splits: transaction.splits }));
-    },
-    async setFiling(id, filing) {
-      store.transactions = store.transactions.map((transaction) =>
-        transaction.id === id ? { ...transaction, ...filing } : transaction,
       );
     },
     async installmentKeys(amounts) {
@@ -774,9 +763,10 @@ export function createMemoryBackend(today = '2026-10-10', options: MemoryBackend
           .filter((transaction) => transaction.date >= range.from && transaction.date <= range.to)
           .filter((transaction) => range.accountIds.includes(transaction.accountId))
           .flatMap((transaction) =>
-            [transaction.amountCents, ...transaction.splits.map((split) => split.amountCents)].map(
-              (amountCents) => duplicateKey(transaction.date, amountCents, transaction.accountId),
-            ),
+            [
+              transaction.amountCents,
+              ...filingParts(transaction, NO_PRODUCT_CATEGORIES).map((part) => part.amountCents),
+            ].map((amountCents) => duplicateKey(transaction.date, amountCents, transaction.accountId)),
           ),
       );
     },

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   DEFAULT_CURRENCY,
@@ -49,8 +49,6 @@ interface FormValues {
   description: string;
   note: string;
   tagIds: string[];
-  /** Parts of a transaction divided across categories. Empty when it has a single category. */
-  splits: { categoryId: string; amount: string }[];
 }
 
 /** Which form field shows a problem reported for a given payload field. */
@@ -74,10 +72,6 @@ function toFormValues(transaction: Transaction | undefined): FormValues {
     description: transaction?.description ?? '',
     note: transaction?.note ?? '',
     tagIds: transaction?.tagIds ?? [],
-    splits: (transaction?.splits ?? []).map((split) => ({
-      categoryId: split.categoryId,
-      amount: centsToDecimalString(split.amountCents),
-    })),
   };
 }
 
@@ -108,7 +102,6 @@ export function TransactionFormPage() {
   }, [existing.data]);
   const form = useForm<FormValues>({ values });
   const { errors, isSubmitting } = form.formState;
-  const splitFields = useFieldArray({ control: form.control, name: 'splits' });
 
   const type = form.watch('type');
   const refund = form.watch('refund');
@@ -116,7 +109,6 @@ export function TransactionFormPage() {
   const toAccountId = form.watch('toAccountId');
   const selectedTags = form.watch('tagIds');
   const amountText = form.watch('amount');
-  const splitValues = form.watch('splits');
 
   const activeAccounts = (accounts.data ?? []).filter(
     (account) => !account.archived || account.id === existing.data?.accountId,
@@ -128,41 +120,21 @@ export function TransactionFormPage() {
   const isCard = account?.type === 'credit_card';
   const planId = existing.data?.installment?.planId ?? null;
   const canSplitInInstallments =
-    !id && type === 'expense' && !refund && isCard && splitFields.fields.length === 0;
-  const isSplit = type !== 'transfer' && splitFields.fields.length > 0;
-  const usedCategoryIds = [
-    existing.data?.categoryId,
-    ...(existing.data?.splits.map((split) => split.categoryId) ?? []),
-  ];
+    !id && type === 'expense' && !refund && isCard;
   const categoryOptions =
     type === 'transfer'
       ? []
       : orderedTree(categories.data ?? [], type).filter(
-          (category) => !category.archived || usedCategoryIds.includes(category.id),
+          (category) => !category.archived || category.id === existing.data?.categoryId,
         );
 
   const original = existing.data?.original ?? null;
-
-  // What is left to assign, so the parts can be made to add up before saving.
   const totalCents = parseAmountToCents(amountText) ?? 0;
-  const assignedCents = splitValues.reduce((sum, part) => sum + (parseAmountToCents(part.amount) ?? 0), 0);
-  const remainingCents = totalCents - assignedCents;
-
-  const startSplit = () => {
-    splitFields.replace([
-      { categoryId: form.getValues('categoryId'), amount: form.getValues('amount') },
-      { categoryId: '', amount: '' },
-    ]);
-  };
-  const stopSplit = () => {
-    form.setValue('categoryId', splitValues[0]?.categoryId ?? '');
-    splitFields.replace([]);
-  };
 
   const showIssues = (issues: readonly { path: string; message: string }[]) => {
     for (const issue of issues) {
       const key = issue.path.split('.')[0] ?? '';
-      const field = FIELD_OF[key] ?? (key in values && key !== 'splits' ? (key as keyof FormValues) : null);
+      const field = FIELD_OF[key] ?? (key in values ? (key as keyof FormValues) : null);
       if (field) form.setError(field, { message: fieldMessage(issue.message) });
       else setFailure(fieldMessage(issue.message));
     }
@@ -185,26 +157,6 @@ export function TransactionFormPage() {
       return;
     }
 
-    const splits: { categoryId: string; amountCents: number }[] = [];
-    if (input.type !== 'transfer') {
-      for (const part of input.splits) {
-        const cents = parseAmountToCents(part.amount);
-        if (!part.categoryId || cents === null || cents <= 0) {
-          setFailure(es.transactions.split.incomplete);
-          return;
-        }
-        splits.push({ categoryId: part.categoryId, amountCents: cents });
-      }
-      if (splits.length === 1) {
-        setFailure(es.transactions.split.needTwo);
-        return;
-      }
-      if (splits.length > 0 && splits.reduce((sum, part) => sum + part.amountCents, 0) !== amountCents) {
-        setFailure(es.transactions.split.mismatch);
-        return;
-      }
-    }
-
     setItemsError(undefined);
     const readItems = fromItemDrafts(input.type === 'transfer' ? [] : items);
     if (readItems.error !== null) {
@@ -220,11 +172,10 @@ export function TransactionFormPage() {
       amountCents,
       currency: account.currency,
       accountId: input.accountId,
-      categoryId: input.type === 'transfer' || splits.length > 0 ? null : input.categoryId || null,
+      categoryId: input.type === 'transfer' ? null : input.categoryId || null,
       description: input.description,
       note: input.note,
       tagIds: input.tagIds,
-      splits,
       toAccountId: input.type === 'transfer' ? input.toAccountId || null : null,
       toAmountCents,
       paymentDate: isCard ? input.paymentDate || null : null,
@@ -378,76 +329,6 @@ export function TransactionFormPage() {
                       ))}
                   </Select>
                 </Field>
-              ) : isSplit ? (
-                <fieldset className="space-y-2 rounded-2xl bg-surface shadow-card p-3">
-                  <legend className="px-1 text-sm font-medium text-muted">
-                    {es.transactions.split.title}
-                  </legend>
-                  {splitFields.fields.map((field, index) => (
-                    <div key={field.id} className="flex items-end gap-2">
-                      <div className="min-w-0 flex-1">
-                        <Select
-                          aria-label={es.transactions.fields.category}
-                          {...form.register(`splits.${index}.categoryId`)}
-                        >
-                          <option value="" />
-                          {categoryOptions.map((category) => (
-                            <option key={category.id} value={category.id}>
-                              {optionLabel(category)}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                      <div className="w-28 shrink-0">
-                        <TextInput
-                          aria-label={es.transactions.fields.amount}
-                          inputMode="decimal"
-                          placeholder="0,00"
-                          className="amount"
-                          {...form.register(`splits.${index}.amount`)}
-                        />
-                      </div>
-                      <Button
-                        variant="quietDanger"
-                        className="shrink-0 px-2"
-                        aria-label={es.transactions.split.removePart}
-                        onClick={() => splitFields.remove(index)}
-                      >
-                        ✕
-                      </Button>
-                    </div>
-                  ))}
-                  <p
-                    role="status"
-                    className={`text-sm ${remainingCents === 0 ? 'text-muted' : 'font-medium text-expense'}`}
-                  >
-                    {remainingCents === 0
-                      ? es.transactions.split.balanced
-                      : remainingCents > 0
-                        ? es.transactions.split.missing(
-                            formatMoney(remainingCents, account?.currency ?? DEFAULT_CURRENCY),
-                          )
-                        : es.transactions.split.excess(
-                            formatMoney(-remainingCents, account?.currency ?? DEFAULT_CURRENCY),
-                          )}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() =>
-                        splitFields.append({
-                          categoryId: '',
-                          amount: remainingCents > 0 ? centsToDecimalString(remainingCents) : '',
-                        })
-                      }
-                    >
-                      {es.transactions.split.addPart}
-                    </Button>
-                    <Button variant="quiet" onClick={stopSplit}>
-                      {es.transactions.split.stop}
-                    </Button>
-                  </div>
-                </fieldset>
               ) : (
                 <div>
                   <Field label={es.transactions.fields.category} error={errors.categoryId?.message}>
@@ -460,9 +341,6 @@ export function TransactionFormPage() {
                       ))}
                     </Select>
                   </Field>
-                  <Button variant="quiet" className="px-0" onClick={startSplit}>
-                    {es.transactions.split.start}
-                  </Button>
                 </div>
               )}
 

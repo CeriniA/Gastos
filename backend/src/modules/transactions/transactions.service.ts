@@ -24,13 +24,12 @@ import {
   type TransactionSource,
   type TransactionStatus,
   type TransactionUpdate,
+  filedAmounts,
 } from '@gastos/shared';
 import type { WriteOptions } from '../../core/db/transaction';
 import { NotFoundError, ValidationError } from '../../core/errors/errors';
 import { dueDateFor, type PeriodDates } from './paymentDate';
 import { duplicateKey, installmentKey } from './duplicateKey';
-import { joinSameCategory } from './splits';
-import { filedAmounts } from './splits';
 import { prepareTransaction, type References } from './prepareTransaction';
 import type { TransactionsRepository } from './transactions.repository';
 
@@ -182,7 +181,6 @@ export function createTransactionsService(repository: TransactionsRepository, de
         description: patch.description ?? previous.description,
         note: patch.note ?? previous.note,
         tagIds: patch.tagIds ?? previous.tagIds,
-        splits: patch.splits ?? previous.splits,
         toAccountId: patch.toAccountId === undefined ? previous.toAccountId : patch.toAccountId,
         toAmountCents: patch.toAmountCents === undefined ? previous.toAmountCents : patch.toAmountCents,
         original: patch.original === undefined ? previous.original : patch.original,
@@ -321,18 +319,9 @@ export function createTransactionsService(repository: TransactionsRepository, de
     // What other modules may ask about transactions.
     countByAccount: (accountId: string) => repository.countByAccount(accountId),
     countByCategory: (categoryId: string) => repository.countByCategory(categoryId),
-    /**
-     * Everything filed under one category goes to another (they are being
-     * merged). A divided transaction with a part in each ends up with two parts
-     * in the same category: those become one.
-     */
-    async moveCategory(fromId: string, toId: string, options: WriteOptions): Promise<void> {
-      await repository.moveCategory(fromId, toId, options);
-      for (const divided of await repository.findDividedBy(toId, options)) {
-        const filing = joinSameCategory(divided.splits);
-        if (filing) await repository.setFiling(divided.id, filing, options);
-      }
-    },
+    /** Everything filed under one category goes to another (they are being merged). */
+    moveCategory: (fromId: string, toId: string, options: WriteOptions) =>
+      repository.moveCategory(fromId, toId, options),
     removeTag: (tagId: string, options: WriteOptions) => repository.pullTag(tagId, options),
     /**
      * For each candidate, whether a stored transaction has the same day and

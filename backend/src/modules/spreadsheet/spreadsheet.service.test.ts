@@ -324,10 +324,9 @@ test('the export splits a divided transaction into one row per category and hono
     ...base,
     date: '2026-10-05',
     amountCents: 3000,
-    categoryId: null,
-    splits: [
-      { categoryId: food.id, amountCents: 2000 },
-      { categoryId: home.id, amountCents: 1000 },
+    categoryId: food.id,
+    items: [
+      { name: '', amountCents: 1000, product: '', group: null, quantity: null, productId: null, categoryId: home.id },
     ],
   });
   await app.transactions.create({
@@ -335,14 +334,12 @@ test('the export splits a divided transaction into one row per category and hono
     date: '2026-09-20',
     amountCents: 500,
     categoryId: food.id,
-    splits: [],
   });
   const trashed = await app.transactions.create({
     ...base,
     date: '2026-10-06',
     amountCents: 999,
     categoryId: null,
-    splits: [],
   });
   await app.transactions.remove(trashed.id);
 
@@ -353,8 +350,8 @@ test('the export splits a divided transaction into one row per category and hono
   });
   const lines = october.content.toString('utf8').trim().split('\r\n');
   assert.equal(lines.length, 3); // header + two parts
-  assert.match(lines[1] ?? '', /2026-10-05;egreso;20,00;ARS;Banco;Supermercado;Coto/);
-  assert.match(lines[2] ?? '', /2026-10-05;egreso;10,00;ARS;Banco;Vivienda;Coto/);
+  assert.match(lines[1] ?? '', /2026-10-05;egreso;10,00;ARS;Banco;Vivienda;Coto/); // the line first
+  assert.match(lines[2] ?? '', /2026-10-05;egreso;20,00;ARS;Banco;Supermercado;Coto/); // then the rest
 
   const everything = await app.spreadsheet.exportTransactions({ format: 'csv' });
   assert.equal(everything.content.toString('utf8').trim().split('\r\n').length, 4);
@@ -376,7 +373,6 @@ test('an Excel export carries the products of each purchase on a second sheet, a
     merchantId: null,
     note: '',
     tagIds: [],
-    splits: [],
     toAccountId: null,
     toAmountCents: null,
     paymentDate: null,

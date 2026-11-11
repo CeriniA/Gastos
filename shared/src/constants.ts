@@ -34,9 +34,8 @@ export const MAX_ITEM_QUANTITY = 100_000;
 /** Most installments a purchase can be split in. */
 export const MAX_INSTALLMENTS = 60;
 
-/** Most tags on one transaction, and most parts a transaction can be split in. */
+/** Most tags on one transaction. */
 export const MAX_TAGS = 20;
-export const MAX_SPLITS = 20;
 
 /** Most transactions one document can bring. */
 export const MAX_DOCUMENT_TRANSACTIONS = 500;
@@ -103,7 +102,8 @@ export type InstitutionKind = (typeof INSTITUTION_KINDS)[number];
  * user can rename it freely. The role belongs to the category and to everything under it.
  * Only the app gives a role (starter data, migrations); the user cannot choose one.
  */
-export const CATEGORY_ROLES = ['financial_charges'] as const;
+export const FINANCIAL_CHARGES_ROLE = 'financial_charges';
+export const CATEGORY_ROLES = [FINANCIAL_CHARGES_ROLE] as const;
 export type CategoryRole = (typeof CATEGORY_ROLES)[number];
 
 /**

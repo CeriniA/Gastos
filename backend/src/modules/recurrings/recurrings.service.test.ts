@@ -22,7 +22,6 @@ async function setup(today = '2026-10-10') {
     merchantId: null,
     note: '',
     tagIds: [],
-    splits: [],
     toAccountId: null,
     toAmountCents: null,
     paymentDate: null,

@@ -11,6 +11,7 @@ import { aliasIndexes } from './2026-11-10-alias-indexes';
 import { categoryRole } from './2026-11-10-category-role';
 import { merchantsProducts } from './2026-11-10-merchants-products';
 import { transactionsLists } from './2026-11-10-transactions-lists';
+import { splitsToLinesMigration } from './2026-11-10-splits-to-lines';
 
 /**
  * Add migrations here in order. Example:
@@ -35,4 +36,5 @@ export const migrations: readonly Migration[] = [
   aliasIndexes,
   merchantsProducts,
   transactionsLists,
+  splitsToLinesMigration,
 ];

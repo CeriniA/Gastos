@@ -82,7 +82,6 @@ function confirmation(accountId: string, overrides: Partial<DocumentConfirm> = {
           merchantId: null,
           note: '',
           tagIds: [],
-          splits: [],
           toAccountId: null,
           toAmountCents: null,
           paymentDate: null,

@@ -9,7 +9,7 @@ Cada sección indica en qué etapa se construye (`ROADMAP.md`). Lo marcado **eta
 pantallas todavía): el rol de categoría, las listas de comercios y productos con sus textos conocidos, el
 comercio de un egreso (`merchantId`) y el producto o la categoría de un renglón, y el informe por categoría
 repartido por renglones. **Falta:** pantallas de las listas, informes por comercio y consumo desde las listas, pasar
-las divisiones a renglones y quitar `description` y `splits`, tarjetas con recordatorio. Este documento
+quitar `description`, tarjetas con recordatorio. Este documento
 describe lo que la app hace hoy; cuando se implemente cada parte, se pasa acá.
 
 ## 1. Propósito y alcance
@@ -45,8 +45,9 @@ Un movimiento es un **ingreso**, un **egreso** o una **transferencia**.
   saldo en MercadoPago o comprar dólares son transferencias: no son ingreso ni egreso, y contarlas como
   egreso duplicaría los consumos.
 - Una transferencia entre monedas distintas guarda los dos montos (el que sale y el que llega).
-- Un movimiento puede **dividirse** entre varias categorías (un ticket con comida y limpieza). Las
-  partes tienen que sumar el total.
+- Un gasto reparte su monto entre categorías con **renglones**: cada renglón lleva un producto (que apunta a su
+  categoría) o, si no tiene producto, su propia categoría. Lo que los renglones no cubren queda en la categoría
+  del movimiento, así que el total no cambia. No hay división manual aparte.
 - No se aceptan fechas futuras, salvo en movimientos proyectados (cuotas futuras, etapa 3).
 
 Estados: `confirmado` (cuenta en los informes) y `proyectado` (cuota futura). Lo que se espera de un
@@ -118,8 +119,7 @@ arranca con una lista inicial (`starter.ts`) y desde ahí las edita.
 - Dos categorías hermanas no pueden llamarse igual.
 - Mover una categoría mueve su rama; no puede quedar dentro de sí misma ni pasar de tres niveles.
 - Renombrar, mover o unir no obliga a recargar nada: los movimientos siguen a la categoría.
-- Al unir dos categorías, un movimiento dividido que tenía una parte en cada una queda con una sola parte
-  por la suma; si no le queda otra parte, deja de estar dividido.
+- Al unir dos categorías, los movimientos y los renglones que estaban en la origen pasan a la destino.
 - Una categoría archivada deja de ofrecerse, pero los movimientos viejos la conservan.
 
 **Etiquetas**: marcas libres que cruzan categorías ("Vacaciones enero"). Un movimiento puede tener
@@ -323,7 +323,7 @@ llegaron) y cómo terminaría el mes. Debajo, la lista de lo esperado con su fec
 moneda, los ingresos y los egresos con su total y cada categoría principal con su monto y su porcentaje, de
 mayor a menor. Una categoría con subcategorías se abre y muestra cada una, más lo cargado directo en ella.
 Usa las mismas reglas que el balance del Inicio, así que los totales coinciden: cuenta por fecha de pago,
-las devoluciones restan, un movimiento dividido reparte cada parte en su categoría, y las transferencias y
+las devoluciones restan, cada renglón se suma a su categoría, y las transferencias y
 la papelera no entran. Lo que no tiene categoría aparece como "Sin categoría".
 
 **Productos de un movimiento.** Todo egreso o ingreso puede llevar el detalle de lo comprado: nombre,
@@ -381,7 +381,7 @@ MongoDB. Los nombres están en inglés; ver `GLOSARIO.md`.
 | `tags`             | Etiquetas                                          |                                                                                                | 1     |
 | `merchants`        | Comercios, con su categoría habitual y sus textos conocidos | `categories`                                                                      | 5     |
 | `products`         | Productos, con su categoría y sus textos conocidos | `categories`                                                                                   | 5     |
-| `transactions`     | Movimientos, con ítems y divisiones adentro        | `accounts`, `categories`, `tags`, `merchants`, `products`, `documents`, `installmentPlans`, `cardPeriods`, `recurrings` | 1     |
+| `transactions`     | Movimientos, con ítems adentro        | `accounts`, `categories`, `tags`, `merchants`, `products`, `documents`, `installmentPlans`, `cardPeriods`, `recurrings` | 1     |
 | `documents`        | Archivos subidos y su extracción                   | `accounts`                                                                                     | 2     |
 | `categoryRules`    | Comercio → categoría                               | `categories`                                                                                   | 2     |
 | `productRules`     | Renglón de ticket → producto y grupo               |                                                                                                | 4     |
@@ -399,7 +399,7 @@ dentro de los datos de cada usuario. `users` no entra en ningún respaldo.
 Todos los modelos tienen servicio y pantalla desde el 17/10/2026. Se crearon antes que sus pantallas para que
 el respaldo tuviera un formato estable desde el principio.
 
-Los ítems y las divisiones van **dentro** del movimiento: no existen sin él y no pueden quedar sueltos.
+Los ítems van **dentro** del movimiento: no existen sin él y no pueden quedar sueltos.
 
 ## 13. Borrado
 
@@ -431,7 +431,7 @@ Todas se aplican en el backend; el frontend las repite para avisar antes.
 - Moneda igual a la de la cuenta.
 - Categoría del mismo tipo que el movimiento; las transferencias no llevan.
 - Transferencia: origen y destino distintos; entre monedas, los dos montos.
-- División: las partes suman el total.
+- Renglón: lleva un producto o una categoría propia, nunca los dos; su categoría es del mismo tipo que el movimiento.
 - Cuota: el número no supera el total.
 - Nombres únicos dentro de los datos de cada usuario: cuenta, etiqueta y categoría entre hermanas (sin
   distinguir mayúsculas ni acentos); un fijo, entre los de su mismo tipo y moneda. El nombre de usuario es

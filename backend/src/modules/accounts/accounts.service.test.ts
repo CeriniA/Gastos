@@ -15,7 +15,6 @@ const expense = (accountId: string, tagIds: string[] = []) => ({
   merchantId: null,
   note: '',
   tagIds,
-  splits: [],
   toAccountId: null,
   toAmountCents: null,
   paymentDate: null,

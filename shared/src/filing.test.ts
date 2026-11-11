@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { filedAmounts, type Filable } from './splits';
+import { filedAmounts, type Filable } from './filing';
 
 const FOOD = 'food';
 const PHARMACY = 'pharmacy';
@@ -18,7 +18,6 @@ const purchase = (overrides: Partial<Filable>): Filable => ({
   currency: 'ARS',
   amountCents: 100000,
   categoryId: FOOD,
-  splits: [],
   items: [],
   ...overrides,
 });
@@ -80,11 +79,7 @@ test('a refund takes away from the category of each line', () => {
   assert.deepEqual(byCategory(filed), { [DAIRY]: -30000, [FOOD]: -70000 });
 });
 
-test('a divided purchase files each part, and a transfer or an income ignores the lines', () => {
-  const divided = filedAmounts(
-    purchase({ categoryId: null, splits: [{ categoryId: FOOD, amountCents: 70000 }, { categoryId: PHARMACY, amountCents: 30000 }] }),
-  );
-  assert.deepEqual(byCategory(divided), { [FOOD]: 70000, [PHARMACY]: 30000 });
+test('a transfer or an income ignores the lines', () => {
   assert.deepEqual(filedAmounts(purchase({ type: 'transfer' })), []);
   const income = filedAmounts(purchase({ type: 'income', items: [line(1000, { categoryId: PHARMACY })] }));
   assert.deepEqual(byCategory(income), { [FOOD]: 100000 });

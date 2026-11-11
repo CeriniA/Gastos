@@ -2,6 +2,7 @@ import {
   DEFAULT_CURRENCY,
   DEFAULT_INSTITUTIONS,
   FINANCIAL_CHARGES_CATEGORY,
+  FINANCIAL_CHARGES_ROLE,
   INSTITUTION_KINDS,
   type CategoryKind,
 } from '@gastos/shared';
@@ -55,7 +56,7 @@ export async function giveStarterData(
   }
   for (const kind of Object.keys(STARTER_CATEGORIES) as CategoryKind[]) {
     for (const name of STARTER_CATEGORIES[kind]) {
-      const role = name === FINANCIAL_CHARGES_CATEGORY ? 'financial_charges' : null;
+      const role = name === FINANCIAL_CHARGES_CATEGORY ? FINANCIAL_CHARGES_ROLE : null;
       await categories.create({ name, kind, parentId: null, role });
     }
   }

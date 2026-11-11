@@ -682,7 +682,6 @@ function ReviewForm({
           description: draft.description,
           note: '',
           tagIds: [],
-          splits: [],
           toAccountId: isTransfer ? draft.toAccountId || null : null,
           toAmountCents,
           paymentDate: account?.type === 'credit_card' ? draft.paymentDate || null : null,

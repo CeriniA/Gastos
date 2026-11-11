@@ -114,7 +114,7 @@ function itemIssues(
   return issues;
 }
 
-/** The categories of the transaction, its splits and its lines, the merchant and the products. */
+/** The categories of the transaction and its lines, the merchant and the products. */
 function listIssues(input: TransactionCreate, refs: References, previous?: Transaction): Issue[] {
   // A transfer with a category, merchant or products is already reported by the shape rules.
   if (input.type === 'transfer') return [];
@@ -123,7 +123,6 @@ function listIssues(input: TransactionCreate, refs: References, previous?: Trans
     previous
       ? [
           previous.categoryId,
-          ...previous.splits.map((split) => split.categoryId),
           ...previous.items.map((item) => item.categoryId),
         ]
       : [],
@@ -137,7 +136,6 @@ function listIssues(input: TransactionCreate, refs: References, previous?: Trans
     }
   };
   if (input.categoryId) checkCategory(input.categoryId, 'categoryId');
-  input.splits.forEach((split, index) => checkCategory(split.categoryId, `splits.${index}.categoryId`));
   // After the checks above: `checkCategory` adds to `issues` as the lines are visited.
   const merchant = merchantIssues(input, refs, previous);
   const lines = itemIssues(input, refs, previous, checkCategory);
@@ -225,7 +223,6 @@ export function prepareTransaction(
     description: input.description,
     note: input.note,
     tagIds: [...new Set(input.tagIds)],
-    splits: input.splits,
     items: input.items,
     ...provenance(input.type, origin, previous),
   };

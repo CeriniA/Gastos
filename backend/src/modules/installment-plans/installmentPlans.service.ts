@@ -47,9 +47,6 @@ export function createInstallmentPlansService(
     if (purchase.type !== 'expense')
       throw fieldError('transaction.type', 'Only purchases go in installments');
     if (purchase.refund) throw fieldError('transaction.refund', 'A refund is not paid in installments');
-    if (purchase.splits.length > 0) {
-      throw fieldError('transaction.splits', 'A purchase in installments cannot be split');
-    }
     const account = (await deps.listAccounts()).find((candidate) => candidate.id === purchase.accountId);
     if (account?.type !== 'credit_card') {
       throw fieldError('transaction.accountId', 'Installments are for credit cards');

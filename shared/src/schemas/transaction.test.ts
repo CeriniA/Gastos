@@ -38,18 +38,13 @@ test('transfers need a different destination and no category', () => {
   assert.equal(transactionCreateSchema.safeParse({ ...base, toAccountId: other }).success, false);
 });
 
-test('splits must add up to the total and replace the single category', () => {
-  const splits = [
-    { categoryId: category, amountCents: 100000 },
-    { categoryId: other, amountCents: 50000 },
-  ];
-  assert.equal(transactionCreateSchema.safeParse({ ...base, splits }).success, true);
-  assert.equal(transactionCreateSchema.safeParse({ ...base, splits, categoryId: category }).success, false);
-  assert.equal(
-    transactionCreateSchema.safeParse({ ...base, splits: [{ categoryId: category, amountCents: 1 }] })
-      .success,
-    false,
-  );
+test('a line can point at a product or have a category, and a transfer has no merchant', () => {
+  const transfer = { ...base, type: 'transfer', toAccountId: other };
+  const line = { name: 'x', amountCents: 1000, categoryId: category };
+  assert.equal(transactionCreateSchema.safeParse({ ...base, items: [line] }).success, true);
+  assert.equal(transactionCreateSchema.safeParse({ ...base, items: [{ ...line, productId: other }] }).success, true);
+  assert.equal(transactionCreateSchema.safeParse({ ...base, merchantId: other }).success, true);
+  assert.equal(transactionCreateSchema.safeParse({ ...transfer, merchantId: other }).success, false);
 });
 
 test('a partial update does not invent defaults for omitted fields', () => {

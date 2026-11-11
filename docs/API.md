@@ -195,7 +195,6 @@ Cuerpo de alta:
   "description": "Edesur",
   "note": "",
   "tagIds": [],
-  "splits": [],
   "toAccountId": null,
   "toAmountCents": null,
   "paymentDate": null,
@@ -349,7 +348,7 @@ con algo en el mes, de mayor a menor. Cada categoría es `{ categoryId, name, to
 `totalCents` incluye lo de sus subcategorías. `categoryId: null` junta lo que no tiene categoría.
 
 Cuenta lo mismo que `/transactions/summary`: movimientos confirmados, por fecha de pago, sin transferencias
-ni papelera. Un movimiento dividido suma cada parte a su categoría y una devolución resta de la suya.
+ni papelera. Cada renglón suma a la categoría de su producto (o a la suya) y lo que los renglones no cubren, a la del movimiento; una devolución resta de la suya.
 
 Todos los informes cuentan igual: por fecha de pago, las devoluciones restan, las transferencias no son
 ingreso ni egreso. Comercio es la descripción del egreso, sin distinguir mayúsculas ni acentos; los 20 más

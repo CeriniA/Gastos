@@ -27,3 +27,4 @@ export * from './schemas/productRule';
 export * from './aliases';
 export * from './schemas/merchant';
 export * from './schemas/product';
+export * from './filing';

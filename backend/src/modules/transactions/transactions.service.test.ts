@@ -137,7 +137,6 @@ const expense: TransactionCreate = {
   merchantId: null,
   note: '',
   tagIds: [id('e')],
-  splits: [],
   toAccountId: null,
   toAmountCents: null,
   paymentDate: null,
@@ -221,15 +220,19 @@ test('transfers between currencies need both amounts, same-currency ones only on
   assert.deepEqual(await issuePaths(service.create({ ...transfer, toAccountId: id('f') })), ['toAccountId']);
 });
 
-test('split categories are validated one by one', async () => {
+test('the category of a line is validated like the one of the transaction', async () => {
   const { service } = setup();
-  const splits = [
-    { categoryId: id('1'), amountCents: 100000 },
-    { categoryId: id('2'), amountCents: 50000 },
-  ];
-  assert.deepEqual(await issuePaths(service.create({ ...expense, categoryId: null, splits })), [
-    'splits.1.categoryId',
-  ]);
+  const line = (categoryId: string) => ({
+    name: '',
+    amountCents: 50000,
+    product: '',
+    group: null,
+    quantity: null,
+    productId: null,
+    categoryId,
+  });
+  const items = [line(id('1')), line(id('2'))];
+  assert.deepEqual(await issuePaths(service.create({ ...expense, items })), ['items.1.categoryId']);
 });
 
 test('an update merges, re-validates and keeps what it was not asked to change', async () => {

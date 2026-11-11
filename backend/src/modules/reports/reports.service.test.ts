@@ -31,7 +31,6 @@ async function setup() {
     merchantId: null,
     note: '',
     tagIds: [],
-    splits: [],
     toAccountId: null,
     toAmountCents: null,
     paymentDate: null,
@@ -53,12 +52,12 @@ test('a month is added up by category, each one with its subcategories, largest 
   await add({ amountCents: 300, categoryId: home.id });
   await add({ amountCents: 5000, categoryId: food.id });
   await add({ amountCents: 50, categoryId: null });
-  // Divided: each part goes to its own category.
+  // With lines: each goes to its own category, and the rest stays in the category of the whole.
   await add({
     amountCents: 700,
-    splits: [
-      { categoryId: power.id, amountCents: 200 },
-      { categoryId: food.id, amountCents: 500 },
+    categoryId: food.id,
+    items: [
+      { name: 'Luz', amountCents: 200, product: '', group: null, quantity: null, productId: null, categoryId: power.id },
     ],
   });
   // A refund takes away from its category.

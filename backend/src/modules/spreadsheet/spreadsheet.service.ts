@@ -25,6 +25,8 @@ import {
   type Tag,
   type Transaction,
   type TransactionCreate,
+  filingParts,
+  NO_PRODUCT_CATEGORIES,
 } from '@gastos/shared';
 import type { TransactionRunner, WriteOptions } from '../../core/db/transaction';
 import { ValidationError, fieldError } from '../../core/errors/errors';
@@ -280,7 +282,6 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
             description: row.description,
             note: row.note,
             tagIds: row.tags.map((tag) => lookups.tagsByName.get(nameKey(tag))!.id),
-            splits: [],
             toAccountId: row.toAccount ? lookups.accountsByName.get(nameKey(row.toAccount))!.id : null,
             toAmountCents: row.toAmountCents,
             paymentDate: row.paymentDate,
@@ -299,8 +300,8 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
     },
 
     /**
-     * Writes confirmed transactions in the import format. A transaction split
-     * across categories becomes one row per part; the JSON backup is the copy
+     * Writes confirmed transactions in the import format. A transaction whose
+     * lines have categories of their own becomes one row per category; the JSON backup is the copy
      * that keeps everything exactly. An Excel file also carries a second
      * sheet with the products of each purchase; a CSV has room for one table only.
      */
@@ -332,7 +333,7 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
           toAccount: transaction.toAccountId ? (accountName.get(transaction.toAccountId) ?? null) : null,
           toAmountCents: transaction.toAmountCents,
         };
-        if (transaction.splits.length === 0) {
+        if (transaction.type !== 'expense') {
           return [
             {
               ...base,
@@ -341,10 +342,10 @@ export function createSpreadsheetService(deps: SpreadsheetDependencies) {
             },
           ];
         }
-        return transaction.splits.map((split) => ({
+        return filingParts(transaction, NO_PRODUCT_CATEGORIES).map((part) => ({
           ...base,
-          amountCents: split.amountCents,
-          categoryPath: pathOf(split.categoryId, categories),
+          amountCents: part.amountCents,
+          categoryPath: part.categoryId ? pathOf(part.categoryId, categories) : [],
         }));
       });
 

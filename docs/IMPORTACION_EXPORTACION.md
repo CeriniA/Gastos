@@ -60,7 +60,7 @@ banco o efectivo, y eso cambia cómo se calcula la fecha de pago.
 
 ### Lo que la planilla no conserva
 
-- Un movimiento dividido entre categorías se exporta como una fila por parte.
+- Un gasto con renglones que tienen categoría se exporta como una fila por parte: primero cada renglón y al final lo que queda en la categoría del movimiento.
 - No incluye borradores, proyectados, papelera, reglas, fijos, tasas de cambio, saldos iniciales ni
   períodos de tarjeta.
 - La cuota se guarda como dato (`3/6`) sin vincularla a un plan.

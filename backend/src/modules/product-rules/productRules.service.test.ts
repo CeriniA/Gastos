@@ -65,7 +65,6 @@ test('a product corrected and remembered in a review is how the next receipt off
           merchantId: null,
           note: '',
           tagIds: [],
-          splits: [],
           toAccountId: null,
           toAmountCents: null,
           paymentDate: null,

@@ -36,8 +36,7 @@ export interface TransactionDoc {
   description: string;
   note: string;
   tagIds: ObjectId[];
-  /** Embedded: splits and items cannot exist without their transaction. */
-  splits: { categoryId: ObjectId; amountCents: number }[];
+  /** Embedded: the lines cannot exist without their transaction. */
   items: {
     name: string;
     amountCents: number;
@@ -94,20 +93,11 @@ const schema = new Schema<TransactionDoc>(
     description: { type: String, default: '' },
     note: { type: String, default: '' },
     tagIds: { type: [Schema.Types.ObjectId], default: [] },
-    splits: {
-      type: [
-        new Schema(
-          { categoryId: { type: Schema.Types.ObjectId, required: true }, amountCents: cents },
-          { _id: false },
-        ),
-      ],
-      default: [],
-    },
     items: {
       type: [
         new Schema(
           {
-            name: { type: String, required: true },
+            name: { type: String, default: '' },
             amountCents: cents,
             product: { type: String, default: '' },
             group: { type: String, default: null },
@@ -145,7 +135,7 @@ schema.index({ deletedAt: 1, date: -1, createdAt: -1 });
 schema.index({ accountId: 1 });
 schema.index({ toAccountId: 1 });
 schema.index({ categoryId: 1 });
-schema.index({ 'splits.categoryId': 1 });
+schema.index({ 'items.categoryId': 1 });
 schema.index({ tagIds: 1 });
 schema.index({ documentId: 1 });
 schema.index({ 'original.currency': 1, date: -1 });

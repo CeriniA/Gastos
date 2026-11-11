@@ -107,13 +107,13 @@ function findLook(name: string): Look | null {
   return LOOKS.find(([words]) => words.some((word) => key.includes(word)))?.[1] ?? null;
 }
 
-/** The look of a transaction: its category's, a transfer's, or the first part's when it is divided. */
+/** The look of a transaction: its category's, a transfer's, or a transfer's. */
 export function transactionLook(
-  transaction: Pick<Transaction, 'type' | 'categoryId' | 'splits'>,
+  transaction: Pick<Transaction, 'type' | 'categoryId'>,
   categories: readonly Category[],
 ): Look {
   if (transaction.type === 'transfer') return TRANSFER;
-  return categoryLook(transaction.categoryId ?? transaction.splits[0]?.categoryId ?? null, categories);
+  return categoryLook(transaction.categoryId, categories);
 }
 
 /** An icon on its soft colour, round-cornered: how a category shows in a list. */

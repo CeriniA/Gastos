@@ -1,6 +1,7 @@
 import {
   applyProductRule,
   categoryWithRole,
+  FINANCIAL_CHARGES_ROLE,
   nameKey,
   type Category,
   type ExtractionResult,
@@ -23,7 +24,7 @@ export function applyCategorySuggestions(
   rules: ReadonlyMap<string, string>,
 ): ReviewExtraction {
   const byId = new Map(categories.map((category) => [category.id, category]));
-  const charges = categoryWithRole('financial_charges', categories);
+  const charges = categoryWithRole(FINANCIAL_CHARGES_ROLE, categories);
   return {
     ...extraction,
     transactions: extraction.transactions.map(({ financialCharge, ...transaction }) => {

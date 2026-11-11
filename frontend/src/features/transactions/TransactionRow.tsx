@@ -37,9 +37,7 @@ export function TransactionRow({
   const details = [
     transaction.type === 'transfer'
       ? null
-      : transaction.splits.length > 0
-        ? es.transactions.split.summary(transaction.splits.length)
-        : (category?.name ?? es.transactions.noCategory),
+      : (category?.name ?? es.transactions.noCategory),
     formatShortDate(transaction.date, todayIso(DEFAULT_TIMEZONE)),
     accountName(transaction.accountId),
     transaction.installment

@@ -1,4 +1,4 @@
-import { FINANCIAL_CHARGES_CATEGORY, nameKey } from '@gastos/shared';
+import { FINANCIAL_CHARGES_CATEGORY, FINANCIAL_CHARGES_ROLE, nameKey } from '@gastos/shared';
 import type { Migration } from '../core/db/migrations';
 import { CategoryModel } from '../modules/categories/categories.model';
 
@@ -13,7 +13,7 @@ export const categoryRole: Migration = {
     await CategoryModel.updateMany({ role: { $exists: false } }, { $set: { role: null } });
     await CategoryModel.updateOne(
       { kind: 'expense', archived: false, nameKey: nameKey(FINANCIAL_CHARGES_CATEGORY), role: null },
-      { $set: { role: 'financial_charges' } },
+      { $set: { role: FINANCIAL_CHARGES_ROLE } },
     );
   },
 };

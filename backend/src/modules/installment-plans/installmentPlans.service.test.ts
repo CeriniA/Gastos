@@ -19,7 +19,6 @@ async function setup() {
     merchantId: null,
     note: '',
     tagIds: [],
-    splits: [],
     toAccountId: null,
     toAmountCents: null,
     paymentDate: null,

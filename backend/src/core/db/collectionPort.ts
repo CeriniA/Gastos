@@ -12,11 +12,11 @@ const BROKEN_REFERENCES_LIMIT = 100;
 
 /** A field of this collection that must point at an existing document elsewhere. */
 export interface Reference {
-  /** Field path, e.g. "accountId" or "splits.categoryId". */
+  /** Field path, e.g. "accountId" or "items.categoryId". */
   field: string;
   /** Name of the collection it points at. */
   to: string;
-  /** Array to unwind before checking: "tagIds" or "splits". */
+  /** Array to unwind before checking: "tagIds" or "items". */
   unwind?: string;
 }
 

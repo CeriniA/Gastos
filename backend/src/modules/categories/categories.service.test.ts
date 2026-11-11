@@ -4,6 +4,16 @@ import { NotFoundError } from '../../core/errors/errors';
 import { codeOf } from '../../testing/assertions';
 import { createMemoryBackend } from '../../testing/memory';
 
+const part = (categoryId: string, amountCents: number) => ({
+  name: '',
+  amountCents,
+  product: '',
+  group: null,
+  quantity: null,
+  productId: null,
+  categoryId,
+});
+
 async function tree() {
   const app = createMemoryBackend();
   const home = await app.categories.create({ name: 'Vivienda', kind: 'expense', parentId: null });
@@ -89,7 +99,6 @@ test('a category in use cannot be deleted, only archived or merged', async () =>
     merchantId: null,
     note: '',
     tagIds: [],
-    splits: [],
     toAccountId: null,
     toAmountCents: null,
     paymentDate: null,
@@ -111,7 +120,7 @@ test('a category in use cannot be deleted, only archived or merged', async () =>
   await assert.rejects(app.categories.get(food.id), NotFoundError);
 });
 
-test('merging moves the transactions, including split parts, and deletes the source', async () => {
+test('merging moves the transactions, including their lines, and deletes the source', async () => {
   const { app, home, services, power, food, salary, bank } = await tree();
   const base = {
     type: 'expense' as const,
@@ -133,16 +142,12 @@ test('merging moves the transactions, including split parts, and deletes the sou
     ...base,
     amountCents: 1000,
     categoryId: power.id,
-    splits: [],
   });
   const split = await app.transactions.create({
     ...base,
     amountCents: 3000,
-    categoryId: null,
-    splits: [
-      { categoryId: power.id, amountCents: 1000 },
-      { categoryId: food.id, amountCents: 2000 },
-    ],
+    categoryId: food.id,
+    items: [part(power.id, 1000), part(food.id, 2000)],
   });
 
   assert.equal(await codeOf(app.categories.merge(power.id, power.id)), 'VALIDATION');
@@ -152,33 +157,19 @@ test('merging moves the transactions, including split parts, and deletes the sou
   await app.categories.merge(power.id, services.id);
   assert.equal((await app.transactions.get(single.id)).categoryId, services.id);
   assert.deepEqual(
-    (await app.transactions.get(split.id)).splits.map((part) => part.categoryId),
+    (await app.transactions.get(split.id)).items.map((line) => line.categoryId),
     [services.id, food.id],
   );
   await assert.rejects(app.categories.get(power.id), NotFoundError);
   assert.equal(await app.transactions.countByCategory(services.id), 2);
 
-  // Merging the two categories a transaction is divided between leaves nothing to divide.
-  const three = await app.transactions.create({
-    ...base,
-    amountCents: 6000,
-    categoryId: null,
-    splits: [
-      { categoryId: services.id, amountCents: 1000 },
-      { categoryId: food.id, amountCents: 2000 },
-      { categoryId: home.id, amountCents: 3000 },
-    ],
-  });
+  // Merging the two categories the lines of a transaction are in leaves them in the same one.
   await app.categories.merge(food.id, services.id);
   const whole = await app.transactions.get(split.id);
-  assert.deepEqual([whole.categoryId, whole.splits], [services.id, []]);
-  // With a third part left, the two that met are added up and it stays divided.
-  const joined = await app.transactions.get(three.id);
-  assert.equal(joined.categoryId, null);
-  assert.deepEqual(joined.splits, [
-    { categoryId: services.id, amountCents: 3000 },
-    { categoryId: home.id, amountCents: 3000 },
-  ]);
+  assert.deepEqual(
+    [whole.categoryId, ...whole.items.map((line) => line.categoryId)],
+    [services.id, services.id, services.id],
+  );
 });
 
 test('filtering transactions by a category includes its subcategories', async () => {
@@ -192,7 +183,6 @@ test('filtering transactions by a category includes its subcategories', async ()
     merchantId: null,
     note: '',
     tagIds: [],
-    splits: [],
     toAccountId: null,
     toAmountCents: null,
     paymentDate: null,

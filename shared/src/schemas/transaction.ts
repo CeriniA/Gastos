@@ -2,7 +2,6 @@ import { z } from 'zod';
 import {
   MAX_ITEM_QUANTITY,
   MAX_RATE,
-  MAX_SPLITS,
   MAX_TAGS,
   PRODUCT_GROUPS,
   TEXT_LIMITS,
@@ -13,7 +12,6 @@ import {
   type TransactionStatus,
   type TransactionType,
 } from '../constants';
-import { sumCents } from '../money';
 import {
   amountCentsSchema,
   currencyCodeSchema,
@@ -63,9 +61,6 @@ export type TransactionItem = z.infer<typeof transactionItemSchema>;
 /** How many products a transaction can list. */
 export const MAX_TRANSACTION_ITEMS = 200;
 
-export const splitSchema = z.object({ categoryId: objectIdSchema, amountCents: amountCentsSchema });
-export type Split = z.infer<typeof splitSchema>;
-
 const fields = {
   type: z.enum(TRANSACTION_TYPES),
   /**
@@ -85,8 +80,6 @@ const fields = {
   description: z.string().trim().max(TEXT_LIMITS.description),
   note: z.string().trim().max(TEXT_LIMITS.note),
   tagIds: z.array(objectIdSchema).max(MAX_TAGS),
-  /** One receipt divided across categories. Must add up to amountCents. */
-  splits: z.array(splitSchema).max(MAX_SPLITS),
   /** Transfers only. */
   toAccountId: objectIdSchema.nullable(),
   /** Transfers between accounts of different currencies only. */
@@ -109,7 +102,6 @@ export interface TransactionShape {
   accountId: string;
   categoryId: string | null;
   merchantId: string | null;
-  splits: readonly Split[];
   toAccountId: string | null;
   toAmountCents: number | null;
   items: readonly unknown[];
@@ -136,9 +128,6 @@ export function transactionShapeIssues(tx: TransactionShape): { path: string; me
     if (tx.merchantId) {
       issues.push({ path: 'merchantId', message: 'A transfer cannot have a merchant' });
     }
-    if (tx.splits.length > 0) {
-      issues.push({ path: 'splits', message: 'A transfer cannot be split' });
-    }
     if (tx.items.length > 0) {
       issues.push({ path: 'items', message: 'A transfer cannot have products' });
     }
@@ -148,14 +137,6 @@ export function transactionShapeIssues(tx: TransactionShape): { path: string; me
     }
     if (tx.toAmountCents !== null) {
       issues.push({ path: 'toAmountCents', message: 'Only transfers have a destination amount' });
-    }
-  }
-  if (tx.splits.length > 0) {
-    if (tx.categoryId) {
-      issues.push({ path: 'categoryId', message: 'A split transaction keeps its categories in the splits' });
-    }
-    if (sumCents(tx.splits.map((split) => split.amountCents)) !== tx.amountCents) {
-      issues.push({ path: 'splits', message: 'Splits must add up to the total amount' });
     }
   }
   return issues;
@@ -170,7 +151,6 @@ export const transactionCreateSchema = z
     description: fields.description.default(''),
     note: fields.note.default(''),
     tagIds: fields.tagIds.default([]),
-    splits: fields.splits.default([]),
     toAccountId: fields.toAccountId.default(null),
     toAmountCents: fields.toAmountCents.default(null),
     paymentDate: fields.paymentDate.default(null),
@@ -245,7 +225,6 @@ export interface Transaction {
   description: string;
   note: string;
   tagIds: string[];
-  splits: Split[];
   items: TransactionItem[];
   installment: Installment | null;
   documentId: string | null;
